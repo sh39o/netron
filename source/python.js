@@ -1801,12 +1801,18 @@ python.Execution = class {
                 switch (obj) {
                     case 'b1': case 'bool': this.itemsize = 1; this.kind = 'b'; break;
                     case 'i1': case 'int8': this.itemsize = 1; this.kind = 'i'; break;
+                    case 'i1': case 'xint8': this.itemsize = 1; this.kind = 'i'; break;
                     case 'i2': case 'int16': this.itemsize = 2; this.kind = 'i'; break;
+                    case 'i2': case 'xint16': this.itemsize = 2; this.kind = 'i'; break;
                     case 'i4': case 'int32': this.itemsize = 4; this.kind = 'i'; break;
+                    case 'i4': case 'xint32': this.itemsize = 4; this.kind = 'i'; break;
                     case 'i8': case 'int64': case 'int': this.itemsize = 8; this.kind = 'i'; break;
                     case 'u1': case 'uint8': this.itemsize = 1; this.kind = 'u'; break;
+                    case 'u1': case 'xuint8': this.itemsize = 1; this.kind = 'u'; break;
                     case 'u2': case 'uint16': this.itemsize = 2; this.kind = 'u'; break;
+                    case 'u2': case 'xuint16': this.itemsize = 2; this.kind = 'u'; break;
                     case 'u4': case 'uint32': this.itemsize = 4; this.kind = 'u'; break;
+                    case 'u4': case 'xuint32': this.itemsize = 4; this.kind = 'u'; break;
                     case 'u8': case 'uint64': case 'uint': this.itemsize = 8; this.kind = 'u'; break;
                     case 'f2': case 'float16': this.itemsize = 2; this.kind = 'f'; break;
                     case 'f4': case 'float32': this.itemsize = 4; this.kind = 'f'; break;

@@ -3096,6 +3096,7 @@ view.Tensor = class {
         this._tensor = tensor;
         this._type = tensor.type;
         this._stride = tensor.stride;
+        this._name = tensor.name;
         switch (tensor.layout) {
             case undefined:
             case '':
@@ -3138,11 +3139,16 @@ view.Tensor = class {
             [ 'qint8', 1 ], [ 'qint16', 2 ], [ 'qint32', 4 ],
             [ 'quint8', 1 ], [ 'quint16', 2 ], [ 'quint32', 4 ],
             [ 'int8', 1 ], [ 'int16', 2 ], [ 'int32', 4 ], [ 'int64', 8 ],
+            [ 'xint8', 1], [ 'xuint8', 1], [ 'xint16', 2], [ 'xuint16', 2],
             [ 'uint8', 1 ], [ 'uint16', 2 ], [ 'uint32', 4, ], [ 'uint64', 8 ],
             [ 'float16', 2 ], [ 'float32', 4 ], [ 'float64', 8 ], [ 'bfloat16', 2 ],
             [ 'complex64', 8 ], [ 'complex128', 16 ],
             [ 'float8e4m3fn', 1 ], [ 'float8e4m3fnuz', 1 ], [ 'float8e5m2', 1 ], [ 'float8e5m2fnuz', 1 ]
         ]);
+    }
+
+    get name() {
+        return this._name;
     }
 
     get type() {
@@ -3161,7 +3167,17 @@ view.Tensor = class {
         switch (this._layout) {
             case '<':
             case '>': {
-                return !(Array.isArray(this._data) || this._data instanceof Uint8Array || this._data instanceof Int8Array) || this._data.length === 0;
+                return (
+                  !(
+                    Array.isArray(this._data) ||
+                    this._data instanceof Uint8Array ||
+                    this._data instanceof Int8Array ||
+                    this._data instanceof Uint16Array ||
+                    this._data instanceof Int16Array ||
+                    this._data instanceof Uint32Array ||
+                    this._data instanceof Int32Array
+                  ) || this._data.length === 0
+                );
             }
             case '|': {
                 return !(Array.isArray(this._values) || ArrayBuffer.isView(this._values)) || this._values.length === 0;
@@ -3225,11 +3241,13 @@ view.Tensor = class {
         switch (this._layout) {
             case '<':
             case '>': {
-                context.data = (this._data instanceof Uint8Array || this._data instanceof Int8Array) ? this._data : this._data.peek();
+                context.data = (this._data instanceof Uint8Array || this._data instanceof Int8Array ||
+                                this._data instanceof Uint16Array || this._data instanceof Int16Array ||
+                                this._data instanceof Uint32Array || this._data instanceof Int32Array) ? this._data : this._data.peek();
                 context.view = new DataView(context.data.buffer, context.data.byteOffset, context.data.byteLength);
                 if (view.Tensor.dataTypes.has(dataType)) {
                     context.itemsize = view.Tensor.dataTypes.get(dataType);
-                    if (context.data.length < (context.itemsize * size)) {
+                    if (context.data.length * context.itemsize < (context.itemsize * size)) {
                         throw new Error('Invalid tensor data size.');
                     }
                 } else if (dataType.startsWith('uint') && !isNaN(parseInt(dataType.substring(4), 10))) {
@@ -3338,12 +3356,14 @@ view.Tensor = class {
                     break;
                 case 'qint8':
                 case 'int8':
+                case 'xint8':
                     for (; i < max; i++) {
                         results.push(view.getInt8(i));
                     }
                     break;
                 case 'qint16':
                 case 'int16':
+                case 'xint16':
                     for (; i < max; i += 2) {
                         results.push(view.getInt16(i, this._littleEndian));
                     }
@@ -3366,12 +3386,14 @@ view.Tensor = class {
                     break;
                 case 'quint8':
                 case 'uint8':
+                case 'xuint8':
                     for (; i < max; i++) {
                         results.push(view.getUint8(i));
                     }
                     break;
                 case 'quint16':
                 case 'uint16':
+                case 'xuint16':
                     for (; i < max; i += 2) {
                         results.push(view.getUint16(i, true));
                     }

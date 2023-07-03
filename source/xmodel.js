@@ -1,4 +1,3 @@
-
 var xmodel = {};
 var protobuf = require('./protobuf');
 
@@ -27,6 +26,21 @@ xmodel.ModelFactory = class {
         return new xmodel.Model(graph);
     }
 };
+
+xmodel.Subgraph = class {
+    constructor(subgraph) {
+        this._name = subgraph.subgraph_name;
+        this._attributes = [];
+
+        Object.entries(subgraph.subg_attr).forEach(([key, value]) => {
+            this._attributes.push(new xmodel.Argument(key, xmodel.Utility.attribute(value)));
+        });
+    }
+
+    get name() {
+        this._name;
+    }
+}
 
 xmodel.Model = class {
 
@@ -60,6 +74,8 @@ xmodel.Graph = class {
         const metadata = new xmodel.Metadata(graph.op_defs);
         this._inputs = [];
         this._outputs = [];
+        this._root_subg = graph.subg_root;
+        this._subgs = new Map();
         const counts = new Map();
         for (const op_node of graph.op_node) {
             for (const arg of op_node.args) {
@@ -94,10 +110,30 @@ xmodel.Graph = class {
             nodes.push(node);
         }
         this._nodes = nodes.map((node) => new xmodel.Node(metadata, node, arg));
+
+        // var leafs = [];
+        // get_leafs(this._root_subg, leafs);
+
+        // var idx = 0;
+        // for (const leaf of leafs) {
+        //     let dpus = leaf.op_name;
+        //     for (const dpu of dpus) {
+        //         var meta = this.get_node(dpu)._metadata;
+        //         var category = meta.category;
+        //         if (category == "DPU")
+        //             category += (idx % 6).toString();
+        //         this.get_node(dpu)._metadata.set_category(category);
+        //     }
+        //     idx++;
+        // }
     }
 
     get inputs() {
         return this._inputs;
+    }
+
+    set_group_subgraph(group_name, subgraph) {
+        this._subgs.set(group_name, subgraph);
     }
 
     get outputs() {
@@ -107,7 +143,17 @@ xmodel.Graph = class {
     get nodes() {
         return this._nodes;
     }
+
+    get subgs() {
+        return this._subgs;
+    }
+
+    get root() {
+        return this._root_subg;
+    }
 };
+
+
 
 xmodel.Argument = class {
 
@@ -160,6 +206,35 @@ xmodel.Value = class {
     }
 };
 
+function set_group(subg, graph, subg_name) {
+    graph.set_group_subgraph(subg_name, new xmodel.Subgraph(subg));
+    var childs = root.subg_child;
+    if (childs.length > 0) {
+        for (const child of childs) {
+            var cur_subg_name = subg_name;
+            cur_subg_name += "/" + child.subgraph_name.replace(/\//g, "_");
+            set_group(child, graph, cur_subg_name);
+        }
+    } else {
+        let ops = subg.op_name;
+        var cur_subg_name = subg_name;
+        for (const op of ops) {
+            graph._nodes = cur_subg_name;
+        }
+    }
+}
+
+function get_leafs(root, leafs) {
+    var childs = root.subg_child_;
+    if (childs.length > 0) {
+        for (const child of childs) {
+            get_leafs(child, leafs);
+        }
+    } else {
+        leafs.push(root);
+    }
+}
+
 xmodel.Node = class {
 
     constructor(metadata, op_node, arg) {
@@ -195,6 +270,46 @@ xmodel.Node = class {
                     this._chain.push(new xmodel.Node(metadata, { op_type: activation }, arg));
                     continue;
                 }
+                // if (name === 'data' && value.value) {
+                //     var np_value;
+                //     var data = new Uint8Array(value.value);
+                //     var data_type_str = op_node.op_attr.data_type.string_value.toUpperCase();
+                //     switch (data_type_str) {
+                //         case "XINT8":
+                //         case "INT8":
+                //             np_value = new Int8Array(data.buffer);
+                //             break;
+                //         case "XINT16":
+                //         case "INT16":
+                //             np_value = new Int16Array(data.buffer);
+                //             break;
+                //         case "XINT32":
+                //         case "INT32":
+                //             np_value = new Int32Array(data.buffer);
+                //             break;
+                //         case "XUINT8":
+                //         case "UINT8":
+                //             np_value = new Uint8Array(data.buffer);
+                //             break;
+                //         case "XUINT16":
+                //         case "UINT16":
+                //             np_value = new Uint16Array(data.buffer);
+                //             break;
+                //         case "XUINT32":
+                //         case "UINT32":
+                //             np_value = new Uint32Array(data.buffer);
+                //             break;
+                //         case "FLOAT32":
+                //             np_value = new Float32Array(data.buffer);
+                //             break;
+                //         case "FLOAT64":
+                //             np_value = new Float64Array(data.buffer);
+                //             break;
+                //         default:
+                //             break;
+                //     }
+                //     continue;
+                // }
                 this._attributes.push(new xmodel.Attribute(metadata.attribute(this._type, name), name, value));
             }
         }
@@ -275,7 +390,6 @@ xmodel.Attribute = class {
 };
 
 xmodel.TensorType = class {
-
     constructor(tensor) {
         switch (tensor.data_type) {
             case 0: this._dataType = 'int'; break;
@@ -291,22 +405,17 @@ xmodel.TensorType = class {
             const attr = {};
             for (const entry of Object.entries(tensor.tensor_attr)) {
                 const key = entry[0];
-                const value = entry[1][entry[1].value];
+                const value = entry[1];
                 if (key.startsWith('quant_')) {
                     continue;
                 }
                 attr[key] = value;
-                const denotation = [];
-                if (attr.fix_point !== undefined) {
-                    denotation.push(attr.fix_point.toString() + '.');
-                }
-                if (attr.round_mode !== undefined) {
-                    denotation.push(attr.round_mode.toString());
-                }
-                if (denotation.length > 0) {
-                    this._denotation = denotation.join(' ');
-                }
             }
+            const denotation = [];
+            for (const [key, value] of Object.entries(attr)) {
+                denotation.push(`${key}: ${xmodel.Utility.attribute(value).value}`);
+            }
+            this._denotation = denotation.join(', \n');
         }
     }
 
@@ -350,6 +459,52 @@ xmodel.Tensor = class {
     constructor(node) {
         this._type = new xmodel.TensorType(node.output_tensor);
         this._category = node.op_type;
+        this._name = node.output_tensor.tensor_name;
+        if (this._category == "const" || this._category == "const-fix") {
+            var data_value = xmodel.Utility.attribute(node.op_attr.data);
+            var np_value = [];
+            var data = new Uint8Array(data_value.value);
+            var data_type = node.op_attr.data_type.string_value.toUpperCase();
+            switch (data_type) {
+                case "XINT8":
+                case "INT8":
+                    np_value = new Int8Array(data.buffer);
+                    break;
+                case "XINT16":
+                case "INT16":
+                    np_value = new Int16Array(data.buffer);
+                    break;
+                case "XINT32":
+                case "INT32":
+                    np_value = new Int32Array(data.buffer);
+                    break;
+                case "XUINT8":
+                case "UINT8":
+                    np_value = new Uint8Array(data.buffer);
+                    break;
+                case "XUINT16":
+                case "UINT16":
+                    np_value = new Uint16Array(data.buffer);
+                    break;
+                case "XUINT32":
+                case "UINT32":
+                    np_value = new Uint32Array(data.buffer);
+                    break;
+                case "FLOAT32":
+                    np_value = new Float32Array(data.buffer);
+                    break;
+                case "FLOAT64":
+                    np_value = new Float64Array(data.buffer);
+                    break;
+                default:
+                    break;
+            }
+            this.values = np_value;
+        }
+    }
+
+    get name() {
+        return this._name;
     }
 
     get category() {
@@ -368,19 +523,54 @@ xmodel.Utility = class {
         const type = key.replace(/_value$/, '');
         const value = attr_value[attr_value.value];
         switch (type) {
-            case 'bool': return { type: 'boolean', value: value };
-            case 'int32': return { type: 'int32', value: value };
-            case 'int32_vec': return { type: 'int32[]', value: value.value };
-            case 'int64': return { type: 'int64', value: value };
-            case 'uint64': return { type: 'uint64', value: value };
-            case 'float': return { type: 'float32', value: value };
-            case 'float_vec': return { type: 'float32[]', value: value.value };
-            case 'double': return { type: 'float64', value: value };
-            case 'string': return { type: 'string', value: value };
-            case 'string_vec':  return { type: 'string[]', value: value.value };
-            case 'bytes': return { type: 'byte[]', value: value.value };
-            case 'map_string_2_int32': return { type: 'map<string,int32>', value: value.value };
-            default: throw new xmodel.Error("Unsupported attribute type '" + type + "'.");
+            case 'bool':
+                return { type: 'boolean', value: value };
+            case 'int8_t':
+                return { type: 'int8', value: value };
+            case 'uint8_t':
+                return { type: 'uint8', value: value };
+            case 'int16_t':
+                return { type: 'int16', value: value };
+            case 'uint16_t':
+                return { type: 'uint16', value: value };
+            case 'int32':
+                return { type: 'int32', value: value };
+            case 'int32_vec':
+                return { type: 'int32[]', value: value.value };
+            case 'uint32_t_vec':
+                return { type: 'uint32[]', value: value.value };
+            case 'int8_t_vec':
+                return { type: 'int8[]', value: value.value };
+            case 'uint8_t_vec':
+                return { type: 'uint8[]', value: value.value };
+            case 'int16_t_vec':
+                return { type: 'int16[]', value: value.value };
+            case 'uint16_t_vec':
+                return { type: 'uint16[]', value: value.value };
+            case 'int64':
+                return { type: 'int64', value: value };
+            case 'uint64':
+                return { type: 'uint64', value: value };
+            case 'float':
+                return { type: 'float32', value: value };
+            case 'float_vec':
+                return { type: 'float32[]', value: value.value };
+            case 'double':
+                return { type: 'float64', value: value };
+            case 'double_vec':
+                return { type: 'float64[]', value: value.value };
+            case 'string':
+                return { type: 'string', value: value };
+            case 'string_vec':
+                return { type: 'string[]', value: value.value };
+            case 'bytes':
+                return { type: 'byte[]', value: value.value };
+            case 'map_string_2_int32':
+                return { type: 'map<string,int32>', value: value.value };
+            case 'map_string_2_string':
+                return { type: 'map<string, string>', value: value.value};
+            default:
+                throw new xmodel.Error("Unsupported attribute type '" + type + "'.");
         }
     }
 };
@@ -391,6 +581,8 @@ xmodel.Metadata = class {
         this._types = new Map();
         this._attributes = new Map();
         const categories = new Map([
+            [ 'const', 'Data'],
+            [ 'const-fix', 'Data'],
             [ 'avgpool2d', 'Pool' ],
             [ 'batchnorm', 'Normalization' ],
             [ 'celu', 'Activation' ],
@@ -429,6 +621,7 @@ xmodel.Metadata = class {
             [ 'squeeze', 'Transform' ],
             [ 'stack', 'Tensor' ],
             [ 'strided_slice', 'Tensor' ],
+            [ 'strided_slice-fix', 'Tensor'],
             [ 'swish', 'Activation' ],
             [ 'tanh', 'Activation' ],
             [ 'threshold', 'Quantization' ],
