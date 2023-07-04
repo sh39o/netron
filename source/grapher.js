@@ -148,10 +148,10 @@ grapher.Graph = class {
                 // cluster
                 node.label.rectangle = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
                 if (node.label.rx) {
-                    node.label.rectangle.setAttribute('rx', node.rx);
+                    node.label.rectangle.setAttribute('rx', node.label.rx);
                 }
                 if (node.label.ry) {
-                    node.label.rectangle.setAttribute('ry', node.ry);
+                    node.label.rectangle.setAttribute('ry', node.label.ry);
                 }
                 node.label.element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
                 node.label.element.setAttribute('class', 'cluster');

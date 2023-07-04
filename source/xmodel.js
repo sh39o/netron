@@ -60,7 +60,7 @@ xmodel.Graph = class {
         this._inputs = [];
         this._outputs = [];
         this._root_subg = graph.subg_root;
-        this._subgs = new Map();
+        this._groups = new Map();
         this._group_device = new Map();
         this._data_nodes = [];
         this._const_nodes = [];
@@ -87,8 +87,9 @@ xmodel.Graph = class {
             if (node.args.length === 0) {
                 if (node.op_type === 'data' || node.op_type === 'data-fix') {
                     const value = arg(node.op_name, node);
-                    this._inputs.push(new xmodel.Argument(node.op_name, [ value ]));
-                    data_nodes.push(node);
+                    nodes.push(node);
+                    // this._inputs.push(new xmodel.Argument(node.op_name, [ value ]));
+                    // data_nodes.push(node);
                     continue;
                 }
             }
@@ -137,7 +138,7 @@ xmodel.Graph = class {
     }
 
     set_group_subgraph(group_name, subgraph) {
-        this._subgs.set(group_name, subgraph);
+        this._groups.set(group_name, subgraph);
     }
 
     get outputs() {
@@ -148,12 +149,12 @@ xmodel.Graph = class {
         return this._nodes;
     }
 
-    get subgs() {
-        return this._subgs;
-    }
-
     get root() {
         return this._root_subg;
+    }
+
+    get groups() {
+        return this._groups;
     }
 };
 
@@ -292,46 +293,47 @@ xmodel.Node = class {
                     this._chain.push(new xmodel.Node(metadata, { op_type: activation }, arg));
                     continue;
                 }
-                // if (name === 'data' && value.value) {
-                //     var np_value;
-                //     var data = new Uint8Array(value.value);
-                //     var data_type_str = op_node.op_attr.data_type.string_value.toUpperCase();
-                //     switch (data_type_str) {
-                //         case "XINT8":
-                //         case "INT8":
-                //             np_value = new Int8Array(data.buffer);
-                //             break;
-                //         case "XINT16":
-                //         case "INT16":
-                //             np_value = new Int16Array(data.buffer);
-                //             break;
-                //         case "XINT32":
-                //         case "INT32":
-                //             np_value = new Int32Array(data.buffer);
-                //             break;
-                //         case "XUINT8":
-                //         case "UINT8":
-                //             np_value = new Uint8Array(data.buffer);
-                //             break;
-                //         case "XUINT16":
-                //         case "UINT16":
-                //             np_value = new Uint16Array(data.buffer);
-                //             break;
-                //         case "XUINT32":
-                //         case "UINT32":
-                //             np_value = new Uint32Array(data.buffer);
-                //             break;
-                //         case "FLOAT32":
-                //             np_value = new Float32Array(data.buffer);
-                //             break;
-                //         case "FLOAT64":
-                //             np_value = new Float64Array(data.buffer);
-                //             break;
-                //         default:
-                //             break;
-                //     }
-                //     continue;
-                // }
+                if (name === 'data' && value.value) {
+                    var np_value;
+                    var data = new Uint8Array(value.value);
+                    var data_type_str = op_node.op_attr.data_type.string_value.toUpperCase();
+                    switch (data_type_str) {
+                        case "XINT8":
+                        case "INT8":
+                            np_value = new Int8Array(data.buffer);
+                            break;
+                        case "XINT16":
+                        case "INT16":
+                            np_value = new Int16Array(data.buffer);
+                            break;
+                        case "XINT32":
+                        case "INT32":
+                            np_value = new Int32Array(data.buffer);
+                            break;
+                        case "XUINT8":
+                        case "UINT8":
+                            np_value = new Uint8Array(data.buffer);
+                            break;
+                        case "XUINT16":
+                        case "UINT16":
+                            np_value = new Uint16Array(data.buffer);
+                            break;
+                        case "XUINT32":
+                        case "UINT32":
+                            np_value = new Uint32Array(data.buffer);
+                            break;
+                        case "FLOAT32":
+                            np_value = new Float32Array(data.buffer);
+                            break;
+                        case "FLOAT64":
+                            np_value = new Float64Array(data.buffer);
+                            break;
+                        default:
+                            break;
+                    }
+                    this._attributes.push(new xmodel.Attribute(metadata.attribute(this._type.name, name), name, {"type": typeof(np_value), "value": [...np_value]}));
+                    continue;
+                }
                 this._attributes.push(new xmodel.Attribute(metadata.attribute(this._type, name), name, value));
             }
         }
@@ -445,7 +447,7 @@ xmodel.TensorType = class {
                   `${key}: ${xmodel.Utility.attribute(attr[key]).value}`
                 );
               });
-            this._denotation = denotation.join(', \n');
+            this._denotation = '\n' + denotation.join('\n');
         }
     }
 

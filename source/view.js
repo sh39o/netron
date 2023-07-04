@@ -925,6 +925,21 @@ view.View = class {
         }
     }
 
+    showSubgraphProperties() {
+        if (subgraph) {
+            try {
+                const subgraphSidebar = new view.SubgraphSideBar(this._host, subgraph);
+                const content = subgraphSidebar.render();
+                this._sidebar.open(content, "Subgraph Properties");
+            } catch (error) {
+                if (error) {
+                    error.context = this._model.identifier;
+                }
+                this.error(error, 'Error showing subgraph properties.', null);
+            }
+        }
+    }
+
     showNodeProperties(node, input) {
         if (node) {
             try {
@@ -1658,10 +1673,19 @@ view.Graph = class extends grapher.Graph {
                         }
                     }
                     if (groupName) {
-                        createCluster(groupName + '\ngroup');
-                        this.setParent(viewNode.name, groupName + '\ngroup');
+                        createCluster(groupName);
+                        this.setParent(viewNode.name, groupName);
                     }
                 }
+            }
+        }
+        
+        if (groups && graph instanceof xmodel.Graph) {
+            graph._handler = new Map();
+            for (const key of clusterParentMap.keys()) {
+                graph._handler.set(key, () =>
+                  this.showSubgraphProperties(graph.groups.get(key))
+                );
             }
         }
         for (const output of graph.outputs) {
