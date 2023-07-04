@@ -425,7 +425,8 @@ xmodel.TensorType = class {
             case 2: this._dataType = 'xint'; break;
             case 3: this._dataType = 'xuint'; break;
             case 4: this._dataType = 'float'; break;
-            default: throw new xmodel.Error('...');
+            case 5: this._dataType = 'bfloat'; break;
+            default: this._dataType = 'unknown'; break;
         }
         this._dataType += tensor.tensor_bit_width.toString();
         this._shape = new xmodel.TensorShape(tensor.tensor_dim);
