@@ -27,21 +27,6 @@ xmodel.ModelFactory = class {
     }
 };
 
-xmodel.Subgraph = class {
-    constructor(subgraph) {
-        this._name = subgraph.subgraph_name;
-        this._attributes = [];
-
-        Object.entries(subgraph.subg_attr).forEach(([key, value]) => {
-            this._attributes.push(new xmodel.Argument(key, xmodel.Utility.attribute(value)));
-        });
-    }
-
-    get name() {
-        this._name;
-    }
-}
-
 xmodel.Model = class {
 
     constructor(graph) {
@@ -76,6 +61,10 @@ xmodel.Graph = class {
         this._outputs = [];
         this._root_subg = graph.subg_root;
         this._subgs = new Map();
+        this._group_device = new Map();
+        this._data_nodes = [];
+        this._const_nodes = [];
+        this._op_map = new Map();
         const counts = new Map();
         for (const op_node of graph.op_node) {
             for (const arg of op_node.args) {
@@ -91,18 +80,22 @@ xmodel.Graph = class {
             }
             return args.get(name);
         };
+        const data_nodes = [];
+        const const_nodes = [];
         const nodes = [];
         for (const node of graph.op_node) {
             if (node.args.length === 0) {
                 if (node.op_type === 'data' || node.op_type === 'data-fix') {
                     const value = arg(node.op_name, node);
                     this._inputs.push(new xmodel.Argument(node.op_name, [ value ]));
+                    data_nodes.push(node);
                     continue;
                 }
             }
             if (node.args.length === 0 && counts.get(node.op_name) === 1) {
                 if (node.op_type === 'const' || node.op_type === 'const-fix') {
                     arg(node.op_name, node, true);
+                    const_nodes.push(node);
                     continue;
                 }
             }
@@ -110,24 +103,35 @@ xmodel.Graph = class {
             nodes.push(node);
         }
         this._nodes = nodes.map((node) => new xmodel.Node(metadata, node, arg));
+        this._data_nodes = data_nodes.map((node) => new xmodel.Node(metadata, node, arg));
+        this._const_nodes = const_nodes.map((node) => new xmodel.Node(metadata, node, arg));
 
-        // var leafs = [];
-        // get_leafs(this._root_subg, leafs);
+        for (const node of this._nodes.concat(this._data_nodes, this._const_nodes)) {
+            this._op_map.set(node.name, node);
+        }
 
-        // var idx = 0;
-        // for (const leaf of leafs) {
-        //     let dpus = leaf.op_name;
-        //     for (const dpu of dpus) {
-        //         var meta = this.get_node(dpu)._metadata;
-        //         var category = meta.category;
-        //         if (category == "DPU")
-        //             category += (idx % 6).toString();
-        //         this.get_node(dpu)._metadata.set_category(category);
-        //     }
-        //     idx++;
-        // }
+        let subg_name = this._root_subg.subgraph_name;
+        if (this._root_subg.subg_child.length > 0) {
+            set_group(this._root_subg, this, subg_name);
+        }
+
+        var childs = this._root_subg.subg_child;
+        if (childs.length > 0) {
+            this._group_device.set(subg_name, "ROOT");
+            for (const child of childs) {
+                let device = xmodel.Utility.attribute(child.subg_attr["device"]).value;
+                let group_name = this._root_subg.subgraph_name + "/" + child.subgraph_name.replace(/\//g, "_");
+                this._group_device.set(group_name, device + " SUBGRAPH");
+            }
+        }
+
+        var leafs = [];
+        get_leafs(this._root_subg, leafs);
     }
 
+    get_node(name) {
+        return this._op_map.get(name);
+    }
     get inputs() {
         return this._inputs;
     }
@@ -153,7 +157,24 @@ xmodel.Graph = class {
     }
 };
 
+xmodel.Subgraph = class {
+    constructor(subgraph) {
+        this._name = subgraph.subgraph_name;
+        this._attributes = [];
 
+        Object.entries(subgraph.subg_attr).forEach(([key, value]) => {
+            this._attributes.push(new xmodel.Argument(key, xmodel.Utility.attribute(value)));
+        });
+    }
+
+    get name() {
+        return this._name;
+    }
+
+    get attributes() {
+        return this._attributes;
+    }
+}
 
 xmodel.Argument = class {
 
@@ -208,7 +229,7 @@ xmodel.Value = class {
 
 function set_group(subg, graph, subg_name) {
     graph.set_group_subgraph(subg_name, new xmodel.Subgraph(subg));
-    var childs = root.subg_child;
+    var childs = subg.subg_child;
     if (childs.length > 0) {
         for (const child of childs) {
             var cur_subg_name = subg_name;
@@ -219,13 +240,13 @@ function set_group(subg, graph, subg_name) {
         let ops = subg.op_name;
         var cur_subg_name = subg_name;
         for (const op of ops) {
-            graph._nodes = cur_subg_name;
+            graph.get_node(op)._group = cur_subg_name;
         }
     }
 }
 
 function get_leafs(root, leafs) {
-    var childs = root.subg_child_;
+    var childs = root.subg_child;
     if (childs.length > 0) {
         for (const child of childs) {
             get_leafs(child, leafs);
@@ -244,6 +265,7 @@ xmodel.Node = class {
         this._outputs = [];
         this._attributes = [];
         this._chain = [];
+        this._group = "";
         if (op_node.op_attr) {
             for (const entry of Object.entries(op_node.op_attr)) {
                 const name = entry[0];
@@ -350,6 +372,10 @@ xmodel.Node = class {
 
     get chain() {
         return this._chain;
+    }
+
+    get group() {
+        return this._group;
     }
 };
 
@@ -568,7 +594,9 @@ xmodel.Utility = class {
             case 'map_string_2_int32':
                 return { type: 'map<string,int32>', value: value.value };
             case 'map_string_2_string':
-                return { type: 'map<string, string>', value: value.value};
+                return { type: 'map<string,string>', value: value.value};
+            case 'map_string_2_bytes':
+                return { type: 'map<string,Bytes>', value: value.value};
             default:
                 throw new xmodel.Error("Unsupported attribute type '" + type + "'.");
         }
