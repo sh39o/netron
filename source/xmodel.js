@@ -438,9 +438,13 @@ xmodel.TensorType = class {
                 attr[key] = value;
             }
             const denotation = [];
-            for (const [key, value] of Object.entries(attr)) {
-                denotation.push(`${key}: ${xmodel.Utility.attribute(value).value}`);
-            }
+            Object.keys(attr)
+              .sort()
+              .forEach((key) => {
+                denotation.push(
+                  `${key}: ${xmodel.Utility.attribute(attr[key]).value}`
+                );
+              });
             this._denotation = denotation.join(', \n');
         }
     }
