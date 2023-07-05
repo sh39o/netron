@@ -567,12 +567,16 @@ xmodel.Utility = class {
             case 'uint16_t':
                 return { type: 'uint16', value: value };
             case 'int32':
+            case 'int32_t':
                 return { type: 'int32', value: value };
             case 'int32_vec':
+            case 'int32_t_vec':
                 return { type: 'int32[]', value: value.value };
             case 'uint32':
+            case 'uint32_t':
                     return { type: 'uint32', value: value };
             case 'uint32_vec':
+            case 'uint32_t_vec':
                 return { type: 'uint32[]', value: value.value };
             case 'int8_t_vec':
                 return { type: 'int8[]', value: value.value };
@@ -583,9 +587,17 @@ xmodel.Utility = class {
             case 'uint16_t_vec':
                 return { type: 'uint16[]', value: value.value };
             case 'int64':
+            case 'int64_t':
                 return { type: 'int64', value: value };
+            case 'int64_vec':
+            case 'int64_t_vec':
+                return { type: 'int64[]', value: value.value};
             case 'uint64':
+            case 'uint64_t':
                 return { type: 'uint64', value: value };
+            case 'uint64_vec':
+            case 'uint64_t_vec':
+                return { type: 'uint64[]', value: value.value};
             case 'float':
                 return { type: 'float32', value: value };
             case 'float_vec':
