@@ -570,7 +570,9 @@ xmodel.Utility = class {
                 return { type: 'int32', value: value };
             case 'int32_vec':
                 return { type: 'int32[]', value: value.value };
-            case 'uint32_t_vec':
+            case 'uint32':
+                    return { type: 'uint32', value: value };
+            case 'uint32_vec':
                 return { type: 'uint32[]', value: value.value };
             case 'int8_t_vec':
                 return { type: 'int8[]', value: value.value };
