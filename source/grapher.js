@@ -1,4 +1,3 @@
-
 var grapher = {};
 var dagre = require('./dagre');
 
@@ -12,6 +11,7 @@ grapher.Graph = class {
         this._children = {};
         this._children['\x00'] = {};
         this._parent = {};
+        this._events = {};
     }
 
     get options() {
@@ -103,12 +103,25 @@ grapher.Graph = class {
         return null;
     }
 
+    on(event, callback) {
+        this._events[event] = this._events[event] || [];
+        this._events[event].push(callback);
+    }
+
+    emit(event, data) {
+        if (this._events && this._events[event]) {
+            for (const callback of this._events[event]) {
+                callback(this, data);
+            }
+        }
+    }
+
     build(document, origin) {
         const createGroup = (name) => {
             const element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
             element.setAttribute('id', name);
             element.setAttribute('class', name);
-            origin.appendChild(element);
+            origin.appendChild(element);   
             return element;
         };
 
@@ -155,6 +168,9 @@ grapher.Graph = class {
                 }
                 node.label.element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
                 node.label.element.setAttribute('class', 'cluster');
+                node.label.element.addEventListener("click", () =>
+                  this.emit("click", node.label.name)
+                );
                 node.label.element.appendChild(node.label.rectangle);
                 clusterGroup.appendChild(node.label.element);
             }

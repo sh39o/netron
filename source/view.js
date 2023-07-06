@@ -1,6 +1,4 @@
-
-var view =  {};
-var base = require('./base');
+var view =  {};var base = require('./base');
 var zip = require('./zip');
 var tar = require('./tar');
 var json = require('./json');
@@ -925,7 +923,7 @@ view.View = class {
         }
     }
 
-    showSubgraphProperties() {
+    showSubgraphProperties(subgraph) {
         if (subgraph) {
             try {
                 const subgraphSidebar = new view.SubgraphSideBar(this._host, subgraph);
@@ -1679,15 +1677,9 @@ view.Graph = class extends grapher.Graph {
                 }
             }
         }
-        
-        if (groups && graph instanceof xmodel.Graph) {
-            graph._handler = new Map();
-            for (const key of clusterParentMap.keys()) {
-                graph._handler.set(key, () =>
-                  this.showSubgraphProperties(graph.groups.get(key))
-                );
-            }
-        }
+        this.on("click", (graph, subg_name) =>
+          this.view.showSubgraphProperties(this._isCompound.get(subg_name))
+        );
         for (const output of graph.outputs) {
             const viewOutput = this.createOutput(output);
             for (const value of output.value) {
@@ -2826,6 +2818,69 @@ view.ModelSidebar = class extends view.Control {
         value.toggle();
         const item = new view.NameValueView(this._host, name, value);
         this._container.appendChild(item.render());
+    }
+};
+
+view.SubgraphSideBar = class extends view.Control {
+
+    constructor(host, subgraph) {
+        super();
+        this._host = host;
+        this._subgraph = subgraph;
+        this._elements = [];
+        this._attributes = [];
+
+        const container = this._host.document.createElement('div');
+        container.className = 'sidebar-subgraph';
+        this._elements.push(container);
+
+        if (subgraph.name) {
+            this._addProperty('name', new view.ValueTextView(this._host, subgraph.name));
+        }
+
+        if (subgraph.description) {
+            this._addProperty('description', new view.ValueTextView(this._host, subgraph.description));
+        }
+
+        const attributes = subgraph.attributes;
+        if (attributes && attributes.length > 0) {
+            const sortedAttributes = subgraph.attributes.slice();
+            sortedAttributes.sort((a, b) => {
+                const au = a.name.toUpperCase();
+                const bu = b.name.toUpperCase();
+                return (au < bu) ? -1 : (au > bu) ? 1 : 0;
+            });
+            this._addHeader('Attributes');
+            for (const attribute of sortedAttributes) {
+                this._addAttribute(attribute.name, attribute);
+            }
+        }
+    }
+
+    render() {
+        return this._elements;
+    }
+
+    _addHeader(title) {
+        const element = this._host.document.createElement('div');
+        element.className = 'sidebar-header';
+        element.innerText = title;
+        this._elements[0].appendChild(element);
+    }
+
+    _addProperty(name, value) {
+        const item = new view.NameValueView(this._host, name, value);
+        this._elements[0].appendChild(item.render());
+    }
+
+    _addAttribute(name, attribute) {
+        const value = new view.AttributeView(this._host, attribute);
+        value.on('show-graph', (sender, graph) => {
+            this.emit('show-graph', graph);
+        });
+        const item = new view.NameValueView(this._host, name, value);
+        this._attributes.push(item);
+        this._elements[0].appendChild(item.render());
     }
 };
 
