@@ -1,5 +1,4 @@
-var grapher = {};
-var dagre = require('./dagre');
+var grapher = {};var dagre = require('./dagre');
 
 grapher.Graph = class {
 
@@ -196,6 +195,19 @@ grapher.Graph = class {
                 node.label.rectangle.setAttribute('y', - node.label.height / 2);
                 node.label.rectangle.setAttribute('width', node.label.width);
                 node.label.rectangle.setAttribute('height', node.label.height);
+                if (node.label.name === "root") {
+                    const textElement = document.createElementNS(
+                        "http://www.w3.org/2000/svg",
+                        "text"
+                      );
+                      textElement.textContent = node.label.name;
+                      textElement.setAttribute('text-anchor', 'middle');
+                      textElement.setAttribute('alignment-baseline', 'bottom');
+                      textElement.setAttribute('x', - node.label.width / 2);
+                      textElement.setAttribute('y', - node.label.height / 2 );
+                      textElement.style.fontSize = "20px";
+                      node.label.element.appendChild(textElement);
+                }
             }
         }
         for (const edge of this.edges.values()) {

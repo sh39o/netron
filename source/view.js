@@ -1,5 +1,4 @@
-var view =  {};var base = require('./base');
-var zip = require('./zip');
+var view =  {};var base = require('./base');var zip = require('./zip');
 var tar = require('./tar');
 var json = require('./json');
 var xml = require('./xml');
@@ -928,7 +927,7 @@ view.View = class {
             try {
                 const subgraphSidebar = new view.SubgraphSideBar(this._host, subgraph);
                 const content = subgraphSidebar.render();
-                this._sidebar.open(content, "Subgraph Properties");
+                this._sidebar.open(subgraphSidebar.render(), "Subgraph Properties");
             } catch (error) {
                 if (error) {
                     error.context = this._model.identifier;
@@ -1677,7 +1676,7 @@ view.Graph = class extends grapher.Graph {
                 }
             }
         }
-        this.on("click", (graph, subg_name) =>
+        this.on("click", (_, subg_name) =>
           this.view.showSubgraphProperties(this._isCompound.get(subg_name))
         );
         for (const output of graph.outputs) {
@@ -2850,7 +2849,7 @@ view.SubgraphSideBar = class extends view.Control {
                 const bu = b.name.toUpperCase();
                 return (au < bu) ? -1 : (au > bu) ? 1 : 0;
             });
-            this._addHeader('Attributes');
+            this._addHeader('Subgraph Attributes');
             for (const attribute of sortedAttributes) {
                 this._addAttribute(attribute.name, attribute);
             }
@@ -2874,7 +2873,7 @@ view.SubgraphSideBar = class extends view.Control {
     }
 
     _addAttribute(name, attribute) {
-        const value = new view.AttributeView(this._host, attribute);
+        const value = new view.AttributeView(this._host, attribute.value);
         value.on('show-graph', (sender, graph) => {
             this.emit('show-graph', graph);
         });
@@ -3886,6 +3885,14 @@ view.Formatter = class {
                 return value ? value.toString() : '(null)';
             case 'type[]':
                 return value ? value.map((item) => item.toString()).join(', ') : '(null)';
+            case 'map<string,Bytes>':
+                var res = '';
+                Object.keys(value).sort().forEach((key) => {
+                    res += `${key}: ${value[key].value.toString()}\n`;
+                  });
+                return res;
+            case 'string[]':
+                return value.join("\n\n");
             default:
                 break;
         }
