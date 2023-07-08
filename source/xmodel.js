@@ -61,7 +61,6 @@ xmodel.Graph = class {
         this._outputs = [];
         this._root_subg = graph.subg_root;
         this._groups = new Map();
-        this._group_device = new Map();
         this._data_nodes = [];
         this._const_nodes = [];
         this._op_map = new Map();
@@ -115,19 +114,6 @@ xmodel.Graph = class {
         if (this._root_subg.subg_child.length > 0) {
             set_group(this._root_subg, this, subg_name);
         }
-
-        var childs = this._root_subg.subg_child;
-        if (childs.length > 0) {
-            this._group_device.set(subg_name, "ROOT");
-            for (const child of childs) {
-                let device = xmodel.Utility.attribute(child.subg_attr["device"]).value;
-                let group_name = this._root_subg.subgraph_name + "/" + child.subgraph_name.replace(/\//g, "_");
-                this._group_device.set(group_name, device + " SUBGRAPH");
-            }
-        }
-
-        var leafs = [];
-        get_leafs(this._root_subg, leafs);
     }
 
     get_node(name) {

@@ -3889,10 +3889,10 @@ view.Formatter = class {
                 var res = '';
                 Object.keys(value).sort().forEach((key) => {
                     res += `${key}: ${value[key].value.toString()}\n`;
-                  });
+                });
                 return res;
             case 'string[]':
-                return value.join("\n\n");
+                return value.join("\n");
             default:
                 break;
         }
