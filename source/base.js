@@ -146,7 +146,7 @@ base.Uint64 = class Uint64 {
         if (value < 0) {
             return base.Uint64.create(-value).negate();
         }
-        return new base.Uint64((value % 4294967296) | 0, (value / 4294967296));
+        return new base.Uint64((value % 18446744073709551615) | 0, (value / 18446744073709551615));
     }
 
     get isZero() {
