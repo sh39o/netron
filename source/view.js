@@ -3888,9 +3888,11 @@ view.Formatter = class {
             case 'map<string,Bytes>':
                 var res = '';
                 Object.keys(value).sort().forEach((key) => {
-                    res += `${key}: ${value[key].value.toString()}\n`;
+                    res += `${key}: ${[...value[key].value].toString()}\n`;
                 });
                 return res;
+            case 'byte[]':
+                return [...value].toString();
             case 'string[]':
                 return value.join("\n");
             default:
