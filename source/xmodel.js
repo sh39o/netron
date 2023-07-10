@@ -93,7 +93,7 @@ xmodel.Graph = class {
                 }
             }
             if (node.args.length === 0 && counts.get(node.op_name) === 1) {
-                if (node.op_type === 'const' || node.op_type === 'const-fix') {
+                if (node.op_type === 'const-fix') {
                     arg(node.op_name, node, true);
                     const_nodes.push(node);
                     continue;
