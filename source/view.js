@@ -10,9 +10,8 @@ var grapher = require('./grapher');
 
 view.View = class {
 
-    constructor(host, id) {
+    constructor(host) {
         this._host = host;
-        this._id = id ? ('-' + id) : '';
         this._options = {
             weights: true,
             attributes: false,
@@ -24,7 +23,7 @@ view.View = class {
             this._model = null;
             this._graphs = [];
             this._selection = [];
-            this._sidebar = new view.Sidebar(this._host, id);
+            this._sidebar = new view.Sidebar(this._host);
             this._searchText = '';
             this._modelFactoryService = new view.ModelFactoryService(this._host);
             this._element('sidebar-button').addEventListener('click', () => {
@@ -328,7 +327,7 @@ view.View = class {
     }
 
     _element(id) {
-        return this._host.document.getElementById(id + this._id);
+        return this._host.document.getElementById(id);
     }
 
     zoomIn() {
@@ -414,13 +413,15 @@ view.View = class {
             const pointerMoveHandler = (e) => {
                 e.preventDefault();
                 e.stopImmediatePropagation();
-                const dx = e.clientX - this._mousePosition.x;
-                const dy = e.clientY - this._mousePosition.y;
-                this._mousePosition.moved = dx * dx + dy * dy > 0;
-                if (this._mousePosition.moved) {
-                    const container = this._element('graph');
-                    container.scrollTop = this._mousePosition.top - dy;
-                    container.scrollLeft = this._mousePosition.left - dx;
+                if (this._mousePosition) {
+                    const dx = e.clientX - this._mousePosition.x;
+                    const dy = e.clientY - this._mousePosition.y;
+                    this._mousePosition.moved = dx * dx + dy * dy > 0;
+                    if (this._mousePosition.moved) {
+                        const container = this._element('graph');
+                        container.scrollTop = this._mousePosition.top - dy;
+                        container.scrollLeft = this._mousePosition.left - dx;
+                    }
                 }
             };
             const pointerUpHandler = (e) => {
@@ -2039,17 +2040,15 @@ view.Edge = class extends grapher.Edge {
 
 view.Sidebar = class {
 
-    constructor(host, id) {
+    constructor(host) {
         this._host = host;
-        this._id = id ? ('-' + id) : '';
         this._stack = [];
-        this._closeSidebarHandler = () => {
-            this._pop();
-        };
+        const pop = () => this._update(this._stack.slice(0, -1));
+        this._closeSidebarHandler = () => pop();
         this._closeSidebarKeyDownHandler = (e) => {
             if (e.keyCode == 27) {
                 e.preventDefault();
-                this._pop();
+                pop();
             }
         };
         const sidebar = this._element('sidebar');
@@ -2062,66 +2061,35 @@ view.Sidebar = class {
     }
 
     _element(id) {
-        return this._host.document.getElementById(id + this._id);
+        return this._host.document.getElementById(id);
     }
 
     open(content, title) {
-        this.close();
-        this.push(content, title);
+        this._update([ { title: title, content: content } ]);
     }
 
     close() {
-        this._deactivate();
-        this._stack = [];
-        this._hide();
+        this._update([]);
     }
 
     push(content, title) {
-        const item = { title: title, content: content };
-        this._stack.push(item);
-        this._activate(item);
+        this._update(this._stack.concat({ title: title, content: content }));
     }
 
-    _pop() {
-        this._deactivate();
-        if (this._stack.length > 0) {
+    _update(stack) {
+        const sidebar = this._element('sidebar');
+        const container = this._element('graph');
+        const closeButton = this._element('sidebar-closebutton');
+        closeButton.removeEventListener('click', this._closeSidebarHandler);
+        this._host.document.removeEventListener('keydown', this._closeSidebarKeyDownHandler);
+        if (stack) {
+            this._stack = stack;
+        } else if (this._stack.length > 0) {
             this._stack.pop();
         }
         if (this._stack.length > 0) {
-            this._activate(this._stack[this._stack.length - 1]);
-        } else {
-            this._hide();
-        }
-    }
-
-    _hide() {
-        const sidebar = this._element('sidebar');
-        if (sidebar) {
-            sidebar.style.right = 'calc(0px - min(calc(100% * 0.6), 42em))';
-            sidebar.style.opacity = 0;
-        }
-        const container = this._element('graph');
-        if (container) {
-            container.style.width = '100%';
-            container.focus();
-        }
-    }
-
-    _deactivate() {
-        const sidebar = this._element('sidebar');
-        if (sidebar) {
-            const closeButton = this._element('sidebar-closebutton');
-            closeButton.removeEventListener('click', this._closeSidebarHandler);
-            this._host.document.removeEventListener('keydown', this._closeSidebarKeyDownHandler);
-        }
-    }
-
-    _activate(item) {
-        const sidebar = this._element('sidebar');
-        if (sidebar) {
-            const title = this._element('sidebar-title');
-            title.innerHTML = item.title ? item.title.toUpperCase() : '';
-            const closeButton = this._element('sidebar-closebutton');
+            const item = this._stack[this._stack.length - 1];
+            this._element('sidebar-title').innerHTML = item.title || '';
             closeButton.addEventListener('click', this._closeSidebarHandler);
             const content = this._element('sidebar-content');
             if (typeof item.content == 'string') {
@@ -2139,10 +2107,12 @@ view.Sidebar = class {
             sidebar.style.right = 0;
             sidebar.style.opacity = 1;
             this._host.document.addEventListener('keydown', this._closeSidebarKeyDownHandler);
-        }
-        const container = this._element('graph');
-        if (container) {
             container.style.width = 'max(40vw, calc(100vw - 42em))';
+        } else {
+            sidebar.style.right = 'calc(0px - min(calc(100% * 0.6), 42em))';
+            sidebar.style.opacity = 0;
+            container.style.width = '100%';
+            container.focus();
         }
     }
 };
@@ -3216,6 +3186,7 @@ view.Tensor = class {
             [ 'boolean', 1 ],
             [ 'qint8', 1 ], [ 'qint16', 2 ], [ 'qint32', 4 ],
             [ 'quint8', 1 ], [ 'quint16', 2 ], [ 'quint32', 4 ],
+            [ 'xint8', 1 ],
             [ 'int8', 1 ], [ 'int16', 2 ], [ 'int32', 4 ], [ 'int64', 8 ],
             [ 'xint8', 1], [ 'xuint8', 1], [ 'xint16', 2], [ 'xuint16', 2],
             [ 'uint8', 1 ], [ 'uint16', 2 ], [ 'uint32', 4, ], [ 'uint64', 8 ],
@@ -3433,6 +3404,7 @@ view.Tensor = class {
                     }
                     break;
                 case 'qint8':
+                case 'xint8':
                 case 'int8':
                 case 'xint8':
                     for (; i < max; i++) {
@@ -4762,21 +4734,22 @@ view.ModelContext = class {
                 ];
                 const skip =
                     signatures.some((signature) => signature.length <= stream.length && stream.peek(signature.length).every((value, index) => signature[index] === undefined || signature[index] === value)) ||
-                    Array.from(this._tags).some((pair) => pair[0] !== 'flatbuffers' && pair[1].size > 0) ||
+                    Array.from(this._tags).some((entry) => entry[0] !== 'flatbuffers' && entry[1].size > 0) ||
                     Array.from(this._content.values()).some((obj) => obj !== undefined);
                 if (!skip) {
                     switch (type) {
                         case 'json': {
                             try {
                                 const buffer = this.stream.peek(Math.min(this.stream.length, 0x1000));
-                                if (buffer.some((v) => v === 0x22 || v === 0x5b || v === 0x5d || v === 0x7b || v === 0x7d)) {
+                                if ((buffer.length < 8 || String.fromCharCode.apply(null, buffer.slice(0, 8)) !== '\x89HDF\r\n\x1A\n') &&
+                                    (buffer.some((v) => v === 0x22 || v === 0x5b || v === 0x5d || v === 0x7b || v === 0x7d))) {
                                     const reader = json.TextReader.open(this.stream);
                                     if (reader) {
                                         const obj = reader.read();
                                         this._content.set(type, obj);
                                     }
                                 }
-                            } catch (err) {
+                            } catch (error) {
                                 // continue regardless of error
                             }
                             break;
@@ -4792,7 +4765,7 @@ view.ModelContext = class {
                                         this._content.set(type, obj);
                                     }
                                 }
-                            } catch (err) {
+                            } catch (error) {
                                 // continue regardless of error
                             }
                             break;
@@ -4825,7 +4798,7 @@ view.ModelContext = class {
                                     const pickle = execution.__import__('pickle');
                                     unpickler = new pickle.Unpickler(data);
                                 }
-                            } catch (err) {
+                            } catch (error) {
                                 // continue regardless of error
                             }
                             if (unpickler) {
@@ -5302,10 +5275,10 @@ view.ModelFactoryService = class {
                         throw new view.Error("Failed to load module '" + id + "'.");
                     }
                     const modelFactory = new module.ModelFactory();
-                    const match = modelFactory.match(context);
-                    if (match) {
+                    const target = modelFactory.match(context);
+                    if (target) {
                         success = true;
-                        const model = await modelFactory.open(context, match);
+                        const model = await modelFactory.open(context, target);
                         if (!model.identifier) {
                             model.identifier = context.identifier;
                         }
@@ -5513,10 +5486,9 @@ view.ModelFactoryService = class {
                 { name: 'HTML markup', value: /^\s*<!DOCTYPE\s*HTML>/ },
                 { name: 'HTML markup', value: /^\s*<!DOCTYPE\s*HTML\s+(PUBLIC|SYSTEM)?/ },
                 { name: 'Unity metadata', value: /^fileFormatVersion:/ },
-                { name: 'Python source code', value: /^\s*import[ ]+(os|sys|types|torch|argparse|onnx|numpy|tensorflow)(,|;|\s)/ },
-                { name: 'Python source code', value: /^\s*import[ ]+([a-z])+[ ]+as[ ]+/ },
-                { name: 'Python source code', value: /^\s*from[ ]+(torch)[ ]+import[ ]+/ },
-                { name: 'Python source code', value: /^\s*from[ ]+(keras)[ ]+import[ ]+/ },
+                { name: 'Python source code', value: /^\s*('''.*''')?\s*import[ ]+[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*([ ]+as[ ]+[a-zA-Z]\w*)?[ ]*(,|;|\n|\r\n)/ },
+                { name: 'Python source code', value: /^\s*('''.*''')?\s*from[ ]+([a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*)[ ]+import[ ]+[a-zA-Z]\w*[ ]+/ },
+                { name: 'Python virtual environment configuration', value: /^home[ ]*=[ ]*/, identifier: 'pyvenv.cfg' },
                 { name: 'Bash script', value: /^#!\/usr\/bin\/env\s/ },
                 { name: 'Bash script', value: /^#!\/bin\/bash\s/ },
                 { name: 'TSD header', value: /^%TSD-Header-###%/ },
@@ -5545,7 +5517,8 @@ view.Metadata = class {
             return view.Metadata._metadata.get(name);
         }
         try {
-            const data = await context.request(name, 'utf-8', null);
+            const json = await context.request(name, 'utf-8', null);
+            const data = JSON.parse(json);
             const library = new view.Metadata(data);
             view.Metadata._metadata.set(name, library);
             return library;
@@ -5560,13 +5533,10 @@ view.Metadata = class {
         this._types = new Map();
         this._attributes = new Map();
         this._inputs = new Map();
-        if (data) {
-            const metadata = JSON.parse(data);
-            for (const entry of metadata) {
-                this._types.set(entry.name, entry);
-                if (entry.identifier !== undefined) {
-                    this._types.set(entry.identifier, entry);
-                }
+        for (const entry of data || []) {
+            this._types.set(entry.name, entry);
+            if (entry.identifier !== undefined) {
+                this._types.set(entry.identifier, entry);
             }
         }
     }

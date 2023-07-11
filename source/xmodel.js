@@ -30,26 +30,10 @@ xmodel.ModelFactory = class {
 xmodel.Model = class {
 
     constructor(graph) {
-        this._name = graph.graph_name || '';
-        this._format = 'xmodel';
-        this._producer = graph && graph.graph_attr && graph.graph_attr.origin && graph.graph_attr.origin.string_value ? graph.graph_attr.origin.string_value : '';
-        this._graphs = [ new xmodel.Graph(graph) ];
-    }
-
-    get name() {
-        return this._name;
-    }
-
-    get format() {
-        return this._format;
-    }
-
-    get producer() {
-        return this._producer;
-    }
-
-    get graphs() {
-        return this._graphs;
+        this.name = graph.graph_name || '';
+        this.format = 'xmodel';
+        this.producer = graph && graph.graph_attr && graph.graph_attr.origin && graph.graph_attr.origin.string_value ? graph.graph_attr.origin.string_value : '';
+        this.graphs = [ new xmodel.Graph(graph) ];
     }
 };
 
@@ -57,13 +41,13 @@ xmodel.Graph = class {
 
     constructor(graph) {
         const metadata = new xmodel.Metadata(graph.op_defs);
-        this._inputs = [];
-        this._outputs = [];
-        this._root_subg = graph.subg_root;
-        this._groups = new Map();
-        this._data_nodes = [];
-        this._const_nodes = [];
-        this._op_map = new Map();
+        this.inputs = [];
+        this.outputs = [];
+        this.root_subg = graph.subg_root;
+        this.groups = new Map();
+        this.data_nodes = [];
+        this.const_nodes = [];
+        this.op_map = new Map();
         const counts = new Map();
         for (const op_node of graph.op_node) {
             for (const arg of op_node.args) {
@@ -79,7 +63,6 @@ xmodel.Graph = class {
             }
             return args.get(name);
         };
-        const data_nodes = [];
         const const_nodes = [];
         const nodes = [];
         for (const node of graph.op_node) {
@@ -87,8 +70,7 @@ xmodel.Graph = class {
                 if (node.op_type === 'data' || node.op_type === 'data-fix') {
                     const value = arg(node.op_name, node);
                     nodes.push(node);
-                    // this._inputs.push(new xmodel.Argument(node.op_name, [ value ]));
-                    // data_nodes.push(node);
+                    // this.inputs.push(new xmodel.Argument(node.op_name, [ value ]));
                     continue;
                 }
             }
@@ -102,80 +84,44 @@ xmodel.Graph = class {
             arg(node.op_name, node);
             nodes.push(node);
         }
-        this._nodes = nodes.map((node) => new xmodel.Node(metadata, node, arg));
-        this._data_nodes = data_nodes.map((node) => new xmodel.Node(metadata, node, arg));
-        this._const_nodes = const_nodes.map((node) => new xmodel.Node(metadata, node, arg));
+        this.nodes = nodes.map((node) => new xmodel.Node(metadata, node, arg));
+        this.const_nodes = const_nodes.map((node) => new xmodel.Node(metadata, node, arg));
 
-        for (const node of this._nodes.concat(this._data_nodes, this._const_nodes)) {
-            this._op_map.set(node.name, node);
+        for (const node of this.nodes.concat(this.data_nodes, this.const_nodes)) {
+            this.op_map.set(node.name, node);
         }
 
-        let subg_name = this._root_subg.subgraph_name;
-        if (this._root_subg.subg_child.length > 0) {
-            set_group(this._root_subg, this, subg_name);
+        let subg_name = this.root_subg.subgraph_name;
+        if (this.root_subg.subg_child.length > 0) {
+            set_group(this.root_subg, this, subg_name);
         }
     }
 
     get_node(name) {
-        return this._op_map.get(name);
-    }
-    get inputs() {
-        return this._inputs;
+        return this.op_map.get(name);
     }
 
     set_group_subgraph(group_name, subgraph) {
-        this._groups.set(group_name, subgraph);
-    }
-
-    get outputs() {
-        return this._outputs;
-    }
-
-    get nodes() {
-        return this._nodes;
-    }
-
-    get root() {
-        return this._root_subg;
-    }
-
-    get groups() {
-        return this._groups;
+        this.groups.set(group_name, subgraph);
     }
 };
 
 xmodel.Subgraph = class {
     constructor(subgraph) {
-        this._name = subgraph.subgraph_name;
-        this._attributes = [];
+        this.name = subgraph.subgraph_name;
+        this.attributes = [];
 
         Object.entries(subgraph.subg_attr).forEach(([key, value]) => {
-            this._attributes.push(new xmodel.Argument(key, xmodel.Utility.attribute(value)));
+            this.attributes.push(new xmodel.Argument(key, xmodel.Utility.attribute(value)));
         });
-    }
-
-    get name() {
-        return this._name;
-    }
-
-    get attributes() {
-        return this._attributes;
     }
 }
 
 xmodel.Argument = class {
 
     constructor(name, value) {
-        this._name = name;
-        this._value = value;
-    }
-
-    get name() {
-        return this._name;
-    }
-
-    get value() {
-        return this._value;
+        this.name = name;
+        this.value = value;
     }
 };
 
@@ -185,12 +131,12 @@ xmodel.Value = class {
         if (typeof name !== 'string') {
             throw new xmodel.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
         }
-        this._name = name;
+        this.name = name;
         if (node) {
             const tensor = node.output_tensor;
             if (tensor && tensor.tensor_attr && tensor.data_type) {
                 if (initializer) {
-                    this._initializer = new xmodel.Tensor(node);
+                    this.initializer = new xmodel.Tensor(node);
                 } else {
                     this._type = new xmodel.TensorType(tensor);
                 }
@@ -198,19 +144,11 @@ xmodel.Value = class {
         }
     }
 
-    get name() {
-        return this._name;
-    }
-
     get type() {
-        if (this._initializer) {
-            return this._initializer.type;
+        if (this.initializer) {
+            return this.initializer.type;
         }
         return this._type;
-    }
-
-    get initializer() {
-        return this._initializer;
     }
 };
 
@@ -232,32 +170,21 @@ function set_group(subg, graph, subg_name) {
     }
 }
 
-function get_leafs(root, leafs) {
-    var childs = root.subg_child;
-    if (childs.length > 0) {
-        for (const child of childs) {
-            get_leafs(child, leafs);
-        }
-    } else {
-        leafs.push(root);
-    }
-}
-
 xmodel.Node = class {
 
     constructor(metadata, op_node, arg) {
-        this._name = op_node.op_name || '';
-        this._type = metadata.type(op_node.op_type);
-        this._inputs = [];
-        this._outputs = [];
-        this._attributes = [];
-        this._chain = [];
-        this._group = "";
+        this.name = op_node.op_name || '';
+        this.type = metadata.type(op_node.op_type);
+        this.inputs = [];
+        this.outputs = [];
+        this.attributes = [];
+        this.chain = [];
+        this.group = "";
         if (op_node.op_attr) {
             for (const entry of Object.entries(op_node.op_attr)) {
                 const name = entry[0];
                 if (name === 'device') {
-                    this._device = entry[1].string_value;
+                    this.device = entry[1].string_value;
                     continue;
                 }
                 if (name === 'workload') {
@@ -276,7 +203,7 @@ xmodel.Node = class {
                     } else {
                         activation = JSON.stringify(activation);
                     }
-                    this._chain.push(new xmodel.Node(metadata, { op_type: activation }, arg));
+                    this.chain.push(new xmodel.Node(metadata, { op_type: activation }, arg));
                     continue;
                 }
                 if (name === 'data' && value.value) {
@@ -317,62 +244,30 @@ xmodel.Node = class {
                         default:
                             break;
                     }
-                    this._attributes.push(new xmodel.Attribute(metadata.attribute(this._type.name, name), name, {"type": typeof(np_value), "value": [...np_value]}));
+                    this.attributes.push(new xmodel.Attribute(metadata.attribute(this.type.name, name), name, {"type": typeof(np_value), "value": [...np_value]}));
                     continue;
                 }
-                this._attributes.push(new xmodel.Attribute(metadata.attribute(this._type, name), name, value));
+                this.attributes.push(new xmodel.Attribute(metadata.attribute(this.type, name), name, value));
             }
         }
         if (op_node.args) {
             for (const input of op_node.args) {
                 const args = input.arg_ops.map((arg_op) => arg(arg_op));
-                this._inputs.push(new xmodel.Argument(input.arg_name, args));
+                this.inputs.push(new xmodel.Argument(input.arg_name, args));
             }
         }
         if (op_node.op_name) {
-            this._outputs.push(new xmodel.Argument('output', [ arg(op_node.op_name) ]));
+            this.outputs.push(new xmodel.Argument('output', [ arg(op_node.op_name) ]));
         }
-    }
-
-    get type() {
-        return this._type;
-    }
-
-    get name() {
-        return this._name;
-    }
-
-    get device() {
-        return this._device;
-    }
-
-    get inputs() {
-        return this._inputs;
-    }
-
-    get outputs() {
-        return this._outputs;
-    }
-
-    get attributes() {
-        return this._attributes;
-    }
-
-    get chain() {
-        return this._chain;
-    }
-
-    get group() {
-        return this._group;
     }
 };
 
 xmodel.Attribute = class {
 
     constructor(metadata, name, attribute) {
-        this._name = name;
-        this._type = attribute.type;
-        this._value = attribute.value;
+        this.name = name;
+        this.type = attribute.type;
+        this.value = attribute.value;
         if (metadata) {
             if (metadata.default !== undefined) {
                 if (metadata.default === this._value) {
@@ -384,18 +279,6 @@ xmodel.Attribute = class {
                 }
             }
         }
-    }
-
-    get name() {
-        return this._name;
-    }
-
-    get type() {
-        return this._type;
-    }
-
-    get value() {
-        return this._value;
     }
 
     get visible() {
@@ -414,8 +297,8 @@ xmodel.TensorType = class {
             case 5: this._dataType = 'bfloat'; break;
             default: this._dataType = 'unknown'; break;
         }
-        this._dataType += tensor.tensor_bit_width.toString();
-        this._shape = new xmodel.TensorShape(tensor.tensor_dim);
+        this.dataType += tensor.tensor_bit_width.toString();
+        this.shape = new xmodel.TensorShape(tensor.tensor_dim);
         if (tensor.tensor_attr) {
             const attr = {};
             for (const entry of Object.entries(tensor.tensor_attr)) {
@@ -438,100 +321,37 @@ xmodel.TensorType = class {
         }
     }
 
-    get dataType() {
-        return this._dataType;
-    }
-
-    get shape() {
-        return this._shape;
-    }
-
-    get denotation() {
-        return this._denotation;
-    }
-
     toString() {
-        return (this.dataType || '?') + this._shape.toString();
+        return (this.dataType || '?') + this.shape.toString();
     }
 };
 
 xmodel.TensorShape = class {
 
     constructor(dimensions) {
-        this._dimensions = Array.from(dimensions);
-    }
-
-    get dimensions() {
-        return this._dimensions;
+        this.dimensions = Array.from(dimensions);
     }
 
     toString() {
-        if (!this._dimensions || this._dimensions.length == 0) {
+        if (!this.dimensions || this.dimensions.length == 0) {
             return '';
         }
-        return '[' + this._dimensions.map((dimension) => dimension.toString()).join(',') + ']';
+        return '[' + this.dimensions.map((dimension) => dimension.toString()).join(',') + ']';
     }
 };
 
 xmodel.Tensor = class {
 
     constructor(node) {
-        this._type = new xmodel.TensorType(node.output_tensor);
-        this._category = node.op_type;
-        this._name = node.output_tensor.tensor_name;
-        if (this._category == "const" || this._category == "const-fix") {
-            var data_value = xmodel.Utility.attribute(node.op_attr.data);
-            var np_value = [];
-            var data = new Uint8Array(data_value.value);
-            var data_type = node.op_attr.data_type.string_value.toUpperCase();
-            switch (data_type) {
-                case "XINT8":
-                case "INT8":
-                    np_value = new Int8Array(data.buffer);
-                    break;
-                case "XINT16":
-                case "INT16":
-                    np_value = new Int16Array(data.buffer);
-                    break;
-                case "XINT32":
-                case "INT32":
-                    np_value = new Int32Array(data.buffer);
-                    break;
-                case "XUINT8":
-                case "UINT8":
-                    np_value = new Uint8Array(data.buffer);
-                    break;
-                case "XUINT16":
-                case "UINT16":
-                    np_value = new Uint16Array(data.buffer);
-                    break;
-                case "XUINT32":
-                case "UINT32":
-                    np_value = new Uint32Array(data.buffer);
-                    break;
-                case "FLOAT32":
-                    np_value = new Float32Array(data.buffer);
-                    break;
-                case "FLOAT64":
-                    np_value = new Float64Array(data.buffer);
-                    break;
-                default:
-                    break;
+        this.type = new xmodel.TensorType(node.output_tensor);
+        this.category = node.op_type;
+        if (node.op_attr && node.op_attr.data) {
+            const data = node.op_attr.data;
+            if (data.bytes_value && data.bytes_value.value) {
+                this.layout = '<';
+                this.values = data.bytes_value.value;
             }
-            this.values = np_value;
         }
-    }
-
-    get name() {
-        return this._name;
-    }
-
-    get category() {
-        return this._category;
-    }
-
-    get type() {
-        return this._type;
     }
 };
 
@@ -615,9 +435,7 @@ xmodel.Metadata = class {
     constructor(op_defs) {
         this._types = new Map();
         this._attributes = new Map();
-        const categories = new Map([
-            [ 'const', 'Data'],
-            [ 'const-fix', 'Data'],
+        const categories = [
             [ 'avgpool2d', 'Pool' ],
             [ 'batchnorm', 'Normalization' ],
             [ 'celu', 'Activation' ],
@@ -666,15 +484,14 @@ xmodel.Metadata = class {
             [ 'transposed-depthwise-conv2d', 'Layer' ],
             [ 'transposed-depthwise-conv2d-fix', 'Layer' ],
             [ 'upsample-fix', 'Data' ],
-        ]);
+        ];
+        this._types = new Map(categories.map((entry) => [ entry[0], { name: entry[0], category: entry[1] } ]));
         for (const op_def of op_defs) {
-            const name = op_def.name;
-            const metadata = {};
-            metadata.name = name;
+            const type = this._types.get(op_def.name) || { name: op_def.name };
             if (op_def.annotation) {
-                metadata.description = op_def.annotation;
+                type.description = op_def.annotation;
             }
-            metadata.inputs = op_def.input_args.map((input_arg) => {
+            type.inputs = op_def.input_args.map((input_arg) => {
                 const input = {};
                 input.name = input_arg.name;
                 if (input_arg.annotation) {
@@ -682,28 +499,19 @@ xmodel.Metadata = class {
                 }
                 return input;
             });
-            metadata.attributes = op_def.attrs.map((attr) => {
+            type.attributes = op_def.attrs.map((attr) => {
                 const attribute = {};
                 attribute.name = attr.name;
-                const value = xmodel.Utility.attribute(attr.default_value);
-                attribute.default = value.value;
+                attribute.default = xmodel.Utility.attribute(attr.default_value).value;
                 if (attr.annotation) {
                     attribute.description = attr.annotation;
                 }
-                this._attributes.set(name + ':' + attr.name, attribute);
                 return attribute;
             });
-            if (categories.has(name)) {
-                metadata.category = categories.get(name);
+            for (const attribute of type.attributes) {
+                this._attributes.set(type.name + ':' + attribute.name, attribute);
             }
-            this._types.set(name, metadata);
-        }
-        for (const entry of categories) {
-            const name = entry[0];
-            const category = entry[1];
-            if (!this._types.has(name)) {
-                this._types.set(name, { name: name, category: category });
-            }
+            this._types.set(type.name, type);
         }
     }
 

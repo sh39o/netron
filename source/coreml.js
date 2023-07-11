@@ -64,7 +64,7 @@ coreml.ModelFactory = class {
         return undefined;
     }
 
-    async open(context, match) {
+    async open(context, target) {
         await context.require('./coreml-proto');
         const metadata = await context.metadata('coreml-metadata.json');
         const openModel = async (stream, context, path, format) => {
@@ -116,20 +116,11 @@ coreml.ModelFactory = class {
             };
             walkModel(model);
             if (weightPaths.size > 0) {
-                const items = path.split('/');
-                items.pop();
-                const folder = items.join('/');
+                const folder = path.replace(/\/[^/]*$/, '');
                 const keys = Array.from(weightPaths);
-                const paths = keys.map((path) => {
-                    const items = path.split('/');
-                    if (items[0] === '@model_path') {
-                        items[0] = folder;
-                    }
-                    return items.join('/');
-                });
-                const promises = paths.map((path) => context.request(path, null));
+                const paths = keys.map((path) => path.replace(/^@model_path\//, folder + '/'));
                 try {
-                    const streams = await Promise.all(promises);
+                    const streams = await Promise.all(paths.map((path) => context.request(path, null)));
                     const weights = new Map();
                     for (let i = 0; i < keys.length; i++) {
                         weights.set(keys[i], streams[i]);
@@ -142,9 +133,11 @@ coreml.ModelFactory = class {
             return new coreml.Model(metadata, format, model, new Map());
         };
         const openManifest = async (obj, context, path) => {
-            const entries = Object.keys(obj.itemInfoEntries).map((key) => obj.itemInfoEntries[key]);
-            const entry = entries.filter((entry) => entry.path.toLowerCase().endsWith('.mlmodel'))[0];
-            const file = path + 'Data/' + entry.path;
+            const entries = Object.values(obj.itemInfoEntries).filter((entry) => entry.path.toLowerCase().endsWith('.mlmodel'));
+            if (entries.length !== 1) {
+                throw new coreml.Error('Manifest does not contain Core ML model.');
+            }
+            const file = path + 'Data/' + entries[0].path;
             const stream = await context.request(file, null);
             return openModel(stream, context, file, 'Core ML Package');
         };
@@ -154,7 +147,7 @@ coreml.ModelFactory = class {
             const obj = reader.read();
             return openManifest(obj, context, path);
         };
-        switch (match) {
+        switch (target) {
             case 'coreml.pb': {
                 return openModel(context.stream, context, context.identifier);
             }
@@ -170,7 +163,7 @@ coreml.ModelFactory = class {
                 return openManifestStream(context, '../../../');
             }
             default: {
-                throw new coreml.Error("Unsupported Core ML format '" + match + "'.");
+                throw new coreml.Error("Unsupported Core ML format '" + target + "'.");
             }
         }
     }
