@@ -195,51 +195,51 @@ grapher.Graph = class {
                 node.label.rectangle.setAttribute('y', - node.label.height / 2);
                 node.label.rectangle.setAttribute('width', node.label.width);
                 node.label.rectangle.setAttribute('height', node.label.height);
-                // let device = this._isCompound.get(nodeId)._attributes.find((attr)=> attr._name === 'device');
-                // let tiling_idx = this._isCompound.get(nodeId)._attributes.find((attr)=> attr._name === 'tiling_idx');
-                // let root = this._isCompound.get(nodeId)._name === "root";
-                // let label_name = undefined;
-                // let color = "#FFFFFF";
-                // let font_size = "10px";
-                // if (root) {
-                //     label_name = "ROOT";
-                //     color = "#D9D6D8";
-                //     font_size = "15px";
-                // } else if (device) {
-                //     label_name = device.value.value;
-                //     font_size = "12px";
-                //     switch (device.value.value.toUpperCase()) {
-                //         case("DPU"):
-                //             color = "#B5F184";
-                //             break;
-                //         case("CPU"):
-                //             color = "#FFFFE0";
-                //             break;
-                //         case("USER"):
-                //             color = "#3C54BE";
-                //             break;
-                //         default:
-                //             color = "#FFFFFF";
-                //     }
-                // } else if (tiling_idx) {
-                //     label_name = "tile " + tiling_idx.value.value;
-                //     color = "#76A44C";
-                //     font_size = "11px";
-                // }
-                // if (label_name) {
-                //     const textElement = document.createElementNS(
-                //         "http://www.w3.org/2000/svg",
-                //         "text"
-                //       );
-                //       textElement.textContent = label_name;
-                //       textElement.setAttribute('text-anchor', 'middle');
-                //       textElement.setAttribute('alignment-baseline', 'bottom');
-                //       textElement.setAttribute('x', - node.label.width / 2 - 10);
-                //       textElement.setAttribute('y', - node.label.height / 2 + 10);
-                //       textElement.style.fontSize = font_size;
-                //       node.label.rectangle.setAttribute('style', 'fill: ' + color);
-                //       node.label.element.appendChild(textElement);
-                // } 
+                const device = this._isCompound.get(nodeId).attributes.find((attr)=> attr.name === 'device');
+                const tiling_idx = this._isCompound.get(nodeId).attributes.find((attr)=> attr.name === 'tiling_idx');
+                const root = this._isCompound.get(nodeId).name === "root";
+                let label_name = undefined;
+                let color = "#FFFFFF";
+                let font_size = "10px";
+                if (root) {
+                    label_name = "ROOT";
+                    color = "#D9D6D8";
+                    font_size = "15px";
+                } else if (device) {
+                    label_name = device.value.value;
+                    font_size = "12px";
+                    switch (device.value.value.toUpperCase()) {
+                        case("DPU"):
+                            color = "#B5F184";
+                            break;
+                        case("CPU"):
+                            color = "#FFFFE0";
+                            break;
+                        case("USER"):
+                            color = "#3C54BE";
+                            break;
+                        default:
+                            color = "#FFFFFF";
+                    }
+                } else if (tiling_idx) {
+                    label_name = "tile " + tiling_idx.value.value;
+                    color = "#76A44C";
+                    font_size = "11px";
+                }
+                if (label_name) {
+                    const textElement = document.createElementNS(
+                        "http://www.w3.org/2000/svg",
+                        "text"
+                      );
+                      textElement.textContent = label_name;
+                      textElement.setAttribute('text-anchor', 'middle');
+                      textElement.setAttribute('alignment-baseline', 'bottom');
+                      textElement.setAttribute('x', - node.label.width / 2 - 10);
+                      textElement.setAttribute('y', - node.label.height / 2 + 10);
+                      textElement.style.fontSize = font_size;
+                      node.label.rectangle.setAttribute('style', 'fill: ' + color);
+                      node.label.element.appendChild(textElement);
+                } 
             }
         }
         for (const edge of this.edges.values()) {

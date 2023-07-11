@@ -165,7 +165,7 @@ function set_group(subg, graph, subg_name) {
         let ops = subg.op_name;
         var cur_subg_name = subg_name;
         for (const op of ops) {
-            graph.get_node(op)._group = cur_subg_name;
+            graph.get_node(op).group = cur_subg_name;
         }
     }
 }

@@ -924,18 +924,18 @@ view.View = class {
     }
 
     showSubgraphProperties(subgraph) {
-        // if (subgraph) {
-        //     try {
-        //         const subgraphSidebar = new view.SubgraphSideBar(this._host, subgraph);
-        //         const content = subgraphSidebar.render();
-        //         this._sidebar.open(subgraphSidebar.render(), "Subgraph Properties");
-        //     } catch (error) {
-        //         if (error) {
-        //             error.context = this._model.identifier;
-        //         }
-        //         this.error(error, 'Error showing subgraph properties.', null);
-        //     }
-        // }
+        if (subgraph) {
+            try {
+                const subgraphSidebar = new view.SubgraphSideBar(this._host, subgraph);
+                const content = subgraphSidebar.render();
+                this._sidebar.open(subgraphSidebar.render(), "Subgraph Properties");
+            } catch (error) {
+                if (error) {
+                    error.context = this._model.identifier;
+                }
+                this.error(error, 'Error showing subgraph properties.', null);
+            }
+        }
     }
 
     showNodeProperties(node, input) {
