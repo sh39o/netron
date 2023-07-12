@@ -3186,7 +3186,6 @@ view.Tensor = class {
             [ 'boolean', 1 ],
             [ 'qint8', 1 ], [ 'qint16', 2 ], [ 'qint32', 4 ],
             [ 'quint8', 1 ], [ 'quint16', 2 ], [ 'quint32', 4 ],
-            [ 'xint8', 1 ],
             [ 'int8', 1 ], [ 'int16', 2 ], [ 'int32', 4 ], [ 'int64', 8 ],
             [ 'xint8', 1], [ 'xuint8', 1], [ 'xint16', 2], [ 'xuint16', 2],
             [ 'uint8', 1 ], [ 'uint16', 2 ], [ 'uint32', 4, ], [ 'uint64', 8 ],
@@ -3265,11 +3264,11 @@ view.Tensor = class {
             case '<':
             case '>': {
                 const value = this._decodeData(context, 0);
-                return view.Tensor._stringify(value, '', '    ');
+                return view.Tensor._stringify(value, '', '  ');
             }
             case '|': {
                 const value = this._decodeValues(context, 0);
-                return view.Tensor._stringify(value, '', '    ');
+                return view.Tensor._stringify(value, '', '  ');
             }
             default: {
                 throw new Error("Unsupported tensor format '" + this._format + "'.");
@@ -3576,7 +3575,7 @@ view.Tensor = class {
     }
 
     static _stringify(value, indentation, indent) {
-        if (Array.isArray(value)) {
+        if (Array.isArray(value) && Array.isArray(value[0])) {
             const result = [];
             result.push(indentation + '[');
             const items = value.map((item) => view.Tensor._stringify(item, indentation + indent, indent));
@@ -3585,6 +3584,14 @@ view.Tensor = class {
             }
             result.push(indentation + ']');
             return result.join('\n');
+        } else if (Array.isArray(value)) {
+            let value_str = "";
+            if (value.length > 64) {
+                value_str = value.slice(0, 64).toString() + ", ...";
+            } else {
+                value_str = value.toString()
+            }
+            return indentation + '[' + value_str + ']';
         }
         if (value === null) {
             return indentation + 'null';
@@ -3829,6 +3836,18 @@ view.Formatter = class {
         if (value && (value instanceof base.Int64 || value instanceof base.Uint64)) {
             return value.toString();
         }
+        if (value && (value instanceof Float32Array || value instanceof Float64Array || 
+            value instanceof Int8Array || value instanceof Uint8Array || 
+            value instanceof Int16Array || value instanceof Uint16Array || 
+            value instanceof Int32Array || value instanceof Uint32Array)) {
+            let valueStr = '';
+            if (value.length > 64) {
+                valueStr = [...value.slice(0, 64)].toString() + ", ...";
+            } else {
+                valueStr = [...value].toString();
+            }
+            return valueStr;
+        }
         if (Number.isNaN(value)) {
             return 'NaN';
         }
@@ -3860,7 +3879,13 @@ view.Formatter = class {
             case 'map<string,Bytes>':
                 var res = '';
                 Object.keys(value).sort().forEach((key) => {
-                    res += `${key}: ${[...value[key].value].toString()}\n`;
+                    let valueStr = '';
+                    if (value[key].value.length > 64) {
+                        valueStr = [...value[key].value.slice(0, 64)].toString() + ", ...";
+                    } else {
+                        valueStr = [...value[key].value].toString();
+                    }
+                    res += `${key}: ` + valueStr + "\n";
                 });
                 return res;
             case 'byte[]':

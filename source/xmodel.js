@@ -45,7 +45,6 @@ xmodel.Graph = class {
         this.outputs = [];
         this.root_subg = graph.subg_root;
         this.groups = new Map();
-        this.data_nodes = [];
         this.const_nodes = [];
         this.op_map = new Map();
         const counts = new Map();
@@ -75,7 +74,7 @@ xmodel.Graph = class {
                 }
             }
             if (node.args.length === 0 && counts.get(node.op_name) === 1) {
-                if (node.op_type === 'const-fix') {
+                if (node.op_type === 'const-fix') {  // const will show in netron
                     arg(node.op_name, node, true);
                     const_nodes.push(node);
                     continue;
@@ -87,7 +86,7 @@ xmodel.Graph = class {
         this.nodes = nodes.map((node) => new xmodel.Node(metadata, node, arg));
         this.const_nodes = const_nodes.map((node) => new xmodel.Node(metadata, node, arg));
 
-        for (const node of this.nodes.concat(this.data_nodes, this.const_nodes)) {
+        for (const node of this.nodes.concat(this.const_nodes)) {
             this.op_map.set(node.name, node);
         }
 
@@ -244,7 +243,7 @@ xmodel.Node = class {
                         default:
                             break;
                     }
-                    this.attributes.push(new xmodel.Attribute(metadata.attribute(this.type.name, name), name, {"type": typeof(np_value), "value": [...np_value]}));
+                    this.attributes.push(new xmodel.Attribute(metadata.attribute(this.type.name, name), name, {"type": typeof(np_value), "value": np_value}));
                     continue;
                 }
                 this.attributes.push(new xmodel.Attribute(metadata.attribute(this.type, name), name, value));
@@ -289,13 +288,13 @@ xmodel.Attribute = class {
 xmodel.TensorType = class {
     constructor(tensor) {
         switch (tensor.data_type) {
-            case 0: this._dataType = 'int'; break;
-            case 1: this._dataType = 'uint'; break;
-            case 2: this._dataType = 'xint'; break;
-            case 3: this._dataType = 'xuint'; break;
-            case 4: this._dataType = 'float'; break;
-            case 5: this._dataType = 'bfloat'; break;
-            default: this._dataType = 'unknown'; break;
+            case 0: this.dataType = 'int'; break;
+            case 1: this.dataType = 'uint'; break;
+            case 2: this.dataType = 'xint'; break;
+            case 3: this.dataType = 'xuint'; break;
+            case 4: this.dataType = 'float'; break;
+            case 5: this.dataType = 'bfloat'; break;
+            default: this.dataType = 'unknown'; break;
         }
         this.dataType += tensor.tensor_bit_width.toString();
         this.shape = new xmodel.TensorShape(tensor.tensor_dim);
