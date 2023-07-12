@@ -316,7 +316,7 @@ xmodel.TensorType = class {
                   `${key}: ${xmodel.Utility.attribute(attr[key]).value}`
                 );
               });
-            this._denotation = '\n' + denotation.join('\n');
+            this.denotation = '\n' + denotation.join('\n');
         }
     }
 
