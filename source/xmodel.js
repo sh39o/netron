@@ -342,6 +342,7 @@ xmodel.TensorShape = class {
 xmodel.Tensor = class {
 
     constructor(node) {
+        this.name = node.output_tensor.tensor_name;
         this.type = new xmodel.TensorType(node.output_tensor);
         this.category = node.op_type;
         if (node.op_attr && node.op_attr.data) {
