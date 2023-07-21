@@ -308,7 +308,7 @@ xmodel.TensorType = class {
                 }
                 attr[key] = value;
             }
-            const denotation = [];
+            const denotation = [`tensor name: ${tensor.tensor_name}`];
             Object.keys(attr)
               .sort()
               .forEach((key) => {
