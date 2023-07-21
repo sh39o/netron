@@ -2277,6 +2277,20 @@
   },
   {
     "type":     "keras",
+    "target":   "pickle_utils.keras",
+    "source":   "https://github.com/lutzroeder/netron/files/12034968/pickle_utils.zip[pickle_utils.keras]",
+    "format":   "Keras v2.13.1",
+    "link":     "https://github.com/lutzroeder/netron/issues/1120"
+  },
+  {
+    "type":     "keras",
+    "target":   "pickle_utils.pkl",
+    "source":   "https://github.com/lutzroeder/netron/files/12034968/pickle_utils.zip[pickle_utils.pkl]",
+    "format":   "Keras v2.13.1",
+    "link":     "https://github.com/lutzroeder/netron/issues/1120"
+  },
+  {
+    "type":     "keras",
     "target":   "residual_cnn.h5",
     "source":   "https://github.com/lutzroeder/netron/files/2592329/keras_models.zip[residual_cnn.h5]",
     "format":   "Keras v2.1.2",
@@ -5674,6 +5688,14 @@
     "source":   "https://github.com/lutzroeder/netron/files/5248932/test_multi_input_output.zip[test_multi_input_output.tmfile]",
     "format":   "Tengine v2.0",
     "link":     "https://github.com/lutzroeder/netron/issues/440"
+  },
+  {
+    "type":     "tensorrt",
+    "target":   "retinaface_1.trt",
+    "source":   "https://github.com/lutzroeder/netron/files/12022977/retinaface_1.trt.zip[retinaface_1.trt]",
+    "format":   "TensorRT Engine",
+    "error":    "Invalid file content. File contains undocumented TensorRT engine data.",
+    "link":     "https://github.com/lutzroeder/netron/issues/725"
   },
   {
     "type":     "tf",

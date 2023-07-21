@@ -12,20 +12,30 @@ view.View = class {
 
     constructor(host) {
         this._host = host;
-        this._options = {
+        this._defaultOptions = {
             weights: true,
             attributes: false,
             names: false,
             direction: 'vertical',
             mousewheel: 'scroll'
         };
-        this._host.view(this).then(() => {
-            this._model = null;
-            this._graphs = [];
-            this._selection = [];
-            this._sidebar = new view.Sidebar(this._host);
-            this._searchText = '';
-            this._modelFactoryService = new view.ModelFactoryService(this._host);
+        this._options = Object.assign({}, this._defaultOptions);
+        this._model = null;
+        this._graphs = [];
+        this._selection = [];
+        this._sidebar = new view.Sidebar(this._host);
+        this._searchText = '';
+        this._modelFactoryService = new view.ModelFactoryService(this._host);
+    }
+
+    async start() {
+        try {
+            await this._host.view(this);
+            const options = this._host.get('configuration', 'options') || {};
+            for (const entry of Object.entries(options)) {
+                const name = entry[0];
+                this._options[name] = entry[1];
+            }
             this._element('sidebar-button').addEventListener('click', () => {
                 this.showModelProperties();
             });
@@ -188,10 +198,10 @@ view.View = class {
                     execute: () => this._host.execute('about')
                 });
             }
-            this._host.start();
-        }).catch((err) => {
+            await this._host.start();
+        } catch (err) {
             this.error(err, null, null);
-        });
+        }
     }
 
     show(page) {
@@ -292,6 +302,18 @@ view.View = class {
                 break;
             default:
                 throw new view.Error("Unsupported toogle '" + name + "'.");
+        }
+        const options = {};
+        for (const entry of Object.entries(this._options)) {
+            const name = entry[0];
+            if (this._defaultOptions[name] !== entry[1]) {
+                options[name] = entry[1];
+            }
+        }
+        if (Object.entries(options).length == 0) {
+            this._host.delete('configuration', 'options');
+        } else {
+            this._host.set('configuration', 'options', options);
         }
     }
 
@@ -1798,7 +1820,7 @@ view.Node = class extends grapher.Node {
         let sortedAttributes = [];
         const attributes = node.attributes || [];
         if (this.context.view.options.attributes) {
-            sortedAttributes = attributes.filter((attribute) => attribute.visible).slice();
+            sortedAttributes = attributes.filter((attribute) => attribute.visible !== false).slice();
         }
         sortedAttributes.sort((a, b) => {
             const au = a.name.toUpperCase();
@@ -1848,7 +1870,7 @@ view.Node = class extends grapher.Node {
             }
 
             for (const attribute of sortedAttributes) {
-                if (attribute.visible) {
+                if (attribute.visible !== false) {
                     let value = new view.Formatter(attribute.value, attribute.type).toString();
                     if (value && value.length > 25) {
                         value = value.substring(0, 25) + '\u2026';
@@ -5120,6 +5142,7 @@ view.ModelFactoryService = class {
                     { name: 'keras-yolo2 configuration', tags: [ 'model', 'train', 'valid' ] },
                     { name: 'Vulkan SwiftShader ICD manifest', tags: [ 'file_format_version', 'ICD' ] },
                     { name: 'DeepLearningExamples configuration', tags: [ 'attention_probs_dropout_prob', 'hidden_act', 'hidden_dropout_prob', 'hidden_size', ] },
+                    { name: 'GitHub page data', tags: [ 'payload', 'title', 'locale' ] },
                     { name: 'NuGet assets', tags: [ 'version', 'targets', 'packageFolders' ] },
                     { name: 'NuGet data', tags: [ 'format', 'restore', 'projects' ] },
                     { name: 'NPM package', tags: [ 'name', 'version', 'dependencies' ] },
@@ -5129,7 +5152,6 @@ view.ModelFactoryService = class {
                     { name: 'Brain.js data', tags: [ 'type', 'sizes', 'layers' ] },
                     { name: 'Custom Vision metadata', tags: [ 'CustomVision.Metadata.Version' ] },
                     { name: 'W&B metadata', tags: [ 'program', 'host', 'executable' ] }
-
                 ];
                 const match = (obj, tag) => {
                     if (tag.startsWith('[].')) {
@@ -5419,6 +5441,12 @@ view.ModelFactoryService = class {
                     if (matches.length === 2 &&
                         matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'keras_metadata.pb')) {
                         matches = matches.filter((context) => context.identifier.toLowerCase().split('/').pop() !== 'keras_metadata.pb');
+                    }
+                    // Keras
+                    if (matches.length === 2 &&
+                        matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'config.json') &&
+                        matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'model.weights.h5')) {
+                        matches = matches.filter((context) => context.identifier.toLowerCase().split('/').pop() == 'model.weights.h5');
                     }
                     if (matches.length > 1) {
                         throw new view.ArchiveError('Archive contains multiple model files.');

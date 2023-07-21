@@ -614,7 +614,6 @@ pytorch.Attribute = class {
     constructor(metadata, name, value) {
         this._name = name;
         this._value = value;
-
         if (this._name === 'training') {
             this._visible = false;
             this._type = 'boolean';
@@ -3262,7 +3261,7 @@ pytorch.Utility = class {
     }
 
     static getType(value) {
-        if (value === null) {
+        if (value === null || value === undefined) {
             return undefined;
         } else if (value === true || value === false) {
             return 'boolean';
@@ -3427,9 +3426,9 @@ pytorch.Utility = class {
                         ];
                         for (const signature of signatures) {
                             if (data instanceof Uint8Array && data.length > signature.length && signature.every((value, index) => value === data[index])) {
-                                const buffer = data.slice(0, 24);
-                                const content = Array.from(buffer).map((c) => (c < 16 ? '0' : '') + c.toString(16)).join('');
-                                throw new pytorch.Error("Invalid file content. File contains undocumented PyTorch TensorRT engine data (" + content.substring(8) + ").");
+                                // const buffer = data.slice(0, 24);
+                                // const content = Array.from(buffer).map((c) => (c < 16 ? '0' : '') + c.toString(16)).join('');
+                                throw new pytorch.Error('Invalid file content. File contains undocumented PyTorch TensorRT engine data.');
                             }
                         }
                     }
@@ -3991,6 +3990,10 @@ pytorch.nnapi.Graph = class {
         const args = new Map();
         const arg = (operand) => {
             if (!args.has(operand.index)) {
+
+
+
+
                 const value = new pytorch.nnapi.Argument(operand);
                 args.set(operand.index, value);
             }

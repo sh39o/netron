@@ -240,7 +240,9 @@ hailo.Attribute = class {
         this._name = name;
         this._value = value;
         this._type = metadata && metadata.type ? metadata.type : '';
-        this._visible = metadata && metadata.visible !== false ? true : false;
+        if (metadata && metadata.visible === false) {
+            this._visible = false;
+        }
         if (name === 'original_names') {
             this._visible = false;
         }
@@ -277,24 +279,16 @@ hailo.Tensor = class {
 hailo.TensorType = class {
 
     constructor(dataType, shape) {
-        this._dataType = dataType;
-        this._shape = shape;
-    }
-
-    get dataType() {
-        return this._dataType;
-    }
-
-    get shape() {
-        return this._shape;
+        this.dataType = dataType;
+        this.shape = shape;
     }
 
     equals(obj) {
-        return obj && this._dataType === obj.dataType && this._shape && this._shape.equals(obj.shape);
+        return obj && this.dataType === obj.dataType && this.shape && this.shape.equals(obj.shape);
     }
 
     toString() {
-        return (this.dataType || '?') + this._shape.toString();
+        return (this.dataType || '?') + this.shape.toString();
     }
 };
 
