@@ -1,5 +1,4 @@
-var xmodel = {};
-var protobuf = require('./protobuf');
+var xmodel = {};var protobuf = require('./protobuf');
 
 xmodel.ModelFactory = class {
 
@@ -165,6 +164,17 @@ function set_group(subg, graph, subg_name) {
         var cur_subg_name = subg_name;
         for (const op of ops) {
             graph.get_node(op).group = cur_subg_name;
+            const substrings = cur_subg_name.split('/');
+            const result = [];
+            let cur = "";
+            for (const sub of substrings) {
+                if (cur === '') {
+                    cur = sub;
+                } else {
+                    cur += '/' + sub;
+                }
+                graph.get_node(op).groups.set(cur, graph.groups.get(cur));
+            }
         }
     }
 }
@@ -179,6 +189,7 @@ xmodel.Node = class {
         this.attributes = [];
         this.chain = [];
         this.group = "";
+        this.groups = new Map();
         if (op_node.op_attr) {
             for (const entry of Object.entries(op_node.op_attr)) {
                 const name = entry[0];

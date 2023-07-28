@@ -1,13 +1,4 @@
-<<<<<<< HEAD
-var view =  {};var base = require('./base');var zip = require('./zip');
-=======
-
-var view =  {};
-var markdown = {};
-var base = require('./base');
-var zip = require('./zip');
->>>>>>> upstream/main
-var tar = require('./tar');
+var view =  {};var base = require('./base');var zip = require('./zip');var tar = require('./tar');
 var json = require('./json');
 var xml = require('./xml');
 var protobuf = require('./protobuf');
@@ -454,10 +445,6 @@ view.View = class {
                     }
                 }
             };
-            const clickHandler = (e) => {
-                e.stopPropagation();
-                document.removeEventListener('click', clickHandler, true);
-            };
             const pointerUpHandler = (e) => {
                 e.target.releasePointerCapture(e.pointerId);
                 container.style.removeProperty('cursor');
@@ -470,6 +457,10 @@ view.View = class {
                     delete this._mousePosition;
                     document.addEventListener('click', clickHandler, true);
                 }
+            };
+            const clickHandler = (e) => {
+                e.stopPropagation();
+                document.removeEventListener('click', clickHandler, true);
             };
             container.addEventListener('pointermove', pointerMoveHandler);
             container.addEventListener('pointerup', pointerUpHandler);
@@ -502,7 +493,6 @@ view.View = class {
                 }
             }
         };
-        const container = this._element('graph');
         const touchEndHandler = () => {
             container.removeEventListener('touchmove', touchMoveHandler, { passive: true });
             container.removeEventListener('touchcancel', touchEndHandler, { passive: true });
@@ -510,6 +500,7 @@ view.View = class {
             delete this._touchPoints;
             delete this._touchZoom;
         };
+        const container = this._element('graph');
         container.addEventListener('touchmove', touchMoveHandler, { passive: true });
         container.addEventListener('touchcancel', touchEndHandler, { passive: true });
         container.addEventListener('touchend', touchEndHandler, { passive: true });
@@ -974,7 +965,7 @@ view.View = class {
                 if (this._menu) {
                     this._menu.close();
                 }
-                const nodeSidebar = new view.NodeSidebar(this._host, node);
+                const nodeSidebar = new view.NodeSidebar(this._host, node, this._sidebar);
                 nodeSidebar.on('show-documentation', (/* sender, e */) => {
                     this.showDocumentation(node.type);
                 });
@@ -2166,7 +2157,7 @@ view.Control = class {
 
 view.NodeSidebar = class extends view.Control {
 
-    constructor(host, node) {
+    constructor(host, node, sidebar) {
         super();
         this._host = host;
         this._node = node;
@@ -2174,6 +2165,8 @@ view.NodeSidebar = class extends view.Control {
         this._attributes = [];
         this._inputs = [];
         this._outputs = [];
+        this._groups = [];
+        this._sidebar = sidebar;
 
         const container = this._host.document.createElement('div');
         container.className = 'sidebar-node';
@@ -2223,6 +2216,13 @@ view.NodeSidebar = class extends view.Control {
             for (const attribute of sortedAttributes) {
                 this._addAttribute(attribute.name, attribute);
             }
+        }
+
+        if (node.group) {
+            this._addHeader("subgraphs");
+            node.groups.forEach((group, name) => {
+                this._addGroup(name, group, this._sidebar);
+            });
         }
 
         const inputs = node.inputs;
@@ -2297,6 +2297,77 @@ view.NodeSidebar = class extends view.Control {
             if (name == input.name) {
                 input.toggle();
             }
+        }
+    }
+
+    _addGroup(name, group, sidebar) {
+        const item = new view.GroupView(
+            this._host,
+            "name",
+            new view.ValueTextView(this._host, name), group, sidebar
+          );
+        this._elements[0].appendChild(item.render());
+    }
+};
+view.GroupView = class {
+
+    constructor(host, name, value, group, sidebar) {
+        this._host = host;
+        this._name = name;
+        this._value = value;
+        this._sidebar = sidebar;
+
+        const nameElement = this._host.document.createElement('div');
+        nameElement.className = 'sidebar-item-name';
+
+        const nameInputElement = this._host.document.createElement('input');
+        nameInputElement.setAttribute('type', 'text');
+        nameInputElement.setAttribute('value', name);
+        nameInputElement.setAttribute('title', name);
+        nameInputElement.setAttribute('readonly', 'true');
+        nameElement.appendChild(nameInputElement);
+
+        const valueElement = this._host.document.createElement('div');
+        valueElement.className = 'sidebar-item-value-list';
+        valueElement.addEventListener("mouseover", () => {
+            valueElement.style.textDecoration = 'underline';
+        });
+        valueElement.addEventListener("mouseout", () => {
+            valueElement.style.textDecoration = 'none';
+        })
+        valueElement.addEventListener('click', () => {
+            this._handleClick(group);
+        });
+
+        for (const element of value.render()) {
+            valueElement.appendChild(element);
+        }
+
+        this._element = this._host.document.createElement('div');
+        this._element.className = 'sidebar-item';
+        this._element.appendChild(nameElement);
+        this._element.appendChild(valueElement);
+    }
+
+    get name() {
+        return this._name;
+    }
+
+    render() {
+        return this._element;
+    }
+
+    toggle() {
+        this._value.toggle();
+    }
+
+    _handleClick(subgraph) {
+        try {
+            const subgraphSidebar = new view.SubgraphSideBar(this._host, subgraph);
+            const content = subgraphSidebar.render();
+            this._sidebar.open(content, "Subgraph Properties");
+        } catch (error) {
+            this.error(error, 'Error showing subgraph properties.', null);
         }
     }
 };
@@ -3995,6 +4066,8 @@ view.Formatter = class {
     }
 };
 
+const markdown = {};
+
 markdown.Generator = class {
 
     constructor() {
@@ -5366,22 +5439,6 @@ view.ModelFactoryService = class {
                 const folder = rotate(map).filter(equals).map(at(0)).join('/');
                 return folder.length === 0 ? folder : folder + '/';
             };
-            const list = Array.from(entries).map((entry) => {
-                return { name: entry[0], stream: entry[1] };
-            });
-            const files = list.filter((entry) => {
-                if (entry.name.endsWith('/')) {
-                    return false;
-                }
-                if (entry.name.split('/').pop().startsWith('.')) {
-                    return false;
-                }
-                if (!entry.name.startsWith('./') && entry.name.startsWith('.')) {
-                    return false;
-                }
-                return true;
-            });
-            const folder = rootFolder(files.map((entry) => entry.name));
             const filter = async (queue) => {
                 let matches = [];
                 const nextEntry = async () => {
@@ -5478,6 +5535,22 @@ view.ModelFactoryService = class {
                 };
                 return await nextEntry();
             };
+            const list = Array.from(entries).map((entry) => {
+                return { name: entry[0], stream: entry[1] };
+            });
+            const files = list.filter((entry) => {
+                if (entry.name.endsWith('/')) {
+                    return false;
+                }
+                if (entry.name.split('/').pop().startsWith('.')) {
+                    return false;
+                }
+                if (!entry.name.startsWith('./') && entry.name.startsWith('.')) {
+                    return false;
+                }
+                return true;
+            });
+            const folder = rootFolder(files.map((entry) => entry.name));
             const queue = files.slice(0).filter((entry) => entry.name.substring(folder.length).indexOf('/') < 0);
             const context = await filter(queue);
             if (!context) {
@@ -5545,8 +5618,8 @@ view.ModelFactoryService = class {
                 { name: 'HTML markup', value: /^\s*<!DOCTYPE\s*HTML>/ },
                 { name: 'HTML markup', value: /^\s*<!DOCTYPE\s*HTML\s+(PUBLIC|SYSTEM)?/ },
                 { name: 'Unity metadata', value: /^fileFormatVersion:/ },
-                { name: 'Python source code', value: /^((#.*(\n|\r\n))|('''.*'''(\n|\r\n))|("""[\s\S]*""")|(\n|\r\n))*(import[ ]+[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*([ ]+as[ ]+[a-zA-Z]\w*)?[ ]*(,|;|\n|\r\n))/ },
-                { name: 'Python source code', value: /^((#.*(\n|\r\n))|('''.*'''(\n|\r\n))|("""[\s\S]*""")|(\n|\r\n))*(from[ ]+([a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*)[ ]+import[ ]+[a-zA-Z]\w*)/ },
+                { name: 'Python source code', value: /^\s*('''.*''')?\s*import[ ]+[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*([ ]+as[ ]+[a-zA-Z]\w*)?[ ]*(,|;|\n|\r\n)/ },
+                { name: 'Python source code', value: /^\s*('''.*''')?\s*from[ ]+([a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*)[ ]+import[ ]+[a-zA-Z]\w*[ ]+/ },
                 { name: 'Python virtual environment configuration', value: /^home[ ]*=[ ]*/, identifier: 'pyvenv.cfg' },
                 { name: 'Bash script', value: /^#!\/usr\/bin\/env\s/ },
                 { name: 'Bash script', value: /^#!\/bin\/bash\s/ },
