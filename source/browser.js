@@ -1,4 +1,4 @@
-
+﻿
 var host = {};
 
 host.BrowserHost = class {
@@ -571,34 +571,34 @@ host.BrowserHost = class {
     }
 
     get(context, name) {
-        if (context === 'configuration' && typeof localStorage !== 'undefined') {
-            try {
-                const content = localStorage.getItem(name);
+        try {
+            if (context === 'configuration' && typeof this.window.localStorage !== 'undefined') {
+                const content = this.window.localStorage.getItem(name);
                 return JSON.parse(content);
-            } catch (error) {
-                // continue regardless of error
             }
+        } catch (error) {
+            // continue regardless of error
         }
         return undefined;
     }
 
     set(context, name, value) {
-        if (context === 'configuration' && typeof localStorage !== 'undefined') {
-            try {
-                localStorage.setItem(name, JSON.stringify(value));
-            } catch (error) {
-                // continue regardless of error
+        try {
+            if (context === 'configuration' && typeof this.window.localStorage !== 'undefined') {
+                this.window.localStorage.setItem(name, JSON.stringify(value));
             }
+        } catch (error) {
+            // continue regardless of error
         }
     }
 
     delete(context, name) {
-        if (context === 'configuration' && typeof localStorage !== 'undefined') {
-            try {
-                localStorage.removeItem(name);
-            } catch (error) {
-                // continue regardless of error
+        try {
+            if (context === 'configuration' && typeof this.window.localStorage !== 'undefined') {
+                this.window.localStorage.removeItem(name);
             }
+        } catch (error) {
+            // continue regardless of error
         }
     }
 
@@ -743,7 +743,7 @@ host.BrowserHost.FileStream = class {
     }
 
     stream(length) {
-        const file = new host.BrowserHost.FileStream(this._chunks, this._size, this._position, length);
+        const file = new host.BrowserHost.FileStream(this._chunks, this._size, this._start + this._position, length);
         this.skip(length);
         return file;
     }
@@ -766,7 +766,7 @@ host.BrowserHost.FileStream = class {
             this._position -= length;
             return this._buffer.subarray(position, position + length);
         }
-        const position = this._position;
+        const position = this._start + this._position;
         this.skip(length);
         this.seek(position);
         const buffer = new Uint8Array(length);
@@ -780,7 +780,7 @@ host.BrowserHost.FileStream = class {
             const position = this._fill(length);
             return this._buffer.subarray(position, position + length);
         }
-        const position = this._position;
+        const position = this._start + this._position;
         this.skip(length);
         const buffer = new Uint8Array(length);
         this._read(buffer, position);

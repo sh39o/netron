@@ -133,6 +133,20 @@
   },
   {
     "type":     "_",
+    "target":   "python-import.pt",
+    "source":   "https://github.com/lutzroeder/netron/files/12139921/python-import.pt.zip[python-import.pt]",
+    "error":    "Invalid file content. File contains Python source code.",
+    "link":     "https://github.com/lutzroeder/netron/issues/458"
+  },
+  {
+    "type":     "_",
+    "target":   "python-from-import.pt",
+    "source":   "https://github.com/lutzroeder/netron/files/12139922/python-from-import.pt.zip[python-from-import.pt]",
+    "error":    "Invalid file content. File contains Python source code.",
+    "link":     "https://github.com/lutzroeder/netron/issues/458"
+  },
+  {
+    "type":     "_",
     "target":   "random.onnx",
     "source":   "https://github.com/lutzroeder/netron/files/7449479/random.onnx.zip[random.onnx]",
     "error":    "Unsupported file content (746d6c20786d6c6e733d22687474703a) for extension '.onnx'.",
@@ -3971,6 +3985,13 @@
     "link":     "https://github.com/lutzroeder/netron/issues/799"
   },
   {
+    "type":     "om",
+    "target":   "yolov5s.om",
+    "source":   "https://github.com/lutzroeder/netron/files/12136842/yolov5s.om.zip[yolov5s.om]",
+    "format":   "DaVinci OM",
+    "link":     "https://github.com/lutzroeder/netron/issues/799"
+  },
+  {
     "type":     "openvino",
     "target":   "2018_R3_age-gender-recognition-retail-0013.xml,2018_R3_age-gender-recognition-retail-0013.bin",
     "source":   "https://github.com/lutzroeder/netron/files/8983748/2018_R3_age-gender-recognition-retail-0013.zip[2018_R3_age-gender-recognition-retail-0013.xml,2018_R3_age-gender-recognition-retail-0013.bin]",
@@ -4497,6 +4518,14 @@
     "source":   "https://raw.githubusercontent.com/ApolloAuto/apollo/master/modules/prediction/data/lane_scanning_vehicle_model.pt",
     "format":   "TorchScript v1.0",
     "link":     "https://github.com/ApolloAuto/apollo"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "lite_real_sr.ptl",
+    "source":   "https://github.com/lutzroeder/netron/files/12137599/lite_real_sr.ptl.zip[lite_real_sr.ptl]",
+    "format":   "TorchScript v1.12",
+    "action":   "skip-render",
+    "link":     "https://github.com/lutzroeder/netron/issues/842"
   },
   {
     "type":     "pytorch",
@@ -6570,13 +6599,6 @@
     "source":   "https://raw.githubusercontent.com/nagadomi/waifu2x/master/models/cunet/art/noise0_model.t7",
     "format":   "Torch v7",
     "link":     "https://github.com/nagadomi/waifu2x"
-  },
-  {
-    "type":     "torch",
-    "target":   "facades_photo2label.t7",
-    "source":   "https://people.eecs.berkeley.edu/~taesung_park/CycleGAN/models/facades_photo2label.t7",
-    "format":   "Torch v7",
-    "link":     "https://github.com/junyanz/CycleGAN"
   },
   {
     "type":     "torch",

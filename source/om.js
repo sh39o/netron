@@ -2,6 +2,7 @@
 // Experimental
 
 var om = {};
+var svp = {};
 var protobuf = require('./protobuf');
 var base = require('./base');
 
@@ -41,7 +42,8 @@ om.Graph = class {
         const value = (name, type, tensor) => {
             if (!values.has(name)) {
                 values.set(name, new om.Value(name, type || null, tensor || null));
-            } else if ((type && !type.equals(values.get(name).type)) || tensor) {
+            } else if ((type && !type.equals(values.get(name).type)) ||
+                       (tensor && tensor !== values.get(name).initializer)) {
                 throw new om.Error("Duplicate value '" + name + "'.");
             }
             return values.get(name);
@@ -94,6 +96,7 @@ om.Node = class {
                 if (input === '') {
                     continue;
                 }
+                const name = this.type.inputs && i < this.type.inputs.length ? this.type.inputs[i].name : 'input' + (i === 0 ? '' : i.toString());
                 const index = input.lastIndexOf(':');
                 const identifier = input.substring(0, index);
                 const src_index = input.substring(index + 1);
@@ -101,7 +104,6 @@ om.Node = class {
                     this.controlDependencies.push(value(name));
                     continue;
                 }
-                const name = this.type.inputs && i < this.type.inputs.length ? this.type.inputs[i].name : 'input' + (i === 0 ? '' : i.toString());
                 const type = om.Utility.tensorType(op.input_desc[i]);
                 const tensor = tensors.get(identifier);
                 const argument = new om.Argument(name, [ value(input, type, tensor) ]);
@@ -297,9 +299,17 @@ om.TensorShape = class {
     }
 
     equals(obj) {
-        return obj && Array.isArray(obj.dimensions) &&
-            Array.isArray(this.dimensions) && this.dimensions.length === obj.dimensions.length
-            && obj.dimensions.every((value, index) => this.dimensions[index] === value);
+        if (obj && Array.isArray(obj.dimensions) && Array.isArray(this.dimensions)) {
+            if (this.dimensions.length === obj.dimensions.length) {
+                return obj.dimensions.every((value, index) => this.dimensions[index] === value);
+            }
+            if (obj.dimensions.every((dim) => Number.isInteger(dim)) && this.dimensions.every((dim) => Number.isInteger(dim))) {
+                const a = obj.dimensions.reduce((a, b) => a * b, 1);
+                const b = this.dimensions.reduce((a, b) => a * b, 1);
+                return a === b;
+            }
+        }
+        return false;
     }
 
     toString() {
@@ -475,8 +485,6 @@ om.Error = class extends Error {
         this.name = 'Error loading DaVinci model.';
     }
 };
-
-var svp = svp || {};
 
 svp.ModelDef = class ModelDef {
 
