@@ -6,8 +6,8 @@
         "email": "lutzroeder@users.noreply.github.com",
         "url": "https://www.lutzroeder.com"
     },
-    "version": "7.0.8",
-    "date": "2023-07-24 14:48:03",
+    "version": "7.1.4",
+    "date": "2023-08-17 21:47:36",
     "description": "Visualizer for neural network, deep learning, and machine learning models",
     "license": "MIT",
     "repository": "lutzroeder/netron",
@@ -31,10 +31,10 @@
         "electron-updater": "6.1.1"
     },
     "devDependencies": {
-        "electron": "25.3.2",
+        "electron": "26.0.0",
         "electron-builder": "24.6.3",
         "@electron/notarize": "2.1.0",
-        "eslint": "8.45.0"
+        "eslint": "8.47.0"
     },
     "eslintConfig": {
         "env": {
@@ -124,6 +124,7 @@
             { "ext": "nn",          "name": "Barracuda Model"          },
             { "ext": "nnp",         "name": "Neural Network Libraries" },
             { "ext": "npy",         "name": "NumPy Array"              },
+            { "ext": "npz",         "name": "NumPy Archive"            },
             { "ext": "om",          "name": "DaVinci OM Model"         },
             { "ext": "onnx",        "name": "ONNX Model"               },
             { "ext": "ort",         "name": "ONNX Runtime Model"       },

@@ -48,17 +48,23 @@ const access = async (path) => {
 };
 
 const rm = async (...args) => {
-    writeLine('rm ' + path.join(...args));
     const dir = path.join(__dirname, ...args);
-    const options = { recursive: true, force: true };
-    await fs.rm(dir, options);
+    const exists = await access(dir);
+    if (exists) {
+        writeLine('rm ' + path.join(...args));
+        const options = { recursive: true, force: true };
+        await fs.rm(dir, options);
+    }
 };
 
 const mkdir = async (...args) => {
-    writeLine('mkdir ' + path.join(...args));
     const dir = path.join(__dirname, ...args);
-    const options = { recursive: true };
-    await fs.mkdir(dir, options);
+    const exists = await access(dir);
+    if (!exists) {
+        writeLine('mkdir ' + path.join(...args));
+        const options = { recursive: true };
+        await fs.mkdir(dir, options);
+    }
     return dir;
 };
 
@@ -324,7 +330,7 @@ const publish = async (target) => {
             const url = repository + '/releases/download/v#{version}/' + configuration.productName + '-#{version}-mac.zip';
             const sha256 = await hash(url.replace(/#{version}/g, configuration.version), 'sha256');
             writeLine('update manifest');
-            const dir = await mkdir('dist', 'homebrew-cask', 'Casks');
+            const dir = await mkdir('dist', 'homebrew-cask', 'Casks', 'n');
             const file = path.join(dir, 'netron.rb');
             await fs.writeFile(file, [
                 'cask "' + configuration.name + '" do',

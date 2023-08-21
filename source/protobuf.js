@@ -658,7 +658,9 @@ protobuf.TextReader = class {
                 }
             }
         } catch (err) {
-            // continue regardless of error
+            if (tags.has('[')) {
+                tags.clear();
+            }
         }
         this.reset();
         return tags;

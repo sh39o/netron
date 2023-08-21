@@ -1708,7 +1708,7 @@ python.Execution = class {
         this.registerFunction('builtins.long', this.builtins.int);
         this.registerFunction('builtins.print', function() {});
         this.registerFunction('builtins.unicode', function(/* value */) {
-            throw new python.Error('Not implemented.');
+            throw new python.Error("'builtins.unicode' not implemented.");
         });
         this.registerType('builtins.Warning', class {});
         this.registerType('builtins.FutureWarning', class extends this._builtins.Warning {});
@@ -2031,6 +2031,9 @@ python.Execution = class {
         this.registerType('gensim.models.word2vec.Word2Vec', class {});
         this.registerType('gensim.models.word2vec.Word2VecTrainables', class {});
         this.registerType('gensim.models.word2vec.Word2VecVocab', class {});
+        this.registerFunction('gensim.utils.call_on_class_only', function() {
+            throw new python.Error('This method should be called on a class object.');
+        });
         this.registerType('google3.learning.deepmind.research.nbr.pbl_jax.clean_jaxline.utils.optimizers.ScaleByLarsState', class {
             constructor(obj) {
                 Object.assign(this, obj);
@@ -3316,6 +3319,9 @@ python.Execution = class {
         this.registerFunction('builtins.slice', function(start, stop, step) {
             return [ start, stop, step ];
         });
+        this.registerFunction('builtins.hash', function(/* obj */) {
+            throw new python.Error("'builtins.hash' not implemented.");
+        });
         this.registerFunction('cloudpickle.cloudpickle._builtin_type', function(name) {
             return name;
         });
@@ -3619,7 +3625,7 @@ python.Execution = class {
             let header = file.read(header_length);
             const decoder = new TextDecoder(major >= 3 ? 'utf-8' : 'ascii');
             header = decoder.decode(header);
-            header = JSON.parse(header.replace(/\(/,'[').replace(/\)/,']').replace('[,','[1,]').replace(',]',',1]').replace(/'/g, '"').replace(/:\s*False\s*,/,':false,').replace(/:\s*True\s*,/,':true,').replace(/,\s*\}/, ' }'));
+            header = JSON.parse(header.replace(/\(/,'[').replace(/\)/,']').replace('[,','[1,]').replace(',]',']').replace(/'/g, '"').replace(/:\s*False\s*,/,':false,').replace(/:\s*True\s*,/,':true,').replace(/,\s*\}/, ' }'));
             if (!header.descr || header.descr.length < 2) {
                 throw new python.Error("Missing property 'descr'.");
             }
@@ -3769,7 +3775,6 @@ python.Execution = class {
             context.view = new DataView(context.data.buffer, context.data.byteOffset, size);
             encode(context, a, 0);
             return self.invoke('numpy.ndarray', [ shape, dtype, context.data ]);
-
         });
         this.registerFunction('numpy.ma.core._mareconstruct', function(subtype, baseclass, baseshape, basetype) {
             const data = self.invoke(baseclass, [ baseshape, basetype ]);
@@ -4869,6 +4874,12 @@ python.Execution = class {
                 return -value;
             }
             throw new python.Error("Unsupported 'torch.neg' expression type.");
+        });
+        this.registerFunction('torch.pow', function(left, right) {
+            if (typeof left === 'number' && typeof right === 'number') {
+                return Math.pow(left, right);
+            }
+            throw new python.Error("Unsupported 'torch.pow' expression type.");
         });
         this.registerFunction('torch.q_scale', function(/* tensor */) {
             return -1; // TODO
@@ -6153,7 +6164,7 @@ python.BinaryReader = class {
     seek(position) {
         this._position = position >= 0 ? position : this._length + position;
         if (this._position > this._buffer.length) {
-            throw new Error('Expected ' + (this._position - this._buffer.length) + ' more bytes. The file might be corrupted. Unexpected end of file.');
+            throw new python.Error('Expected ' + (this._position - this._buffer.length) + ' more bytes. The file might be corrupted. Unexpected end of file.');
         }
     }
 

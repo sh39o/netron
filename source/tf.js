@@ -694,7 +694,7 @@ tf.Model = class {
         if (model) {
             for (let i = 0; i < model.meta_graphs.length; i++) {
                 const meta_graph = model.meta_graphs[i];
-                const name = (meta_graph.meta_info_def && meta_graph.meta_info_def.any_info) ? meta_graph.meta_info_def.any_info.toString() : ((model.meta_graphs.length > 1) ? i.toString() : '-');
+                const name = meta_graph.meta_info_def && meta_graph.meta_info_def.any_info ? meta_graph.meta_info_def.any_info.toString() : model.meta_graphs.length > 1 ? i.toString() : '';
                 const graph = new tf.Graph(metadata, meta_graph, name, bundle);
                 this._graphs.push(graph);
             }
@@ -1394,7 +1394,7 @@ tf.TensorShape = class {
                 } else if (shape.dim.length == 1 && !shape.dim[0].size) {
                     this._dimensions = [ 0 ];
                 } else {
-                    this._dimensions =shape.dim.map((dim) => (dim.size && dim.size != -1) ? dim.size : '?');
+                    this._dimensions = shape.dim.map((dim) => (dim.size && dim.size != -1) ? dim.size : '?');
                 }
             }
         }
@@ -1415,7 +1415,7 @@ tf.TensorShape = class {
         if (this._dimensions.length === 0) {
             return '';
         }
-        return '[' + this._dimensions.map((dim) => (dim.size && dim.size != -1) ? dim.size.toString() : '?').join(',') + ']';
+        return '[' + this._dimensions.map((dim) => (dim && dim != -1) ? dim.toString() : '?').join(',') + ']';
     }
 };
 
