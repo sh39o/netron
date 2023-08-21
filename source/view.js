@@ -3581,7 +3581,7 @@ view.Tensor = class {
                     break;
                 case 'bfloat16':
                     for (; i < max; i += 2) {
-                        results.push(view.getBfloat16(i, this._littleEndian));
+                        results.push(new Float32Array(new Uint16Array([0, view.getUint16(i, true)]).buffer)[0]);
                     }
                     break;
                 case 'complex64':

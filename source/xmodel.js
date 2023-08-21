@@ -251,6 +251,13 @@ xmodel.Node = class {
                         case "FLOAT64":
                             np_value = new Float64Array(data.buffer);
                             break;
+                        case "BFLOAT16":
+                            const bfloat16Array = new Uint16Array(data.buffer);
+                            np_value = new Float32Array(bfloat16Array.length);
+                            for (let i = 0; i < bfloat16Array.length; i++) {
+                                np_value[i] = new Float32Array(new Uint16Array([0, bfloat16Array[i]]).buffer)[0];
+                            }
+                            break;
                         default:
                             break;
                     }
