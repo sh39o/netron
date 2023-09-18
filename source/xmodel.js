@@ -73,7 +73,7 @@ xmodel.Graph = class {
                 }
             }
             if (node.args.length === 0 && counts.get(node.op_name) === 1) {
-                if (node.op_type === 'const-fix') {  // const will show in netron
+                if (node.op_type === 'const-fix' || (node.op_type === 'const' && node.output_tensor.data_type !== 4)) {  // const fp32 will show in netron
                     arg(node.op_name, node, true);
                     const_nodes.push(node);
                     continue;
@@ -202,8 +202,8 @@ xmodel.Node = class {
                     let activation = value.value;
                     if (typeof activation === 'string') {
                         activation = activation.toLowerCase();
-                    } else if (Number.isInteger(activation) && activation < 5) {
-                        activation = [ 'none', 'relu', 'prelu', 'leakyrelu', 'relu6' ][activation];
+                    } else if (Number.isInteger(activation) && activation < 6) {
+                        activation = [ 'none', 'relu', 'prelu', 'leakyrelu', 'relu6', 'sigmoid'][activation];
                     } else {
                         activation = JSON.stringify(activation);
                     }
