@@ -135,18 +135,12 @@ xmodel.Value = class {
             if (tensor && tensor.tensor_attr && tensor.data_type) {
                 if (initializer) {
                     this.initializer = new xmodel.Tensor(node);
+                    this.type = this.initializer.type;
                 } else {
-                    this._type = new xmodel.TensorType(tensor);
+                    this.type = new xmodel.TensorType(tensor);
                 }
             }
         }
-    }
-
-    get type() {
-        if (this.initializer) {
-            return this.initializer.type;
-        }
-        return this._type;
     }
 };
 
@@ -264,7 +258,8 @@ xmodel.Node = class {
                     this.attributes.push(new xmodel.Attribute(metadata.attribute(this.type.name, name), name, {"type": typeof(np_value), "value": np_value}));
                     continue;
                 }
-                this.attributes.push(new xmodel.Attribute(metadata.attribute(this.type, name), name, value));
+                const attribute = new xmodel.Attribute(metadata.attribute(this.type, name), name, value);
+                this.attributes.push(attribute);
             }
         }
         if (op_node.args) {
@@ -287,19 +282,15 @@ xmodel.Attribute = class {
         this.value = attribute.value;
         if (metadata) {
             if (metadata.default !== undefined) {
-                if (metadata.default === this._value) {
-                    this._visible = false;
+                if (metadata.default === this.value) {
+                    this.visible = false;
                 }
-                if (Array.isArray(metadata.default) && Array.isArray(this._value) &&
-                    metadata.default.length === this._value.length && metadata.default.every((value, index) => value === this._value[index])) {
-                    this._visible = false;
+                if (Array.isArray(metadata.default) && Array.isArray(this.value) &&
+                    metadata.default.length === this.value.length && metadata.default.every((value, index) => value === this.value[index])) {
+                    this.visible = false;
                 }
             }
         }
-    }
-
-    get visible() {
-        return this._visible == false ? false : true;
     }
 };
 
@@ -366,7 +357,7 @@ xmodel.Tensor = class {
         if (node.op_attr && node.op_attr.data) {
             const data = node.op_attr.data;
             if (data.bytes_value && data.bytes_value.value) {
-                this.layout = '<';
+                this.encoding = '<';
                 this.values = data.bytes_value.value;
             }
         }

@@ -2,19 +2,15 @@ var grapher = {};var dagre = require('./dagre');
 
 grapher.Graph = class {
 
-    constructor(compound, options) {
+    constructor(compound, layout) {
+        this.layout = layout;
         this._isCompound = compound;
-        this._options = options;
         this._nodes = new Map();
         this._edges = new Map();
         this._children = {};
         this._children['\x00'] = {};
         this._parent = {};
         this._events = {};
-    }
-
-    get options() {
-        return this._options;
     }
 
     setNode(node) {
@@ -313,12 +309,17 @@ grapher.Node = class {
     }
 
     select() {
-        this.element.classList.add('select');
-        return [ this.element ];
+        if (this.element) {
+            this.element.classList.add('select');
+            return [ this.element ];
+        }
+        return [];
     }
 
     deselect() {
-        this.element.classList.remove('select');
+        if (this.element) {
+            this.element.classList.remove('select');
+        }
     }
 
     static roundedRect(x, y, width, height, r1, r2, r3, r4) {
@@ -485,8 +486,8 @@ grapher.Node.List = class {
         this._events = {};
     }
 
-    add(id, name, value, tooltip, separator) {
-        const item = new grapher.Node.List.Item(id, name, value, tooltip, separator);
+    add(name, value, tooltip, separator) {
+        const item = new grapher.Node.List.Item(name, value, tooltip, separator);
         this._items.push(item);
         return item;
     }
@@ -524,9 +525,6 @@ grapher.Node.List = class {
             const yPadding = 1;
             const xPadding = 6;
             const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            if (item.id) {
-                text.setAttribute('id', item.id);
-            }
             text.setAttribute('xml:space', 'preserve');
             this.element.appendChild(text);
             if (item.tooltip) {
@@ -549,6 +547,9 @@ grapher.Node.List = class {
             text.setAttribute('x', x + xPadding);
             text.setAttribute('y', this.height + yPadding - size.y);
             this.height += yPadding + size.height + yPadding;
+            if (item.height !== undefined) {
+                this.height += item.height;
+            }
         }
         this.height += 3;
         this.width = Math.max(75, this.width);
@@ -573,8 +574,7 @@ grapher.Node.List = class {
 
 grapher.Node.List.Item = class {
 
-    constructor(id, name, value, tooltip, separator) {
-        this.id = id;
+    constructor(name, value, tooltip, separator) {
         this.name = name;
         this.value = value;
         this.tooltip = tooltip;
@@ -586,7 +586,7 @@ grapher.Node.Canvas = class {
 
     constructor() {
         this.width = 0;
-        this.height = 0;
+        this.height = 80;
     }
 
     build(/* document, parent */) {

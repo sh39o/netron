@@ -663,16 +663,16 @@ pytorch.Tensor = class {
         this._name = name || '';
         const storage = tensor.storage();
         const size = tensor.size();
-        this._type = new pytorch.TensorType(storage.dtype.__reduce__(), new pytorch.TensorShape(size));
         const layout = tensor.layout ? tensor.layout.__str__() : null;
         this._stride = tensor.stride();
         if (layout && layout.startsWith('torch.sparse_')) {
-            this._layout = layout.split('.').pop().replace('_', '.');
+            this._type = new pytorch.TensorType(storage.dtype.__reduce__(), new pytorch.TensorShape(size), layout.split('.').pop().replace('_', '.'));
             this._indices = new pytorch.Tensor('', tensor.indices);
             this._values = new pytorch.Tensor('', tensor.values);
         } else if (!layout || layout === 'torch.strided') {
+            this._type = new pytorch.TensorType(storage.dtype.__reduce__(), new pytorch.TensorShape(size));
             this._data = storage.data;
-            this._layout = '<';
+            this._encoding = '<';
             this._indices = null;
         } else {
             throw new pytorch.Error("Unsupported tensor layout '" + layout + "'.");
@@ -687,8 +687,8 @@ pytorch.Tensor = class {
         return this._type;
     }
 
-    get layout() {
-        return this._layout;
+    get encoding() {
+        return this._encoding;
     }
 
     get stride() {
@@ -700,15 +700,16 @@ pytorch.Tensor = class {
     }
 
     get values() {
-        if (this._layout && this._layout.startsWith('sparse.')) {
+        const type = this._type.layout;
+        if (type && type.startsWith('sparse.')) {
             return this._values;
         }
         return this._data instanceof Uint8Array ? this._data : this._data.peek();
     }
 
     decode() {
-        if (this._layout !== '<') {
-            throw new pytorch.Error("Tensor layout '" + this._layout + "' not implemented.");
+        if (this._encoding !== '<') {
+            throw new pytorch.Error("Tensor encoding '" + this._encoding + "' not implemented.");
         }
         const type = this._type;
         const data = this.values;
@@ -740,9 +741,10 @@ pytorch.Tensor = class {
 
 pytorch.TensorType = class {
 
-    constructor(dataType, shape) {
+    constructor(dataType, shape, layout) {
         this._dataType = dataType;
         this._shape = shape;
+        this._layout = layout;
     }
 
     get dataType() {
@@ -751,6 +753,10 @@ pytorch.TensorType = class {
 
     get shape() {
         return this._shape;
+    }
+
+    get layout() {
+        return this._layout;
     }
 
     toString() {
@@ -1048,24 +1054,25 @@ pytorch.Container.Zip = class extends pytorch.Container {
         super();
         // https://github.com/pytorch/pytorch/blob/master/torch/csrc/jit/docs/serialization.md
         this._reader = reader;
-        this._torchscript = model || this._reader.hasRecord('constants.pkl');
-        if (model) {
-            this._producer = model && model.producerName ? model.producerName + (model.producerVersion ? ' v' + model.producerVersion : '') : '';
-            this._format = this._reader.hasRecord('attributes.pkl') ? 'TorchScript v1.1' : 'TorchScript v1.0';
-        } else {
-            const name = this._torchscript ? 'TorchScript' : 'PyTorch';
-            const version = pytorch.Utility.version(reader.version());
-            this._format = name + ' ' + version;
-        }
+        this._model = model;
     }
 
     async read(metadata) {
+        const torchscript = this._model ? true : this._reader.hasRecord('constants.pkl');
+        if (this._model) {
+            this._producer = this._model && this._model.producerName ? this._model.producerName + (this._model.producerVersion ? ' v' + this._model.producerVersion : '') : '';
+            this._format = this._reader.hasRecord('attributes.pkl') ? 'TorchScript v1.1' : 'TorchScript v1.0';
+        } else {
+            const name = torchscript ? 'TorchScript' : 'PyTorch';
+            const version = this._reader.version();
+            this._format = name + ' ' + pytorch.Utility.version(version);
+        }
         const execution = new pytorch.jit.Execution(null, metadata);
         for (const event in this._events) {
             execution.on(event[0], event[1]);
         }
         const torch = execution.__import__('torch');
-        if (this._torchscript) {
+        if (torchscript) {
             const module = torch.jit.load(this._reader);
             if (module.data && module.data.forward) {
                 this._modules = new Map([ [ '', module ] ]);
@@ -1077,6 +1084,7 @@ pytorch.Container.Zip = class extends pytorch.Container {
             const module = torch.load(entries);
             this._modules = pytorch.Utility.find(module);
         }
+        delete this._model;
         delete this._reader;
     }
 
@@ -2676,6 +2684,20 @@ pytorch.jit.Execution = class extends pytorch.Execution {
                     tensor.resize_(Array.isArray(tensor.shape) && tensor.shape.length > size ? tensor.shape.slice(-size) : Array(size).fill(NaN));
                 }
             }
+            // if torch.gt(torch.dim(x), 1):
+            //   xxxx
+            //   ops.prim.RaiseException(...)
+            if (statement.type === 'if' &&
+                pytorch.Utility.isCall(statement.condition, 'torch.gt', 2) &&
+                pytorch.Utility.isCall(statement.condition.args[0], 'torch.dim', 1) &&
+                statement.then.statements.length > 0 &&
+                pytorch.Utility.isCall(statement.then.statements.slice(-1).pop(), 'ops.prim.RaiseException')) {
+                const tensor = this.expression(statement.condition.args[0].args[0], context);
+                const size = this.expression(statement.condition.args[1], context);
+                if (pytorch.Utility.isTensor(tensor) && Number.isInteger(size) && size < 10) {
+                    tensor.resize_(Array.isArray(tensor.shape) && tensor.shape.length > size ? tensor.shape.slice(-size) : Array(size).fill(NaN));
+                }
+            }
             // if bool(...):
             //   ops.prim.RaiseException(torch.format(_1, dtype))
             // else:
@@ -3174,10 +3196,11 @@ pytorch.Container.Package = class extends pytorch.Container {
     constructor(reader) {
         super();
         this._reader = reader;
-        this._format = 'PyTorch Package ' + pytorch.Utility.version(reader.version());
     }
 
     async read() {
+        const version = this._reader.version();
+        this._format = 'PyTorch Package ' + pytorch.Utility.version(version);
         this._modules = new Map();
         const pickles = this._reader.getAllRecords().filter((name) => !name.startsWith('.data/') && !name.endsWith('py'));
         if (pickles.length > 0) {
@@ -3359,7 +3382,7 @@ pytorch.Utility = class {
 
     static isCall(expression, name, size) {
         if (expression.type === 'call' &&
-            expression.args.length === size &&
+            (size === undefined || size === expression.args.length) &&
             pytorch.Utility.target(expression.target) === name) {
             return true;
         }
@@ -3394,7 +3417,7 @@ pytorch.Utility = class {
         if (!versions.has(value)) {
             throw new pytorch.Error("Unsupported PyTorch Zip version '" + value + "'.");
         }
-        return versions.get(value) || 'v-' + value.toString();
+        return versions.get(value);
     }
 
     static find(data) {
@@ -4210,7 +4233,7 @@ pytorch.nnapi.Tensor = class {
         return this._type;
     }
 
-    get layout() {
+    get encoding() {
         return '<';
     }
 

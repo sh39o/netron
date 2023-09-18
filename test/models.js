@@ -98,9 +98,6 @@ host.TestHost = class {
         return new base.BinaryStream(buffer);
     }
 
-    event_ua(/* category, action, label, value */) {
-    }
-
     event(/* name, params */) {
     }
 
@@ -370,8 +367,6 @@ class Target {
         this.folder = item.type ? path.normalize(path.join(__dirname, '..', 'third_party' , 'test', item.type)) : '';
         this.name = this.type ? this.type + '/' + this.target[0] : this.target[0];
         this.measures = new Map([ [ 'name', this.name ] ]);
-        // TODO #1109 duplicate value name
-        this.skip1109 = [ 'coreml', 'kmodel', 'openvino' ].includes(this.type);
     }
 
     match(patterns) {
@@ -550,9 +545,9 @@ class Target {
         }
         if (this.assert) {
             for (const assert of this.assert) {
-                const parts = assert.split('=').map((item) => item.trim());
+                const parts = assert.split('==').map((item) => item.trim());
                 const properties = parts[0].split('.');
-                const value = parts[1];
+                const value = JSON.parse(parts[1].replace(/\s*'|'\s*/g, '"'));
                 let context = { model: this.model };
                 while (properties.length) {
                     const property = properties.shift();
@@ -571,7 +566,7 @@ class Target {
                     }
                     throw new Error("Invalid property path: '" + parts[0]);
                 }
-                if (context !== value.toString()) {
+                if (context !== value) {
                     throw new Error("Invalid '" + context.toString() + "' != '" + assert + "'.");
                 }
             }
@@ -592,7 +587,10 @@ class Target {
                 if (value.initializer) {
                     value.initializer.type.toString();
                     const tensor = new view.Tensor(value.initializer);
-                    if (tensor.layout !== '<' && tensor.layout !== '>' && tensor.layout !== '|' && tensor.layout !== 'sparse' && tensor.layout !== 'sparse.coo') {
+                    if (tensor.encoding !== '<' && tensor.encoding !== '>' && tensor.encoding !== '|') {
+                        throw new Error("Tensor encoding '" + tensor.encoding + "' is not implemented.");
+                    }
+                    if (tensor.layout && (tensor.layout !== 'sparse' && tensor.layout !== 'sparse.coo')) {
                         throw new Error("Tensor layout '" + tensor.layout + "' is not implemented.");
                     }
                     if (!tensor.empty) {
@@ -625,7 +623,7 @@ class Target {
                 if (value.name.length > 0 && value.initializer === null) {
                     if (!values.has(value.name)) {
                         values.set(value.name, value);
-                    } else if (value !== values.get(value.name) && !this.skip1109) {
+                    } else if (value !== values.get(value.name)) {
                         throw new Error("Duplicate value '" + value.name + "'.");
                     }
                 }
@@ -691,7 +689,7 @@ class Target {
         const current = new view.View(this.host);
         current.options.attributes = true;
         current.options.initializers = true;
-        await current.renderGraph(this.model, this.model.graphs[0]);
+        await current.renderGraph(this.model, this.model.graphs[0], current.options);
     }
 }
 
@@ -729,6 +727,7 @@ const main = async () => {
             console.error('  ' + error.cause.name + ': ' + error.cause.message);
         }
         /* eslint-enable no-console */
+        process.exit(1);
     }
 };
 

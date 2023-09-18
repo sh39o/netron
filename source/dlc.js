@@ -243,10 +243,10 @@ dlc.Tensor = class {
     constructor(type, data) {
         this.type = type;
         if (data instanceof Uint8Array) {
-            this.layout = '<';
+            this.encoding = '<';
             this.values = data;
         } else {
-            this.layout = '|';
+            this.encoding = '|';
             switch (type.dataType) {
                 case 'uint8': this.values = data.bytes; break;
                 case 'float32': this.values = data.floats; break;
@@ -360,6 +360,7 @@ dlc.Container = class {
                                 case 0x0308: return 'qint8';
                                 case 0x0332: return 'qint32';
                                 case 0x0408: return 'uint8';
+                                case 0x0416: return 'uint16';
                                 case 0x0508: return 'boolean';
                                 default: throw new dlc.Error("Unsupported data type '" + JSON.stringify(value) + "'.");
                             }

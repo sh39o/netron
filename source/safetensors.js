@@ -138,11 +138,15 @@ safetensors.Tensor = class {
     constructor(obj, position, stream) {
         const shape = new safetensors.TensorShape(obj.shape);
         this.type = new safetensors.TensorType(obj.dtype, shape);
-        this.layout = '<';
+        this.encoding = '<';
         const size = obj.data_offsets[1] - obj.data_offsets[0];
         position += obj.data_offsets[0];
         stream.seek(position);
-        this.values = stream.read(size);
+        this._data = stream.stream(size);
+    }
+
+    get values() {
+        return this._data instanceof Uint8Array ? this._data : this._data.peek();
     }
 };
 

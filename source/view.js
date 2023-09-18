@@ -30,7 +30,7 @@ view.View = class {
     async start() {
         try {
             await this._host.view(this);
-            const options = this._host.get('configuration', 'options') || {};
+            const options = this._host.get('options') || {};
             for (const entry of Object.entries(options)) {
                 const name = entry[0];
                 this._options[name] = entry[1];
@@ -310,9 +310,9 @@ view.View = class {
             }
         }
         if (Object.entries(options).length == 0) {
-            this._host.delete('configuration', 'options');
+            this._host.delete('options');
         } else {
-            this._host.set('configuration', 'options', options);
+            this._host.set('options', options);
         }
     }
 
@@ -622,7 +622,6 @@ view.View = class {
                 format.push('(' + model.producer + ')');
             }
             if (format.length > 0) {
-                this._host.event_ua('Model', 'Format', format.join(' '));
                 this._host.event('model_open', {
                     model_format: model.format || '',
                     model_producer: model.producer || ''
@@ -693,7 +692,7 @@ view.View = class {
         this._model = model;
         this._graphs = graphs;
         try {
-            await this.renderGraph(this._model, this.activeGraph);
+            await this.renderGraph(this._model, this.activeGraph, this._options);
             if (this._page !== 'default') {
                 this.show('default');
             }
@@ -702,7 +701,7 @@ view.View = class {
         } catch (error) {
             this._model = lastModel;
             this._graphs = lastGraphs;
-            await this.renderGraph(this._model, this.activeGraph);
+            await this.renderGraph(this._model, this.activeGraph, this._options);
             if (this._page !== 'default') {
                 this.show('default');
             }
@@ -712,7 +711,7 @@ view.View = class {
     }
 
     pushGraph(graph) {
-        if (graph !== this.activeGraph) {
+        if (graph && graph !== this.activeGraph && Array.isArray(graph.nodes)) {
             this._sidebar.close();
             this._updateGraph(this._model, [ graph ].concat(this._graphs));
         }
@@ -726,7 +725,7 @@ view.View = class {
         return null;
     }
 
-    async renderGraph(model, graph) {
+    async renderGraph(model, graph, options) {
         this._graph = null;
 
         const canvas = this._element('canvas');
@@ -745,19 +744,19 @@ view.View = class {
             graph_skip: 0
         });
 
-        const options = {};
-        options.nodesep = 20;
-        options.ranksep = 20;
+        const layout = {};
+        layout.nodesep = 20;
+        layout.ranksep = 20;
         const rotate = graph.nodes.every((node) => node.inputs.filter((input) => input.value.every((argument) => !argument.initializer)).length === 0 && node.outputs.length === 0);
-        const horizontal = rotate ? this._options.direction === 'vertical' : this._options.direction !== 'vertical';
+        const horizontal = rotate ? options.direction === 'vertical' : options.direction !== 'vertical';
         if (horizontal) {
-            options.rankdir = "LR";
+            layout.rankdir = "LR";
         }
         if (nodes.length > 3000) {
-            options.ranker = 'longest-path';
+            layout.ranker = 'longest-path';
         }
 
-        const viewGraph = new view.Graph(this, model, groups, options);
+        const viewGraph = new view.Graph(this, model, options, groups, layout);
         viewGraph.add(graph);
 
         // Workaround for Safari background drag/zoom issue:
@@ -1236,7 +1235,7 @@ view.Menu = class {
             this.unregister(this._pop);
             this.unregister(this._push);
             this._element.style.opacity = 0;
-            this._element.style.left = '-16em';
+            this._element.style.left = '-17em';
             const button = this._element.ownerDocument.activeElement;
             if (this._buttons.indexOf(button) > 0) {
                 button.blur();
@@ -1591,10 +1590,11 @@ view.Menu.Separator = class {
 
 view.Graph = class extends grapher.Graph {
 
-    constructor(view, model, compound, options) {
-        super(compound, options);
+    constructor(view, model, options, compound, layout) {
+        super(compound, layout);
         this.view = view;
         this.model = model;
+        this.options = options;
         this._nodeKey = 0;
         this._values = new Map();
         this._table = new Map();
@@ -1604,7 +1604,6 @@ view.Graph = class extends grapher.Graph {
     createNode(node) {
         const value = new view.Node(this, node);
         value.name = (this._nodeKey++).toString();
-        this.setNode(value);
         this._table.set(node, value);
         return value;
     }
@@ -1612,7 +1611,6 @@ view.Graph = class extends grapher.Graph {
     createInput(input) {
         const value = new view.Input(this, input);
         value.name = (this._nodeKey++).toString();
-        this.setNode(value);
         this._table.set(input, value);
         return value;
     }
@@ -1620,7 +1618,6 @@ view.Graph = class extends grapher.Graph {
     createOutput(output) {
         const value = new view.Output(this, output);
         value.name = (this._nodeKey++).toString();
-        this.setNode(value);
         this._table.set(output, value);
         return value;
     }
@@ -1657,12 +1654,14 @@ view.Graph = class extends grapher.Graph {
         }
         for (const input of graph.inputs) {
             const viewInput = this.createInput(input);
+            this.setNode(viewInput);
             for (const value of input.value) {
                 this.createValue(value).from = viewInput;
             }
         }
         for (const node of graph.nodes) {
             const viewNode = this.createNode(node);
+            this.setNode(viewNode);
             const inputs = node.inputs;
             for (const input of inputs) {
                 for (const value of input.value) {
@@ -1733,6 +1732,7 @@ view.Graph = class extends grapher.Graph {
         );
         for (const output of graph.outputs) {
             const viewOutput = this.createOutput(output);
+            this.setNode(viewOutput);
             for (const value of output.value) {
                 this.createValue(value).to.push(viewOutput);
             }
@@ -1820,6 +1820,7 @@ view.Node = class extends grapher.Node {
     }
 
     _add(node) {
+        const options = this.context.options;
         const header =  this.header();
         const styles = [ 'node-item-type' ];
         const type = node.type;
@@ -1834,8 +1835,8 @@ view.Node = class extends grapher.Node {
             }
             throw error;
         }
-        const content = this.context.view.options.names && (node.name || node.location) ? (node.name || node.location) : type.name.split('.').pop();
-        const tooltip = this.context.view.options.names && (node.name || node.location) ? type.name : (node.name || node.location);
+        const content = options.names && (node.name || node.location) ? (node.name || node.location) : type.name.split('.').pop();
+        const tooltip = options.names && (node.name || node.location) ? type.name : (node.name || node.location);
         const title = header.add(null, styles, content, tooltip);
         title.on('click', () => this.context.activate(node));
         if (node.type.nodes && node.type.nodes.length > 0) {
@@ -1848,7 +1849,7 @@ view.Node = class extends grapher.Node {
         }
         const initializers = [];
         let hiddenInitializers = false;
-        if (this.context.view.options.weights) {
+        if (options.weights) {
             for (const input of node.inputs) {
                 if (input.visible !== false && input.value.length === 1 && input.value[0].initializer != null) {
                     initializers.push(input);
@@ -1859,21 +1860,23 @@ view.Node = class extends grapher.Node {
                 }
             }
         }
-        let sortedAttributes = [];
-        const attributes = node.attributes || [];
-        if (this.context.view.options.attributes) {
-            sortedAttributes = attributes.filter((attribute) => attribute.visible !== false).slice();
+        const functions = [];
+        const attributes = [];
+        if (Array.isArray(node.attributes) && node.attributes.length > 0) {
+            for (const attribute of node.attributes) {
+                if (attribute.type === 'function') {
+                    // functions.push(attribute);
+                } else if (options.attributes && attribute.visible !== false) {
+                    attributes.push(attribute);
+                }
+            }
+            attributes.sort((a, b) => a.name.toUpperCase().localeCompare(b.name.toUpperCase()));
         }
-        sortedAttributes.sort((a, b) => {
-            const au = a.name.toUpperCase();
-            const bu = b.name.toUpperCase();
-            return (au < bu) ? -1 : (au > bu) ? 1 : 0;
-        });
-        if (initializers.length > 0 || hiddenInitializers || sortedAttributes.length > 0) {
+        if (initializers.length > 0 || hiddenInitializers || attributes.length > 0 || functions.length > 0) {
             const list = this.list();
             list.on('click', () => this.context.activate(node));
-            for (const initializer of initializers) {
-                const value = initializer.value[0];
+            for (const argument of initializers) {
+                const value = argument.value[0];
                 const type = value.type;
                 let shape = '';
                 let separator = '';
@@ -1883,7 +1886,8 @@ view.Node = class extends grapher.Node {
                         try {
                             const initializer = value.initializer;
                             const tensor = new view.Tensor(initializer);
-                            if ((tensor.layout === '<' || tensor.layout === '>' || tensor.layout === '|') && !tensor.empty && tensor.type.dataType !== '?') {
+                            const encoding = tensor.encoding;
+                            if ((encoding === '<' || encoding === '>' || encoding === '|') && !tensor.empty && tensor.type.dataType !== '?') {
                                 shape = tensor.toString();
                                 if (shape && shape.length > 10) {
                                     shape = shape.substring(0, 10) + '\u2026';
@@ -1905,38 +1909,45 @@ view.Node = class extends grapher.Node {
                         }
                     }
                 }
-                list.add(value.name ? 'initializer-' + value.name : '', initializer.name, shape, type ? type.toString() : '', separator);
+                list.add(argument.name, shape, type ? type.toString() : '', separator);
             }
             if (hiddenInitializers) {
-                list.add(null, '\u3008' + '\u2026' + '\u3009', '', null, '');
+                list.add('\u3008\u2026\u3009', '', null, '');
             }
-
-            for (const attribute of sortedAttributes) {
+            for (const attribute of attributes) {
                 if (attribute.visible !== false) {
                     let value = new view.Formatter(attribute.value, attribute.type).toString();
                     if (value && value.length > 25) {
                         value = value.substring(0, 25) + '\u2026';
                     }
-                    list.add(null, attribute.name, value, attribute.type, ' = ');
+                    list.add(attribute.name, value, attribute.type, ' = ');
+                }
+            }
+            for (const attribute of functions) {
+                if (attribute.type === 'function') {
+                    // const item = list.add(null, attribute.name, ':', '', '');
+                    // item.height = 20;
                 }
             }
         }
+        if (Array.isArray(node.nodes) && node.nodes.length > 0) {
+            // this.canvas = this.canvas();
+        }
         if (Array.isArray(node.chain) && node.chain.length > 0) {
             for (const innerNode of node.chain) {
+                this.context.createNode(innerNode);
                 this._add(innerNode);
             }
         }
         if (node.inner) {
+            this.context.createNode(node.inner);
             this._add(node.inner);
-        }
-        if (node.nodes) {
-            // this.canvas = this.canvas();
         }
     }
 
     toggle() {
         this._expand.content = '-';
-        this._graph = new view.Graph(this.context.view, this.context.model, false, {});
+        this._graph = new view.Graph(this.context.view, this.context.model, this.context.options, false, {});
         this._graph.add(this.value);
         // const document = this.element.ownerDocument;
         // const parent = this.element.parentElement;
@@ -2047,7 +2058,7 @@ view.Value = class {
                     content = type.shape.dimensions.map((dim) => (dim !== null && dim !== undefined) ? dim : '?').join('\u00D7');
                     content = content.length > 16 ? '' : content;
                 }
-                if (this.context.view.options.names) {
+                if (this.context.options.names) {
                     content = this.value.name.split('\n').shift(); // custom argument id
                 }
                 const edge = new view.Edge(this, this.from, to);
@@ -2296,16 +2307,15 @@ view.NodeSidebar = class extends view.ObjectSidebar {
         if (node.device) {
             this.addProperty('device', node.device);
         }
-        const attributes = node.attributes;
-        if (attributes && attributes.length > 0) {
+        if (Array.isArray(node.attributes)) {
+            const attributes = node.attributes.filter((attribute) => attribute);
             this.addHeader('Attributes');
-            const sortedAttributes = node.attributes.slice();
-            sortedAttributes.sort((a, b) => {
+            attributes.sort((a, b) => {
                 const au = a.name.toUpperCase();
                 const bu = b.name.toUpperCase();
                 return (au < bu) ? -1 : (au > bu) ? 1 : 0;
             });
-            for (const attribute of sortedAttributes) {
+            for (const attribute of attributes) {
                 this._addAttribute(attribute.name, attribute);
             }
         }
@@ -2769,6 +2779,18 @@ view.ValueView = class extends view.Control {
                 if (location !== undefined) {
                     this._bold('location', location);
                 }
+                const layout = this._value.type ? this._value.type.layout : null;
+                if (layout) {
+                    const layouts = new Map([
+                        [ 'sparse', 'sparse' ],
+                        [ 'sparse.coo', 'sparse coo' ],
+                        [ 'sparse.csr', 'sparse csr' ],
+                        [ 'sparse.csc', 'sparse csc' ],
+                        [ 'sparse.bsr', 'sparse bsr' ],
+                        [ 'sparse.bsc', 'sparse bsc' ]
+                    ]);
+                    this._bold('layout', layouts.get(layout));
+                }
                 if (initializer) {
                     this._tensor(initializer);
                 }
@@ -2802,24 +2824,12 @@ view.ValueView = class extends view.Control {
         const contentLine = this.createElement('pre');
         try {
             const tensor = new view.Tensor(value);
-            const layout = tensor.layout;
-            if (layout) {
-                const layouts = new Map([
-                    [ 'sparse', 'Sparse' ],
-                    [ 'sparse.coo', 'Sparse COO' ],
-                    [ 'sparse.csr', 'Sparse CSR' ],
-                    [ 'sparse.csc', 'Sparse CSC' ],
-                    [ 'sparse.bsr', 'Sparse BSR' ],
-                    [ 'sparse.bsc', 'Sparse BSC' ]
-                ]);
-                if (layouts.has(layout)) {
-                    this._bold('layout', layouts.get(layout));
-                }
-            }
             if (Array.isArray(tensor.stride) && tensor.stride.length > 0) {
                 this._code('stride', tensor.stride.join(','));
             }
-            if (tensor.layout !== '<' && tensor.layout !== '>' && tensor.layout !== '|' && tensor.layout !== 'sparse' && tensor.layout !== 'sparse.coo') {
+            if (tensor.encoding !== '<' && tensor.encoding !== '>' && tensor.encoding !== '|') {
+                contentLine.innerHTML = "Tensor encoding '" + tensor.layout + "' is not implemented.";
+            } else if (tensor.layout && (tensor.layout !== 'sparse' && tensor.layout !== 'sparse.coo')) {
                 contentLine.innerHTML = "Tensor layout '" + tensor.layout + "' is not implemented.";
             } else if (tensor.empty) {
                 contentLine.innerHTML = 'Tensor data is empty.';
@@ -3391,40 +3401,40 @@ view.Tensor = class {
         this._type = tensor.type;
         this._stride = tensor.stride;
         this._name = tensor.name;
-        switch (tensor.layout) {
+        this._encoding = tensor.encoding;
+        this._layout = tensor.type.layout;
+        switch (this._encoding) {
             case undefined:
             case '':
             case '<': {
                 this._data = this._tensor.values;
-                this._layout = '<';
+                this._encoding = '<';
                 this._littleEndian = true;
                 break;
             }
             case '>': {
                 this._data = this._tensor.values;
-                this._layout = '>';
+                this._encoding = '>';
                 this._littleEndian = false;
                 break;
             }
             case '|': {
                 this._values = this._tensor.values;
-                this._layout = '|';
-                break;
-            }
-            case 'sparse': {
-                this._indices = this._tensor.indices;
-                this._values = this._tensor.values;
-                this._layout = 'sparse';
-                break;
-            }
-            case 'sparse.coo': {
-                this._indices = this._tensor.indices;
-                this._values = this._tensor.values;
-                this._layout = 'sparse.coo';
+                this._encoding = '|';
                 break;
             }
             default: {
-                this._layout = tensor.layout;
+                throw new view.Error("Unsupported tensor encoding '" + this._encoding + "'.");
+            }
+        }
+        switch (this._layout) {
+            case 'sparse':
+            case 'sparse.coo': {
+                this._indices = this._tensor.indices;
+                this._values = this._tensor.values;
+                break;
+            }
+            default: {
                 break;
             }
         }
@@ -3449,6 +3459,10 @@ view.Tensor = class {
         return this._type;
     }
 
+    get encoding() {
+        return this._encoding;
+    }
+
     get layout() {
         return this._layout;
     }
@@ -3459,29 +3473,28 @@ view.Tensor = class {
 
     get empty() {
         switch (this._layout) {
-            case '<':
-            case '>': {
-                return (
-                  !(
-                    Array.isArray(this._data) ||
-                    this._data instanceof Uint8Array ||
-                    this._data instanceof Int8Array ||
-                    this._data instanceof Uint16Array ||
-                    this._data instanceof Int16Array ||
-                    this._data instanceof Uint32Array ||
-                    this._data instanceof Int32Array
-                  ) || this._data.length === 0
-                );
-            }
-            case '|': {
-                return !(Array.isArray(this._values) || ArrayBuffer.isView(this._values)) || this._values.length === 0;
-            }
             case 'sparse':
             case 'sparse.coo': {
                 return !this._values || this.indices || this._values.values.length === 0;
             }
             default: {
-                throw new Error("Unsupported tensor format '" + this._format + "'.");
+                switch (this._encoding) {
+                    case '<':
+                    case '>':
+                        return !(
+                            Array.isArray(this._data) ||
+                            this._data instanceof Uint8Array ||
+                            this._data instanceof Int8Array ||
+                            this._data instanceof Uint16Array ||
+                            this._data instanceof Int16Array ||
+                            this._data instanceof Uint32Array ||
+                            this._data instanceof Int32Array
+                          ) || this._data.length === 0;
+                    case '|':
+                        return !(Array.isArray(this._values) || ArrayBuffer.isView(this._values)) || this._values.length === 0;
+                    default:
+                        throw new Error("Unsupported tensor encoding '" + this._encoding + "'.");
+                }
             }
         }
     }
@@ -3489,7 +3502,7 @@ view.Tensor = class {
     get value() {
         const context = this._context();
         context.limit = Number.MAX_SAFE_INTEGER;
-        switch (context.layout) {
+        switch (context.encoding) {
             case '<':
             case '>': {
                 return this._decodeData(context, 0);
@@ -3498,7 +3511,7 @@ view.Tensor = class {
                 return this._decodeValues(context, 0);
             }
             default: {
-                throw new Error("Unsupported tensor format '" + this._format + "'.");
+                throw new Error("Unsupported tensor encoding '" + context.encoding + "'.");
             }
         }
     }
@@ -3506,7 +3519,7 @@ view.Tensor = class {
     toString() {
         const context = this._context();
         context.limit = 10000;
-        switch (context.layout) {
+        switch (context.encoding) {
             case '<':
             case '>': {
                 const value = this._decodeData(context, 0);
@@ -3517,61 +3530,30 @@ view.Tensor = class {
                 return view.Tensor._stringify(value, '', '  ');
             }
             default: {
-                throw new Error("Unsupported tensor format '" + this._format + "'.");
+                throw new Error("Unsupported tensor encoding '" + context.encoding + "'.");
             }
         }
     }
 
     _context() {
-        if (this._layout !== '<' && this._layout !== '>' && this._layout !== '|' && this._layout !== 'sparse' && this._layout !== 'sparse.coo') {
+        if (this._encoding !== '<' && this._encoding !== '>' && this._encoding !== '|') {
+            throw new Error("Tensor encoding '" + this._encoding + "' is not supported.");
+        }
+        if (this._layout && (this._layout !== 'sparse' && this._layout !== 'sparse.coo')) {
             throw new Error("Tensor layout '" + this._layout + "' is not supported.");
         }
         const dataType = this._type.dataType;
         const context = {};
-        context.layout = this._layout;
+        context.encoding = this._encoding;
         context.dimensions = this._type.shape.dimensions.map((value) => !Number.isInteger(value) && value.toNumber ? value.toNumber() : value);
         context.dataType = dataType;
         const size = context.dimensions.reduce((a, b) => a * b, 1);
         switch (this._layout) {
-            case '<':
-            case '>': {
-                context.data = (this._data instanceof Uint8Array || this._data instanceof Int8Array ||
-                                this._data instanceof Uint16Array || this._data instanceof Int16Array ||
-                                this._data instanceof Uint32Array || this._data instanceof Int32Array) ? this._data : this._data.peek();
-                context.view = new DataView(context.data.buffer, context.data.byteOffset, context.data.byteLength);
-                if (view.Tensor.dataTypes.has(dataType)) {
-                    context.itemsize = view.Tensor.dataTypes.get(dataType);
-                    if (context.data.length * context.itemsize < (context.itemsize * size)) {
-                        throw new Error('Invalid tensor data size.');
-                    }
-                } else if (dataType.startsWith('uint') && !isNaN(parseInt(dataType.substring(4), 10))) {
-                    context.dataType = 'uint';
-                    context.bits = parseInt(dataType.substring(4), 10);
-                    context.itemsize = 1;
-                } else if (dataType.startsWith('int') && !isNaN(parseInt(dataType.substring(3), 10))) {
-                    context.dataType = 'int';
-                    context.bits = parseInt(dataType.substring(3), 10);
-                    context.itemsize = 1;
-                } else {
-                    throw new Error("Tensor data type '" + dataType + "' is not implemented.");
-                }
-                break;
-            }
-            case '|': {
-                context.data = this._values;
-                if (!view.Tensor.dataTypes.has(dataType) && dataType !== 'string' && dataType !== 'object') {
-                    throw new Error("Tensor data type '" + dataType + "' is not implemented.");
-                }
-                if (size !== this._values.length) {
-                    throw new Error('Invalid tensor data length.');
-                }
-                break;
-            }
             case 'sparse': {
                 const indices = new view.Tensor(this._indices).value;
                 const values = new view.Tensor(this._values).value;
                 context.data = this._decodeSparse(dataType, context.dimensions, indices, values);
-                context.layout = '|';
+                context.encoding = '|';
                 break;
             }
             case 'sparse.coo': {
@@ -3593,11 +3575,49 @@ view.Tensor = class {
                     }
                 }
                 context.data = this._decodeSparse(dataType, context.dimensions, indices, values);
-                context.layout = '|';
+                context.encoding = '|';
                 break;
             }
             default: {
-                throw new view.Tensor("Unsupported tensor layout '" + this._layout + "'.");
+                switch (this._encoding) {
+                    case '<':
+                    case '>': {
+                        context.data = (this._data instanceof Uint8Array || this._data instanceof Int8Array ||
+                            this._data instanceof Uint16Array || this._data instanceof Int16Array ||
+                            this._data instanceof Uint32Array || this._data instanceof Int32Array) ? this._data : this._data.peek();
+                        context.view = new DataView(context.data.buffer, context.data.byteOffset, context.data.byteLength);
+                        if (view.Tensor.dataTypes.has(dataType)) {
+                            context.itemsize = view.Tensor.dataTypes.get(dataType);
+                            if (context.data.length < (context.itemsize * size)) {
+                                throw new Error('Invalid tensor data size.');
+                            }
+                        } else if (dataType.startsWith('uint') && !isNaN(parseInt(dataType.substring(4), 10))) {
+                            context.dataType = 'uint';
+                            context.bits = parseInt(dataType.substring(4), 10);
+                            context.itemsize = 1;
+                        } else if (dataType.startsWith('int') && !isNaN(parseInt(dataType.substring(3), 10))) {
+                            context.dataType = 'int';
+                            context.bits = parseInt(dataType.substring(3), 10);
+                            context.itemsize = 1;
+                        } else {
+                            throw new Error("Tensor data type '" + dataType + "' is not implemented.");
+                        }
+                        break;
+                    }
+                    case '|': {
+                        context.data = this._values;
+                        if (!view.Tensor.dataTypes.has(dataType) && dataType !== 'string' && dataType !== 'object') {
+                            throw new Error("Tensor data type '" + dataType + "' is not implemented.");
+                        }
+                        if (size !== this._values.length) {
+                            throw new Error('Invalid tensor data length.');
+                        }
+                        break;
+                    }
+                    default: {
+                        throw new view.Tensor("Unsupported tensor encoding '" + this._encoding + "'.");
+                    }
+                }
             }
         }
         context.index = 0;
@@ -5000,21 +5020,25 @@ view.ModelContext = class {
             const stream = this.stream;
             if (stream) {
                 const position = stream.position;
-                const signatures = [
-                    [ 0x80, undefined, 0x8a, 0x0a, 0x6c, 0xfc, 0x9c, 0x46, 0xf9, 0x20, 0x6a, 0xa8, 0x50, 0x19 ] // PyTorch
-                ];
+                const match = (buffer, signature) => {
+                    return signature.length <= buffer.length && buffer.every((value, index) => signature[index] === undefined || signature[index] === value);
+                };
+                const buffer = stream.peek(Math.min(stream.length, 16));
                 const skip =
-                    signatures.some((signature) => signature.length <= stream.length && stream.peek(signature.length).every((value, index) => signature[index] === undefined || signature[index] === value)) ||
+                    match(buffer, [ 0x80, undefined, 0x8a, 0x0a, 0x6c, 0xfc, 0x9c, 0x46, 0xf9, 0x20, 0x6a, 0xa8, 0x50, 0x19 ]) || // PyTorch
+                    match(buffer, [ 0x50, 0x4B, 0x03, 0x04 ]) || // Zip
+                    type !== 'hdf5' && match(buffer, [ 0x89, 0x48, 0x44, 0x46, 0x0D, 0x0A, 0x1A, 0x0A ]) || // \x89HDF\r\n\x1A\n
                     Array.from(this._tags).some((entry) => entry[0] !== 'flatbuffers' && entry[1].size > 0) ||
                     Array.from(this._content.values()).some((obj) => obj !== undefined);
                 if (!skip) {
                     switch (type) {
                         case 'json': {
                             try {
-                                const buffer = this.stream.peek(Math.min(this.stream.length, 0x1000));
-                                if ((buffer.length < 8 || String.fromCharCode.apply(null, buffer.slice(0, 8)) !== '\x89HDF\r\n\x1A\n') &&
+                                const buffer = stream.peek(Math.min(this.stream.length, 0x1000));
+                                if (stream.length < 0x7ffff000 &&
+                                    (buffer.length < 8 || String.fromCharCode.apply(null, buffer.slice(0, 8)) !== '\x89HDF\r\n\x1A\n') &&
                                     (buffer.some((v) => v === 0x22 || v === 0x5b || v === 0x5d || v === 0x7b || v === 0x7d))) {
-                                    const reader = json.TextReader.open(this.stream);
+                                    const reader = json.TextReader.open(stream);
                                     if (reader) {
                                         const obj = reader.read();
                                         this._content.set(type, obj);
@@ -5027,7 +5051,7 @@ view.ModelContext = class {
                         }
                         case 'json.gz': {
                             try {
-                                const archive = zip.Archive.open(this.stream, 'gzip');
+                                const archive = zip.Archive.open(stream, 'gzip');
                                 if (archive && archive.entries.size === 1) {
                                     const stream = archive.entries.values().next().value;
                                     const reader = json.TextReader.open(stream);
@@ -5115,8 +5139,8 @@ view.ModelContext = class {
                     signatures.some((signature) => signature.length <= stream.length && stream.peek(signature.length).every((value, index) => signature[index] === undefined || signature[index] === value)) ||
                     (Array.from(this._tags).some((pair) => pair[0] !== 'flatbuffers' && pair[1].size > 0) && type !== 'pb+') ||
                     Array.from(this._content.values()).some((obj) => obj !== undefined) ||
-                    json.TextReader.open(stream);
-                if (!skip) {
+                    (stream.length < 0x7ffff000 && json.TextReader.open(stream));
+                if (!skip && stream.length < 0x7ffff000) {
                     try {
                         switch (type) {
                             case 'pbtxt': {
@@ -5245,7 +5269,7 @@ view.ModelFactoryService = class {
         this._extensions = new Set([ '.zip', '.tar', '.tar.gz', '.tgz', '.gz' ]);
         this._factories = [];
         this.register('./server', [ '.netron']);
-        this.register('./pytorch', [ '.pt', '.pth', '.ptl', '.pt1', '.pyt', '.pyth', '.pkl', '.pickle', '.h5', '.t7', '.model', '.dms', '.tar', '.ckpt', '.chkpt', '.tckpt', '.bin', '.pb', '.zip', '.nn', '.torchmodel', '.torchscript', '.pytorch', '.ot', '.params', '.trt', '.ff', '.ptmf' ], [ '.model' ]);
+        this.register('./pytorch', [ '.pt', '.pth', '.ptl', '.pt1', '.pyt', '.pyth', '.pkl', '.pickle', '.h5', '.t7', '.model', '.dms', '.tar', '.ckpt', '.chkpt', '.tckpt', '.bin', '.pb', '.zip', '.nn', '.torchmodel', '.torchscript', '.pytorch', '.ot', '.params', '.trt', '.ff', '.ptmf', '.jit' ], [ '.model' ]);
         this.register('./onnx', [ '.onnx', '.onn', '.pb', '.onnxtxt', '.pbtxt', '.prototxt', '.txt', '.model', '.pt', '.pth', '.pkl', '.ort', '.ort.onnx', 'onnxmodel', 'ngf', 'json' ]);
         this.register('./mxnet', [ '.json', '.params' ], [ '.mar']);
         this.register('./coreml', [ '.mlmodel', '.bin', 'manifest.json', 'metadata.json', 'featuredescriptions.json', '.pb' ], [ '.mlpackage' ]);
@@ -5262,7 +5286,7 @@ view.ModelFactoryService = class {
         this.register('./lasagne', [ '.pkl', '.pickle', '.joblib', '.model', '.pkl.z', '.joblib.z' ]);
         this.register('./lightgbm', [ '.txt', '.pkl', '.model' ]);
         this.register('./keras', [ '.h5', '.hd5', '.hdf5', '.keras', '.json', '.cfg', '.model', '.pb', '.pth', '.weights', '.pkl', '.lite', '.tflite', '.ckpt' ], [ '.zip' ]);
-        this.register('./sklearn', [ '.pkl', '.pickle', '.joblib', '.model', '.meta', '.pb', '.pt', '.h5', '.pkl.z', '.joblib.z' ]);
+        this.register('./sklearn', [ '.pkl', '.pickle', '.joblib', '.model', '.meta', '.pb', '.pt', '.h5', '.pkl.z', '.joblib.z', '.pickle.dat' ]);
         this.register('./megengine', [ '.tm', '.mge' ]);
         this.register('./pickle', [ '.pkl', '.pickle', '.joblib', '.model', '.meta', '.pb', '.pt', '.h5', '.pkl.z', '.joblib.z', '.pdstates', '.mge' ]);
         this.register('./cntk', [ '.model', '.cntk', '.cmf', '.dnn' ]);
@@ -5298,6 +5322,7 @@ view.ModelFactoryService = class {
         this.register('./mlir', [ '.mlir']);
         this.register('./sentencepiece', [ '.model' ]);
         this.register('./hailo', [ '.hn', '.har' ]);
+        this.register('./nnc', [ '.nnc' ]);
         this.register('./safetensors', [ '.safetensors' ]);
     }
 
@@ -5490,8 +5515,7 @@ view.ModelFactoryService = class {
                 const file_identifier = tags.get('file_identifier');
                 const formats = [
                     { name: 'onnxruntime.experimental.fbs.InferenceSession data', identifier: 'ORTM' },
-                    { name: 'tflite.Model data', identifier: 'TFL3' },
-                    { name: 'FlatBuffers ENNC data', identifier: 'ENNC' },
+                    { name: 'tflite.Model data', identifier: 'TFL3' }
                 ];
                 for (const format of formats) {
                     if (file_identifier === format.identifier) {
@@ -5759,6 +5783,7 @@ view.ModelFactoryService = class {
                 { name: 'PNG image', value: /^\x89PNG/ },
                 { name: 'Git LFS header', value: /^version https:\/\/git-lfs.github.com/ },
                 { name: 'Git LFS header', value: /^\s*oid sha256:/ },
+                { name: 'GGML data', value: /^lmgg|fmgg|tjgg|algg|fugg/ },
                 { name: 'HTML markup', value: /^\s*<html>/ },
                 { name: 'HTML markup', value: /^\s*<!doctype\s*html>/ },
                 { name: 'HTML markup', value: /^\s*<!DOCTYPE\s*html>/ },

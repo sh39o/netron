@@ -1843,6 +1843,8 @@ $root.tensorflow.DataType = {
     "DT_UINT64": 23,
     "DT_FLOAT8_E5M2": 24,
     "DT_FLOAT8_E4M3FN": 25,
+    "DT_INT4": 29,
+    "DT_UINT4": 30,
     "DT_FLOAT_REF": 101,
     "DT_DOUBLE_REF": 102,
     "DT_INT32_REF": 103,
@@ -1867,7 +1869,9 @@ $root.tensorflow.DataType = {
     "DT_UINT32_REF": 122,
     "DT_UINT64_REF": 123,
     "DT_FLOAT8_E5M2_REF": 124,
-    "DT_FLOAT8_E4M3FN_REF": 125
+    "DT_FLOAT8_E4M3FN_REF": 125,
+    "DT_INT4_REF": 129,
+    "DT_UINT4_REF": 130
 };
 
 $root.tensorflow.SerializedDType = class SerializedDType {
@@ -6372,6 +6376,9 @@ $root.tensorflow.GPUOptions.Experimental = class Experimental {
                 case 1:
                     message.virtual_devices.push($root.tensorflow.GPUOptions.Experimental.VirtualDevices.decode(reader, reader.uint32()));
                     break;
+                case 15:
+                    message.num_virtual_devices_per_gpu = reader.int32();
+                    break;
                 case 2:
                     message.use_unified_memory = reader.bool();
                     break;
@@ -6408,6 +6415,9 @@ $root.tensorflow.GPUOptions.Experimental = class Experimental {
                 case 14:
                     message.gpu_host_mem_disallow_growth = reader.bool();
                     break;
+                case 16:
+                    message.gpu_system_memory_size_in_mb = reader.int32();
+                    break;
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -6424,6 +6434,9 @@ $root.tensorflow.GPUOptions.Experimental = class Experimental {
             switch (tag) {
                 case "virtual_devices":
                     message.virtual_devices.push($root.tensorflow.GPUOptions.Experimental.VirtualDevices.decodeText(reader));
+                    break;
+                case "num_virtual_devices_per_gpu":
+                    message.num_virtual_devices_per_gpu = reader.int32();
                     break;
                 case "use_unified_memory":
                     message.use_unified_memory = reader.bool();
@@ -6461,6 +6474,9 @@ $root.tensorflow.GPUOptions.Experimental = class Experimental {
                 case "gpu_host_mem_disallow_growth":
                     message.gpu_host_mem_disallow_growth = reader.bool();
                     break;
+                case "gpu_system_memory_size_in_mb":
+                    message.gpu_system_memory_size_in_mb = reader.int32();
+                    break;
                 default:
                     reader.field(tag, message);
                     break;
@@ -6470,6 +6486,7 @@ $root.tensorflow.GPUOptions.Experimental = class Experimental {
     }
 };
 
+$root.tensorflow.GPUOptions.Experimental.prototype.num_virtual_devices_per_gpu = 0;
 $root.tensorflow.GPUOptions.Experimental.prototype.use_unified_memory = false;
 $root.tensorflow.GPUOptions.Experimental.prototype.num_dev_to_dev_copy_streams = 0;
 $root.tensorflow.GPUOptions.Experimental.prototype.collective_ring_order = "";
@@ -6482,6 +6499,7 @@ $root.tensorflow.GPUOptions.Experimental.prototype.use_cuda_malloc_async = false
 $root.tensorflow.GPUOptions.Experimental.prototype.disallow_retry_on_allocation_failure = false;
 $root.tensorflow.GPUOptions.Experimental.prototype.gpu_host_mem_limit_in_mb = 0;
 $root.tensorflow.GPUOptions.Experimental.prototype.gpu_host_mem_disallow_growth = false;
+$root.tensorflow.GPUOptions.Experimental.prototype.gpu_system_memory_size_in_mb = 0;
 
 $root.tensorflow.GPUOptions.Experimental.VirtualDevices = class VirtualDevices {
 
@@ -7058,6 +7076,9 @@ $root.tensorflow.ConfigProto.Experimental = class Experimental {
                 case 24:
                     message.disable_optimize_for_static_graph = reader.bool();
                     break;
+                case 26:
+                    message.disable_eager_executor_streaming_enqueue = reader.bool();
+                    break;
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -7135,6 +7156,9 @@ $root.tensorflow.ConfigProto.Experimental = class Experimental {
                 case "disable_optimize_for_static_graph":
                     message.disable_optimize_for_static_graph = reader.bool();
                     break;
+                case "disable_eager_executor_streaming_enqueue":
+                    message.disable_eager_executor_streaming_enqueue = reader.bool();
+                    break;
                 default:
                     reader.field(tag, message);
                     break;
@@ -7165,6 +7189,7 @@ $root.tensorflow.ConfigProto.Experimental.prototype.disable_functional_ops_lower
 $root.tensorflow.ConfigProto.Experimental.prototype.xla_prefer_single_graph_cluster = false;
 $root.tensorflow.ConfigProto.Experimental.prototype.coordination_config = null;
 $root.tensorflow.ConfigProto.Experimental.prototype.disable_optimize_for_static_graph = false;
+$root.tensorflow.ConfigProto.Experimental.prototype.disable_eager_executor_streaming_enqueue = false;
 
 $root.tensorflow.ConfigProto.Experimental.MlirBridgeRollout = {
     "MLIR_BRIDGE_ROLLOUT_UNSPECIFIED": 0,
@@ -9636,6 +9661,9 @@ $root.tensorflow.CoordinationServiceConfig = class CoordinationServiceConfig {
                 case 11:
                     message.allow_new_incarnation_to_reconnect = reader.bool();
                     break;
+                case 12:
+                    message.force_disable = reader.bool();
+                    break;
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -9680,6 +9708,9 @@ $root.tensorflow.CoordinationServiceConfig = class CoordinationServiceConfig {
                 case "allow_new_incarnation_to_reconnect":
                     message.allow_new_incarnation_to_reconnect = reader.bool();
                     break;
+                case "force_disable":
+                    message.force_disable = reader.bool();
+                    break;
                 default:
                     reader.field(tag, message);
                     break;
@@ -9697,6 +9728,7 @@ $root.tensorflow.CoordinationServiceConfig.prototype.heartbeat_timeout_in_ms = p
 $root.tensorflow.CoordinationServiceConfig.prototype.shutdown_barrier_timeout_in_ms = protobuf.Int64.create(0);
 $root.tensorflow.CoordinationServiceConfig.prototype.agent_destruction_without_shutdown = false;
 $root.tensorflow.CoordinationServiceConfig.prototype.allow_new_incarnation_to_reconnect = false;
+$root.tensorflow.CoordinationServiceConfig.prototype.force_disable = false;
 
 $root.tensorflow.MemmappedFileSystemDirectoryElement = class MemmappedFileSystemDirectoryElement {
 

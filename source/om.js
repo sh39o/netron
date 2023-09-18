@@ -300,8 +300,9 @@ om.TensorShape = class {
 
     equals(obj) {
         if (obj && Array.isArray(obj.dimensions) && Array.isArray(this.dimensions)) {
-            if (this.dimensions.length === obj.dimensions.length) {
-                return obj.dimensions.every((value, index) => this.dimensions[index] === value);
+            if (this.dimensions.length === obj.dimensions.length &&
+                obj.dimensions.every((value, index) => this.dimensions[index] === value)) {
+                return true;
             }
             if (obj.dimensions.every((dim) => Number.isInteger(dim)) && this.dimensions.every((dim) => Number.isInteger(dim))) {
                 const a = obj.dimensions.reduce((a, b) => a * b, 1);
@@ -407,7 +408,7 @@ om.Container = class {
                             break;
                         }
                         default: {
-                            throw new om.Error("Unsupported partition type '" + partition.type + "'.");
+                            throw new om.Error('Unsupported DaVinci OM partition type.');
                         }
                     }
                 }

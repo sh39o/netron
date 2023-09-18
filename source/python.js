@@ -2184,9 +2184,12 @@ python.Execution = class {
         });
         this.registerFunction('megengine.functional.nn.conv2d', function() {});
         this.registerFunction('megengine.functional.nn.relu', function() {});
+        this.registerFunction('megengine.functional.nn.sigmoid', function() {});
         this.registerFunction('megengine.module.qat.module.QATModule._apply_fakequant_with_observer', function() {});
         this.registerFunction('megengine.functional.tensor.concat', function() {});
         this.registerFunction('megengine.functional.tensor.flatten', function() {});
+        this.registerFunction('megengine.functional.tensor.split', function() {});
+        this.registerFunction('megengine.functional.tensor.reshape', function() {});
         this.registerType('megengine.core._imperative_rt.common.CompNode', class {});
         this.registerType('megengine.core._imperative_rt.ops.FakeQuant', class {});
         this.registerType('megengine.core._imperative_rt.ops.GetVarShape', class {});
@@ -3735,6 +3738,9 @@ python.Execution = class {
                                 break;
                             case 'c16':
                                 context.view.setComplex128(context.position, data[i], littleendian);
+                                break;
+                            case 'b1':
+                                context.view.setInt8(context.position, data[i] ? 1 : 0);
                                 break;
                             default:
                                 throw new python.Error("Unsupported tensor data type '" + context.dtype + "'.");

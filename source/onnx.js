@@ -616,14 +616,13 @@ onnx.Tensor = class {
         this._category = category || null;
         if (tensor.indices && tensor.values) {
             this._name = tensor.values.name || '';
-            this._type = context.createTensorType(tensor.values.data_type, tensor.dims.map((dim) => dim), null);
+            this._type = context.createTensorType(tensor.values.data_type, tensor.dims.map((dim) => dim), 'sparse');
             this._location = context.createLocation(tensor.values.data_location);
-            this._layout = 'sparse';
             this._values = new onnx.Tensor(context, tensor.values);
             this._indices = new onnx.Tensor(context, tensor.indices);
         } else {
             this._name = tensor.name || '';
-            this._type = context.createTensorType(tensor.data_type, tensor.dims.map((dim) => dim), null);
+            this._type = context.createTensorType(tensor.data_type, tensor.dims.map((dim) => dim));
             this._location = context.createLocation(tensor.data_location);
             switch (tensor.data_location) {
                 case onnx.DataLocation.DEFAULT: {
@@ -633,11 +632,11 @@ onnx.Tensor = class {
                         }
                         case onnx.DataType.FLOAT:
                             this._data = new Float32Array(tensor.float_data);
-                            this._layout = '|';
+                            this._encoding = '|';
                             break;
                         case onnx.DataType.DOUBLE:
                             this._data = new Float64Array(tensor.double_data);
-                            this._layout = '|';
+                            this._encoding = '|';
                             break;
                         case onnx.DataType.BOOL:
                             if (tensor.int32_data && tensor.int32_data.length > 0) {
@@ -646,41 +645,41 @@ onnx.Tensor = class {
                                 for (let i = 0; i < this._data.length; i++) {
                                     this._data[i] = array[i] === 0 ? false : true;
                                 }
-                                this._layout = '|';
+                                this._encoding = '|';
                             }
                             break;
                         case onnx.DataType.INT8:
                             this._data = new Int8Array(tensor.int32_data);
-                            this._layout = '|';
+                            this._encoding = '|';
                             break;
                         case onnx.DataType.UINT8:
                             this._data = new Uint8Array(tensor.int32_data);
-                            this._layout = '|';
+                            this._encoding = '|';
                             break;
                         case onnx.DataType.INT16:
                             this._data = new Int32Array(tensor.int32_data);
-                            this._layout = '|';
+                            this._encoding = '|';
                             break;
                         case onnx.DataType.UINT16:
                             this._data = new Int32Array(tensor.int32_data);
-                            this._layout = '|';
+                            this._encoding = '|';
                             break;
                         case onnx.DataType.INT32:
                             this._data = new Int32Array(tensor.int32_data);
-                            this._layout = '|';
+                            this._encoding = '|';
                             break;
                         case onnx.DataType.UINT32:
                         case onnx.DataType.UINT64:
                             this._data = tensor.uint64_data;
-                            this._layout = '|';
+                            this._encoding = '|';
                             break;
                         case onnx.DataType.INT64:
                             this._data = tensor.int64_data;
-                            this._layout = '|';
+                            this._encoding = '|';
                             break;
                         case onnx.DataType.STRING:
                             this._data = tensor.string_data;
-                            this._layout = '|';
+                            this._encoding = '|';
                             break;
                         case onnx.DataType.COMPLEX64:
                         case onnx.DataType.COMPLEX128:
@@ -695,7 +694,7 @@ onnx.Tensor = class {
                                     view.setUint16(i << 1, array[i], true);
                                 }
                                 this._data = buffer;
-                                this._layout = '<';
+                                this._encoding = '<';
                             }
                             break;
                         case onnx.DataType.FLOAT8E4M3FN:
@@ -704,7 +703,7 @@ onnx.Tensor = class {
                         case onnx.DataType.FLOAT8E5M2FNUZ:
                             if (tensor.int32_data && tensor.int32_data.length > 0) {
                                 this._data = new Uint8Array(Array.from(tensor.int32_data));
-                                this._layout = '<';
+                                this._encoding = '<';
                             }
                             break;
                         default:
@@ -715,7 +714,7 @@ onnx.Tensor = class {
                     }
                     if (!this._data && tensor.raw_data && tensor.raw_data.length > 0) {
                         this._data = tensor.raw_data;
-                        this._layout = '<';
+                        this._encoding = '<';
                     }
                     break;
                 }
@@ -730,7 +729,7 @@ onnx.Tensor = class {
                             const length = parseInt(external_data.length, 10);
                             if (Number.isInteger(offset) && Number.isInteger(length)) {
                                 this._data = context.location(external_data.location, offset, length);
-                                this._layout = '<';
+                                this._encoding = '<';
                             }
                         }
                     }
@@ -751,8 +750,8 @@ onnx.Tensor = class {
         return this._category;
     }
 
-    get layout() {
-        return this._layout;
+    get encoding() {
+        return this._encoding;
     }
 
     get type() {
@@ -764,7 +763,7 @@ onnx.Tensor = class {
     }
 
     get values() {
-        switch (this._layout) {
+        switch (this.type.layout) {
             case 'sparse': {
                 return this._values;
             }
@@ -783,9 +782,10 @@ onnx.Tensor = class {
 
 onnx.TensorType = class {
 
-    constructor(dataType, shape, denotation) {
+    constructor(dataType, shape, layout, denotation) {
         this._dataType = dataType;
         this._shape = shape;
+        this._layout = layout || null;
         this._denotation = denotation || null;
     }
 
@@ -795,6 +795,10 @@ onnx.TensorType = class {
 
     get shape() {
         return this._shape;
+    }
+
+    get layout() {
+        return this._layout;
     }
 
     get denotation() {
@@ -1312,11 +1316,11 @@ onnx.GraphContext = class {
         if (type.tensor_type) {
             const tensor_type = type.tensor_type;
             const shape = tensor_type.shape && tensor_type.shape.dim ? tensor_type.shape.dim.map((dim) => dim.dim_param ? dim.dim_param : dim.dim_value ? dim.dim_value : null) : [];
-            return this.createTensorType(tensor_type.elem_type, shape, denotation);
+            return this.createTensorType(tensor_type.elem_type, shape, null, denotation);
         } else if (type.sparse_tensor_type) {
-            const tensor_type = type.sparse_tensor_type;
-            const shape = tensor_type.shape && tensor_type.shape.dim ? tensor_type.shape.dim.map((dim) => dim.dim_param ? dim.dim_param : dim.dim_value ? dim.dim_value : null) : [];
-            return this.createTensorType(tensor_type.elem_type, shape, denotation);
+            type = type.sparse_tensor_type;
+            const shape = type.shape && type.shape.dim ? type.shape.dim.map((dim) => dim.dim_param ? dim.dim_param : dim.dim_value ? dim.dim_value : null) : [];
+            return this.createTensorType(type.elem_type, shape, 'sparse', denotation);
         } else if (type.map_type) {
             return this.createMapType(type.map_type.key_type, this.createType(type.map_type.value_type), denotation);
         } else if (type.sequence_type) {
@@ -1331,9 +1335,9 @@ onnx.GraphContext = class {
         throw new onnx.Error("Unsupported tensor type '" + JSON.stringify(type) + "'.");
     }
 
-    createTensorType(dataType, shape, denotation) {
+    createTensorType(dataType, shape, layout, denotation) {
         dataType = this.createDataType(dataType);
-        return new onnx.TensorType(dataType, new onnx.TensorShape(shape), denotation);
+        return new onnx.TensorType(dataType, new onnx.TensorShape(shape), layout, denotation);
     }
 
     createMapType(keyType, valueType, denotation) {

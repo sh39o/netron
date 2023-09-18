@@ -73,7 +73,7 @@ host.ElectronHost = class {
             return Promise.resolve();
         };
         const consent = async () => {
-            const time = this.get('configuration', 'consent');
+            const time = this.get('consent');
             if (!time || (Date.now() - time) > 30 * 24 * 60 * 60 * 1000) {
                 let consent = true;
                 try {
@@ -89,14 +89,14 @@ host.ElectronHost = class {
                 if (consent) {
                     await this._message('This app uses cookies to report errors and anonymous usage information.', 'Accept');
                 }
-                this.set('configuration', 'consent', Date.now());
+                this.set('consent', Date.now());
             }
         };
         const telemetry = async () => {
             if (this._environment.packaged) {
                 const measurement_id = '848W2NVWVH';
-                const user = this.get('configuration', 'user') || null;
-                const session = this.get('configuration', 'session') || null;
+                const user = this.get('user') || null;
+                const session = this.get('session') || null;
                 await this._telemetry.start('G-' + measurement_id, user && user.indexOf('.') !== -1 ? user : null, session);
                 this._telemetry.send('page_view', {
                     app_name: this.type,
@@ -107,9 +107,8 @@ host.ElectronHost = class {
                     app_name: this.type,
                     app_version: this.version
                 });
-                this.set('configuration', 'user', this._telemetry.get('client_id'));
-                this.set('configuration', 'session', this._telemetry.session);
-                this._telemetry_ua = new host.Telemetry('UA-54146-13', this._telemetry.get('client_id'), navigator.userAgent, this.type, this.version);
+                this.set('user', this._telemetry.get('client_id'));
+                this.set('session', this._telemetry.session);
             }
         };
         await age();
@@ -332,11 +331,10 @@ host.ElectronHost = class {
     }
 
     exception(error, fatal) {
-        if ((this._telemetry_ua || this._telemetry) && error) {
+        if (this._telemetry && error) {
             try {
                 const name = error.name ? error.name + ': ' : '';
                 const message = error.message ? error.message : JSON.stringify(error);
-                const description = name + message;
                 let context = '';
                 let stack = '';
                 if (error.stack) {
@@ -361,9 +359,6 @@ host.ElectronHost = class {
                 if (error.context) {
                     context = typeof error.context === 'string' ? error.context : JSON.stringify(error.context);
                 }
-                if (this._telemetry_ua) {
-                    this._telemetry_ua.exception(stack ? description + ' @ ' + stack : description, fatal);
-                }
                 this._telemetry.send('exception', {
                     app_name: this.type,
                     app_version: this.version,
@@ -373,16 +368,6 @@ host.ElectronHost = class {
                     error_stack: stack,
                     error_fatal: fatal ? true : false
                 });
-            } catch (e) {
-                // continue regardless of error
-            }
-        }
-    }
-
-    event_ua(category, action, label, value) {
-        if (this._telemetry_ua && category && action && label) {
-            try {
-                this._telemetry_ua.event(category, action, label, value);
             } catch (e) {
                 // continue regardless of error
             }
@@ -507,26 +492,26 @@ host.ElectronHost = class {
         });
     }
 
-    get(context, name) {
+    get(name) {
         try {
-            return electron.ipcRenderer.sendSync('get-' + context, { name: name });
+            return electron.ipcRenderer.sendSync('get-configuration', { name: name });
         } catch (error) {
             // continue regardless of error
         }
         return undefined;
     }
 
-    set(context, name, value) {
+    set(name, value) {
         try {
-            electron.ipcRenderer.sendSync('set-' + context, { name: name, value: value });
+            electron.ipcRenderer.sendSync('set-configuration', { name: name, value: value });
         } catch (error) {
             // continue regardless of error
         }
     }
 
-    delete(context, name) {
+    delete(name) {
         try {
-            electron.ipcRenderer.sendSync('delete-' + context, { name: name });
+            electron.ipcRenderer.sendSync('delete-configuration', { name: name });
         } catch (error) {
             // continue regardless of error
         }
@@ -596,64 +581,6 @@ host.ElectronHost = class {
             }
             this._document.body.classList.add('message');
         });
-    }
-};
-
-host.Telemetry = class {
-
-    constructor(trackingId, clientId, userAgent, applicationName, applicationVersion) {
-        this._params = {
-            aip: '1', // anonymizeIp
-            tid: trackingId,
-            cid: clientId,
-            ua: userAgent,
-            an: applicationName,
-            av: applicationVersion
-        };
-    }
-
-    event(category, action, label, value) {
-        const params = Object.assign({}, this._params);
-        params.ec = category;
-        params.ea = action;
-        params.el = label;
-        params.ev = value;
-        this._send('event', params);
-    }
-
-    exception(description, fatal) {
-        const params = Object.assign({}, this._params);
-        params.exd = description;
-        if (fatal) {
-            params.exf = '1';
-        }
-        this._send('exception', params);
-    }
-
-    _send(type, params) {
-        params.t = type;
-        params.v = '1';
-        for (const param in params) {
-            if (params[param] === null || params[param] === undefined) {
-                delete params[param];
-            }
-        }
-        const body = Object.entries(params).map((entry) => encodeURIComponent(entry[0]) + '=' + encodeURIComponent(entry[1])).join('&');
-        const options = {
-            method: 'POST',
-            host: 'www.google-analytics.com',
-            path: '/collect',
-            headers: { 'Content-Length': Buffer.byteLength(body) }
-        };
-        const request = https.request(options, (response) => {
-            response.on('error', (/* error */) => {});
-        });
-        request.setTimeout(5000, () => {
-            request.destroy();
-        });
-        request.on('error', (/* error */) => {});
-        request.write(body);
-        request.end();
     }
 };
 
