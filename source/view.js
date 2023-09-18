@@ -2181,7 +2181,7 @@ view.Sidebar = class {
         this._host.document.removeEventListener('keydown', this._closeSidebarKeyDownHandler);
         if (stack) {
             this._stack = stack;
-        } else if (this._stack.lengthf > 0) {
+        } else if (this._stack.length > 0) {
             this._stack.pop();
         }
         if (this._stack.length > 0) {
