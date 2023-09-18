@@ -122,8 +122,7 @@ openvino.Graph = class {
             if (!values.has(name)) {
                 values.set(name, new openvino.Value(name, type, null));
             } else if (type && !type.equals(values.get(name).type)) {
-                return new openvino.Value(name, type, null);
-                // TODO throw new openvino.Error("Duplicate value '" + name + "'.");
+                throw new openvino.Error("Duplicate value '" + name + "'.");
             }
             return values.get(name);
         };
@@ -238,6 +237,7 @@ openvino.Graph = class {
                 return true;
             });
         };
+        /*
         const replaceTensorIteratorWithSubgraph = (metadata, bin, layers, edges) => {
             const tensorIteratorLayers = layers.filter((node) => node.type === 'TensorIterator');
             for (const tensorIteratorLayer of tensorIteratorLayers) {
@@ -360,6 +360,7 @@ openvino.Graph = class {
                 nodes.delete(id);
             }
         };
+        */
         const layers = new Map(net.layers.map((entry) => [ entry.id, entry ]));
         const layer_list = constant(net.layers, net.edges);
         for (const layer of net.layers) {
@@ -413,7 +414,7 @@ openvino.Graph = class {
                 }
             }
         }
-        replaceTensorIteratorWithSubgraph(metadata, bin, net.layers, net.edges);
+        // replaceTensorIteratorWithSubgraph(metadata, bin, net.layers, net.edges);
         // Validation
         // all graph elements are split between inputs and nodes
         // by definition IR is a graph can have inputs of two types: "Input" and "Const"
