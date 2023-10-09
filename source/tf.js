@@ -102,7 +102,7 @@ tf.ModelFactory = class {
                         }
                         // third_party.tensorflow.python.keras.protobuf.SavedMetadata
                         if (match(tags, [[1,[[1,[[1,0],[2,0]]],[2,0],[3,2],[4,2],[5,2]]]])) {
-                            return 'tf.pb.keras.SavedMetadata';
+                            return undefined;
                         }
                     }
                     if ((!tags.has(1) || tags.get(1) === 0) && tags.get(2) === 2) {
@@ -129,8 +129,7 @@ tf.ModelFactory = class {
                     // tensorflow.FingerprintDef
                     if (identifier === 'fingerprint.pb' &&
                         tags.get(1) === 0 && tags.get(2) === 0 &&
-                        tags.get(3) === 0 && tags.get(4) === 0 &&
-                        tags.get(5) === 0 && tags.get(6) === 2) {
+                        tags.get(3) === 0 && tags.get(5) === 0 && tags.get(6) === 2) {
                         return 'tf.pb.FingerprintDef';
                     }
                     const decode = (buffer, value) => {
@@ -229,7 +228,13 @@ tf.ModelFactory = class {
             const metadata = await context.metadata('tf-metadata.json');
             return new tf.Model(metadata, saved_model, format, producer, bundle);
         };
-        const openSavedModel = async (saved_model, format, producer) => {
+        const openSavedModel = async (context, saved_model, format, producer) => {
+            if (format === '') {
+                format = 'TensorFlow Saved Model';
+                if (saved_model && saved_model.saved_model_schema_version) {
+                    format = format + ' v' + saved_model.saved_model_schema_version.toString();
+                }
+            }
             if (saved_model.meta_graphs.length === 1 &&
                 saved_model.meta_graphs[0].object_graph_def &&
                 saved_model.meta_graphs[0].object_graph_def.nodes &&
@@ -243,7 +248,7 @@ tf.ModelFactory = class {
                     return openModel(saved_model, format, producer, null);
                 }
             }
-            if (saved_model && saved_model.meta_graphs && saved_model.meta_graphs.length > 0 &&
+            if (saved_model && Array.isArray(saved_model.meta_graphs) && saved_model.meta_graphs.length > 0 &&
                 saved_model.meta_graphs[0].meta_info_def &&
                 Object.prototype.hasOwnProperty.call(saved_model.meta_graphs[0].meta_info_def, 'tensorflow_version')) {
                 producer = 'TensorFlow v' + saved_model.meta_graphs[0].meta_info_def.tensorflow_version;
@@ -367,7 +372,7 @@ tf.ModelFactory = class {
                 const updated_saved_model = await openPyTorchMetadata(context, saved_model);
                 return openModel(updated_saved_model, format, producer, null);
             }
-            return openSavedModel(saved_model, format, producer);
+            return openSavedModel(context, saved_model, format, producer);
         };
         const openJson = async (context, type) => {
             try {
@@ -452,7 +457,7 @@ tf.ModelFactory = class {
                             }
                         }
                     }
-                    return openSavedModel(saved_model, format, producer);
+                    return openSavedModel(context, saved_model, format, producer);
                 };
                 try {
                     const streams = await Promise.all(shards.values());
@@ -495,7 +500,7 @@ tf.ModelFactory = class {
                 const saved_model = new tf.proto.tensorflow.SavedModel();
                 saved_model.meta_graphs.push(meta_graph);
                 const format = 'TensorFlow Graph';
-                return openSavedModel(saved_model, format, null);
+                return openSavedModel(context, saved_model, format, null);
             } catch (error) {
                 const message = error && error.message ? error.message : error.toString();
                 throw new tf.Error('File text format is not tensorflow.GraphDef (' + message.replace(/\.$/, '') + ').');
@@ -509,21 +514,15 @@ tf.ModelFactory = class {
                 const saved_model = new tf.proto.tensorflow.SavedModel();
                 saved_model.meta_graphs.push(meta_graph);
                 const format = 'TensorFlow MetaGraph';
-                return openSavedModel(saved_model, format, null);
+                return openSavedModel(context, saved_model, format, null);
             } catch (error) {
                 throw new tf.Error('File text format is not tensorflow.MetaGraphDef (' + error.message + ').');
             }
         };
-        const openTextSavedModel = (context) => {
+        const openTextSavedModel = (stream) => {
             try {
-                const stream = context.stream;
                 const reader = protobuf.TextReader.open(stream);
-                const saved_model = tf.proto.tensorflow.SavedModel.decodeText(reader);
-                let format = 'TensorFlow Saved Model';
-                if (saved_model && Object.prototype.hasOwnProperty.call(saved_model, 'saved_model_schema_version')) {
-                    format = format + ' v' + saved_model.saved_model_schema_version.toString();
-                }
-                return openSavedModel(saved_model, format, null);
+                return tf.proto.tensorflow.SavedModel.decodeText(reader);
             } catch (error) {
                 throw new tf.Error('File text format is not tensorflow.SavedModel (' + error.message + ').');
             }
@@ -543,7 +542,7 @@ tf.ModelFactory = class {
                 const message = error && error.message ? error.message : error.toString();
                 throw new tf.Error('File format is not tensorflow.GraphDef (' + message.replace(/\.$/, '') + ').');
             }
-            return openSavedModel(saved_model, format, null);
+            return openSavedModel(context, saved_model, format, null);
         };
         const openBinaryMetaGraphDef = (context) => {
             let saved_model = null;
@@ -558,39 +557,33 @@ tf.ModelFactory = class {
                 const message = error && error.message ? error.message : error.toString();
                 throw new tf.Error('File format is not tensorflow.MetaGraphDef (' + message.replace(/\.$/, '') + ').');
             }
-            return openSavedModel(saved_model, format, null);
+            return openSavedModel(context, saved_model, format, null);
         };
-        const openBinarySavedModel = (context) => {
-            let saved_model = null;
-            let format = 'TensorFlow Saved Model';
+        const openBinarySavedModel = (stream) => {
             try {
-                const stream = context.stream;
                 const reader = protobuf.BinaryReader.open(stream);
-                saved_model = tf.proto.tensorflow.SavedModel.decode(reader);
-                if (saved_model && Object.prototype.hasOwnProperty.call(saved_model, 'saved_model_schema_version')) {
-                    format = format + ' v' + saved_model.saved_model_schema_version.toString();
-                }
+                return tf.proto.tensorflow.SavedModel.decode(reader);
             } catch (error) {
                 const message = error && error.message ? error.message : error.toString();
                 throw new tf.Error('File format is not tensorflow.SavedModel (' + message.replace(/\.$/, '') + ').');
             }
-            return openSavedModel(saved_model, format, null);
-        };
-        const openSavedMetadata = async (context) => {
-            /*
-            const stream = context.stream;
-            const reader = protobuf.BinaryReader.open(stream);
-            const saved_metadata = tf.proto.third_party.tensorflow.python.keras.protobuf.SavedMetadata.decode(reader);
-            debugger;
-            */
-            const identifier = 'saved_model.pb';
-            const stream = await context.request(identifier, null);
-            return openBinarySavedModel({ stream: stream });
         };
         const openFingerprint = async (context) => {
-            const identifier = 'saved_model.pb';
-            const stream = await context.request(identifier, null);
-            return openBinarySavedModel({ stream: stream });
+            let format = '';
+            let saved_model = null;
+            try {
+                const identifier = 'saved_model.pb';
+                const stream = await context.request(identifier, null);
+                saved_model = openBinarySavedModel(stream);
+
+            } catch (error) {
+                format = 'TensorFlow Fingerprint';
+                saved_model = new tf.proto.tensorflow.SavedModel();
+            }
+            const stream = context.stream;
+            const reader = protobuf.BinaryReader.open(stream);
+            saved_model.fingerprint = tf.proto.tensorflow.FingerprintDef.decode(reader);
+            return openSavedModel(context, saved_model, format, null);
         };
         const openMemmapped = (context) => {
             const stream = context.stream;
@@ -648,7 +641,7 @@ tf.ModelFactory = class {
             meta_graph.graph_def = graph_def;
             const saved_model = new tf.proto.tensorflow.SavedModel();
             saved_model.meta_graphs.push(meta_graph);
-            return openSavedModel(saved_model, format, null);
+            return openSavedModel(context, saved_model, format, null);
         };
         switch (target) {
             case 'tf.bundle':
@@ -666,15 +659,13 @@ tf.ModelFactory = class {
             case 'tf.pbtxt.MetaGraphDef':
                 return openTextMetaGraphDef(context);
             case 'tf.pbtxt.SavedModel':
-                return openTextSavedModel(context);
+                return openSavedModel(context, openTextSavedModel(context.stream), '', null);
             case 'tf.pb.GraphDef':
                 return openBinaryGraphDef(context);
             case 'tf.pb.MetaGraphDef':
                 return openBinaryMetaGraphDef(context);
             case 'tf.pb.SavedModel':
-                return openBinarySavedModel(context);
-            case 'tf.pb.keras.SavedMetadata':
-                return openSavedMetadata(context);
+                return openSavedModel(context, openBinarySavedModel(context.stream), '', null);
             case 'tf.pb.FingerprintDef':
                 return openFingerprint(context);
             case 'tf.pb.mmap':

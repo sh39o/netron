@@ -583,22 +583,23 @@ view.View = class {
             { name: 'Error loading model.', message: /^Unsupported Protocol Buffers text content/, url: 'https://github.com/lutzroeder/netron/issues/594' },
             { name: 'Error loading model.', message: /^Unsupported JSON content/, url: 'https://github.com/lutzroeder/netron/issues/595' },
             { name: 'Error loading Caffe model.', message: /^File format is not caffe\.NetParameter/, url: 'https://github.com/lutzroeder/netron/issues/563' },
-            { name: 'Error loading Darknet model.', message: /^Invalid tensor shape/, url: 'https://github.com/lutzroeder/netron/issues/541' },
-            { name: 'Error loading DaVinci model.', message: /^Unsupported attribute type/, url: 'https://github.com/lutzroeder/netron/issues/926' },
+            { name: 'Error loading DaVinci OM model.', message: /^Unsupported DaVinci OM partition type\./, url: 'https://github.com/lutzroeder/netron/issues/1154' },
             { name: 'Error loading MNN model.', message: /^File format is not mnn\.Net/, url: 'https://github.com/lutzroeder/netron/issues/746' },
             { name: 'Error loading NNEF model.', message: /^.*/, url: 'https://github.com/lutzroeder/netron/issues/992' },
             { name: 'Error loading PyTorch model.', message: /^File does not contain root module or state dictionary/, url: 'https://github.com/lutzroeder/netron/issues/543' },
             { name: 'Error loading PyTorch model.', message: /^Module does not contain modules/, url: 'https://github.com/lutzroeder/netron/issues/544' },
             { name: 'Error loading PyTorch model.', message: /^Unknown type name/, url: 'https://github.com/lutzroeder/netron/issues/969' },
+            { name: 'Error loading ONNX model.', message: /^File format is not onnx\.ModelProto \(Unexpected end of file\)\./, url: 'https://github.com/lutzroeder/netron/issues/1155' },
+            { name: 'Error loading ONNX model.', message: /^File format is not onnx\.ModelProto \(Cannot read properties of undefined \(reading 'ModelProto'\)\)\./, url: 'https://github.com/lutzroeder/netron/issues/1156' },
             { name: 'Error loading ONNX model.', message: /^File format is not onnx\.ModelProto/, url: 'https://github.com/lutzroeder/netron/issues/549' },
             { name: 'Error loading TensorFlow Lite model.', message: /^Offset is outside the bounds of the DataView/, url: 'https://github.com/lutzroeder/netron/issues/563' },
-            { name: 'Error loading TensorRT model.', message: /^Invalid file content. File contains undocumented TensorRT engine data\./, url: 'https://github.com/lutzroeder/netron/issues/725' }
+            { name: 'Error loading TensorRT model.', message: /^Invalid file content. File contains undocumented TensorRT engine data\./, url: 'https://github.com/lutzroeder/netron/issues/725' },
         ];
         const known = knowns.find((known) => (known.name.length === 0 || known.name === err.name) && err.message.match(known.message));
+        const url = known && known.url ? known.url : null;
         const message = err.message;
         name = name || err.name;
-        const button = await this._host.error(name, message);
-        const url = known && known.url ? known.url : null;
+        const button = await this._host.error(name, message, url === null);
         if (button === 0 && (url || this._host.type == 'Electron')) {
             this._host.openURL(url || this._host.environment('repository') + '/issues');
         }
@@ -674,38 +675,39 @@ view.View = class {
                 }
             }
         }
-        const update = () => {
+        const update = async (model, graphs) => {
+            this._model = model;
+            this._graphs = graphs;
+            await this.renderGraph(this._model, this.activeGraph, this._options);
+            if (this._page !== 'default') {
+                this.show('default');
+            }
             const nameButton = this._element('name-button');
             const backButton = this._element('back-button');
-            if (this._graphs.length > 1) {
-                const graph = this.activeGraph;
-                nameButton.innerHTML = graph ? graph.name : '';
-                backButton.style.opacity = 1;
-                nameButton.style.opacity = 1;
-            } else {
+            if (this._graphs.length <= 1) {
                 backButton.style.opacity = 0;
                 nameButton.style.opacity = 0;
+            } else {
+                const graph = this.activeGraph;
+                const name = graph ? graph.name : '';
+                if (name.length > 61) {
+                    nameButton.setAttribute('title', name);
+                    nameButton.innerHTML = '\u2026' + name.substring(name.length - 61, name.length);
+                } else {
+                    nameButton.removeAttribute('title');
+                    nameButton.innerHTML = name;
+                }
+                backButton.style.opacity = 1;
+                nameButton.style.opacity = 1;
             }
         };
         const lastModel = this._model;
         const lastGraphs = this._graphs;
-        this._model = model;
-        this._graphs = graphs;
         try {
-            await this.renderGraph(this._model, this.activeGraph, this._options);
-            if (this._page !== 'default') {
-                this.show('default');
-            }
-            update();
+            await update(model, graphs);
             return this._model;
         } catch (error) {
-            this._model = lastModel;
-            this._graphs = lastGraphs;
-            await this.renderGraph(this._model, this.activeGraph, this._options);
-            if (this._page !== 'default') {
-                this.show('default');
-            }
-            update();
+            await update(lastModel, lastGraphs);
             throw error;
         }
     }
@@ -772,11 +774,8 @@ view.View = class {
         canvas.appendChild(origin);
 
         viewGraph.build(this._host.document, origin);
-
-        this._zoom = 1;
-
         await this._timeout(20);
-
+        viewGraph.layout();
         viewGraph.update();
 
         const elements = Array.from(canvas.getElementsByClassName('graph-input') || []);
@@ -1860,19 +1859,26 @@ view.Node = class extends grapher.Node {
                 }
             }
         }
-        const functions = [];
+        const objects = [];
         const attributes = [];
         if (Array.isArray(node.attributes) && node.attributes.length > 0) {
             for (const attribute of node.attributes) {
-                if (attribute.type === 'function') {
-                    // functions.push(attribute);
-                } else if (options.attributes && attribute.visible !== false) {
-                    attributes.push(attribute);
+                switch (attribute.type) {
+                    /* case 'object':
+                    case 'function': {
+                        objects.push(attribute);
+                        break;
+                    } */
+                    default: {
+                        if (options.attributes && attribute.visible !== false) {
+                            attributes.push(attribute);
+                        }
+                    }
                 }
             }
             attributes.sort((a, b) => a.name.toUpperCase().localeCompare(b.name.toUpperCase()));
         }
-        if (initializers.length > 0 || hiddenInitializers || attributes.length > 0 || functions.length > 0) {
+        if (initializers.length > 0 || hiddenInitializers || attributes.length > 0 || objects.length > 0) {
             const list = this.list();
             list.on('click', () => this.context.activate(node));
             for (const argument of initializers) {
@@ -1923,10 +1929,11 @@ view.Node = class extends grapher.Node {
                     list.add(attribute.name, value, attribute.type, ' = ');
                 }
             }
-            for (const attribute of functions) {
-                if (attribute.type === 'function') {
-                    // const item = list.add(null, attribute.name, ':', '', '');
-                    // item.height = 20;
+            for (const attribute of objects) {
+                if (attribute.type === 'function' || attribute.type === 'object') {
+                    const node = this.context.createNode(attribute.value);
+                    const item = list.add(attribute.name, node, '', '');
+                    item.height = 20;
                 }
             }
         }
@@ -2307,8 +2314,8 @@ view.NodeSidebar = class extends view.ObjectSidebar {
         if (node.device) {
             this.addProperty('device', node.device);
         }
-        if (Array.isArray(node.attributes)) {
-            const attributes = node.attributes.filter((attribute) => attribute);
+        const attributes = node.attributes;
+        if (Array.isArray(attributes) && attributes.length > 0) {
             this.addHeader('Attributes');
             attributes.sort((a, b) => {
                 const au = a.name.toUpperCase();
@@ -2328,14 +2335,14 @@ view.NodeSidebar = class extends view.ObjectSidebar {
         }
 
         const inputs = node.inputs;
-        if (inputs && inputs.length > 0) {
+        if (Array.isArray(inputs) && inputs.length > 0) {
             this.addHeader('Inputs');
             for (const input of inputs) {
                 this._addInput(input.name, input);
             }
         }
         const outputs = node.outputs;
-        if (outputs && outputs.length > 0) {
+        if (Array.isArray(outputs) && outputs.length > 0) {
             this.addHeader('Outputs');
             for (const output of outputs) {
                 this._addOutput(output.name, output);
@@ -2402,7 +2409,7 @@ view.NodeSidebar = class extends view.ObjectSidebar {
         const item = new view.GroupView(
             this._host,
             "subg name",
-            new view.ValueTextView(this._host, name), group, sidebar
+            new view.ValueTextView(this._host, name.split('/').pop()), group, sidebar
           );
         this._container.appendChild(item.render());
     }
@@ -4134,8 +4141,10 @@ view.Formatter = class {
                     return value.toString();
                 }
                 return '[...]';
+            case 'object':
             case 'function':
                 return value.type.name;
+            case 'object[]':
             case 'function[]':
                 return value ? value.map((item) => item.type.name).join(', ') : '(null)';
             case 'type':
@@ -5105,8 +5114,12 @@ view.ModelContext = class {
                         }
                         case 'hdf5': {
                             const file = hdf5.File.open(stream);
-                            if (file && file.rootGroup && file.rootGroup.attributes) {
-                                this._content.set(type, file.rootGroup);
+                            if (file) {
+                                try {
+                                    this._content.set(type, file.read());
+                                } catch (error) {
+                                    this._content.set(type, error);
+                                }
                             }
                             break;
                         }
@@ -5282,10 +5295,10 @@ view.ModelFactoryService = class {
         this.register('./mediapipe', [ '.pbtxt' ]);
         this.register('./uff', [ '.uff', '.pb', '.pbtxt', '.uff.txt', '.trt', '.engine' ]);
         this.register('./tensorrt', [ '.trt', '.trtmodel', '.engine', '.model', '.txt', '.uff', '.pb', '.tmfile', '.onnx', '.pth', '.dnn', '.plan' ]);
-        this.register('./numpy', [ '.npz', '.npy', '.pkl', '.pickle', '.model', '.model2', '.mge' ]);
+        this.register('./numpy', [ '.npz', '.npy', '.pkl', '.pickle', '.model', '.model2', '.mge', '.joblib' ]);
         this.register('./lasagne', [ '.pkl', '.pickle', '.joblib', '.model', '.pkl.z', '.joblib.z' ]);
         this.register('./lightgbm', [ '.txt', '.pkl', '.model' ]);
-        this.register('./keras', [ '.h5', '.hd5', '.hdf5', '.keras', '.json', '.cfg', '.model', '.pb', '.pth', '.weights', '.pkl', '.lite', '.tflite', '.ckpt' ], [ '.zip' ]);
+        this.register('./keras', [ '.h5', '.hd5', '.hdf5', '.keras', '.json', '.cfg', '.model', '.pb', '.pth', '.weights', '.pkl', '.lite', '.tflite', '.ckpt', '.pb' ], [ '.zip' ]);
         this.register('./sklearn', [ '.pkl', '.pickle', '.joblib', '.model', '.meta', '.pb', '.pt', '.h5', '.pkl.z', '.joblib.z', '.pickle.dat' ]);
         this.register('./megengine', [ '.tm', '.mge' ]);
         this.register('./pickle', [ '.pkl', '.pickle', '.joblib', '.model', '.meta', '.pb', '.pt', '.h5', '.pkl.z', '.joblib.z', '.pdstates', '.mge' ]);
@@ -5541,6 +5554,12 @@ view.ModelFactoryService = class {
                 throw new view.Error("Unsupported XML content '" + tags.keys().next().value + "'.");
             }
         };
+        const hdf5 = () => {
+            const obj = context.open('hdf5');
+            if (obj instanceof Error) {
+                throw obj;
+            }
+        };
         const unknown = () => {
             if (stream) {
                 stream.seek(0);
@@ -5556,6 +5575,7 @@ view.ModelFactoryService = class {
         pb();
         flatbuffers();
         xml();
+        hdf5();
         unknown();
     }
 
@@ -5798,8 +5818,12 @@ view.ModelFactoryService = class {
                 { name: 'TSD header', value: /^%TSD-Header-###%/ },
                 { name: 'AppleDouble data', value: /^\x00\x05\x16\x07/ },
                 { name: 'TensorFlow Hub module', value: /^\x08\x03$/, identifier: 'tfhub_module.pb' },
+                { name: 'V8 snapshot', value: /^.\x00\x00\x00.\x00\x00\x00/, identifier: 'snapshot_blob.bin' },
+                { name: 'V8 context snapshot', value: /^.\x00\x00\x00.\x00\x00\x00/, identifier: 'v8_context_snapshot.bin' },
+                { name: 'V8 natives blob', value: /^./, identifier: 'natives_blob.bin' },
                 { name: 'ViSQOL model', value: /^svm_type\s/ },
-                { name: 'SenseTime model', value: /^STEF/ }
+                { name: 'SenseTime model', value: /^STEF/ },
+                { name: 'AES Crypt data', value: /^AES[\x01|\x02]\x00/ }
             ];
             /* eslint-enable no-control-regex */
             const buffer = stream.peek(Math.min(4096, stream.length));

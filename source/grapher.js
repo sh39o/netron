@@ -3,7 +3,7 @@ var grapher = {};var dagre = require('./dagre');
 grapher.Graph = class {
 
     constructor(compound, layout) {
-        this.layout = layout;
+        this._layout = layout;
         this._isCompound = compound;
         this._nodes = new Map();
         this._edges = new Map();
@@ -148,26 +148,26 @@ grapher.Graph = class {
         edgePathGroupDefs.appendChild(marker("arrowhead-hover"));
 
         for (const nodeId of this.nodes.keys()) {
-            const node = this.node(nodeId);
+            const entry = this.node(nodeId);
+            const node = entry.label;
             if (this.children(nodeId).length == 0) {
-                // node
-                node.label.build(document, nodeGroup);
+                node.build(document, nodeGroup);
             } else {
                 // cluster
-                node.label.rectangle = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                if (node.label.rx) {
-                    node.label.rectangle.setAttribute('rx', node.label.rx);
+                node.rectangle = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                if (node.rx) {
+                    node.rectangle.setAttribute('rx', node.rx);
                 }
-                if (node.label.ry) {
-                    node.label.rectangle.setAttribute('ry', node.label.ry);
+                if (node.ry) {
+                    node.rectangle.setAttribute('ry', node.ry);
                 }
-                node.label.element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                node.label.element.setAttribute('class', 'cluster');
-                node.label.element.addEventListener("click", () =>
-                  this.emit("click", node.label.name)
+                node.element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                node.element.setAttribute('class', 'cluster');
+                node.element.addEventListener("click", () =>
+                  this.emit("click", node.name)
                 );
-                node.label.element.appendChild(node.label.rectangle);
-                clusterGroup.appendChild(node.label.element);
+                node.element.appendChild(node.rectangle);
+                clusterGroup.appendChild(node.element);
             }
         }
 
@@ -176,50 +176,37 @@ grapher.Graph = class {
         }
     }
 
+    layout() {
+        dagre.layout(this, this._layout);
+    }
+
     update() {
-        dagre.layout(this);
         for (const nodeId of this.nodes.keys()) {
-            const node = this.node(nodeId);
+            const entry = this.node(nodeId);
+            const node = entry.label;
             if (this.children(nodeId).length == 0) {
                 // node
-                node.label.update();
+                node.update();
             } else {
                 // cluster
-                const node = this.node(nodeId);
-                node.label.element.setAttribute('transform', 'translate(' + node.label.x + ',' + node.label.y + ')');
-                node.label.rectangle.setAttribute('x', - node.label.width / 2);
-                node.label.rectangle.setAttribute('y', - node.label.height / 2);
-                node.label.rectangle.setAttribute('width', node.label.width);
-                node.label.rectangle.setAttribute('height', node.label.height);
+                node.element.setAttribute('transform', 'translate(' + node.x + ',' + node.y + ')');
+                node.rectangle.setAttribute('x', - node.width / 2);
+                node.rectangle.setAttribute('y', - node.height / 2);
+                node.rectangle.setAttribute('width', node.width);
+                node.rectangle.setAttribute('height', node.height);
                 const device = this._isCompound.get(nodeId).attributes.find((attr)=> attr.name === 'device');
                 const tiling_idx = this._isCompound.get(nodeId).attributes.find((attr)=> attr.name === 'tiling_idx');
                 const root = this._isCompound.get(nodeId).name === "root";
                 let label_name = undefined;
-                let color = "#FFFFFF";
                 let font_size = "10px";
                 if (root) {
                     label_name = "ROOT";
-                    color = "#D9D6D8";
                     font_size = "15px";
                 } else if (device) {
                     label_name = device.value.value;
                     font_size = "12px";
-                    switch (device.value.value.toUpperCase()) {
-                        case("DPU"):
-                            color = "#B5F184";
-                            break;
-                        case("CPU"):
-                            color = "#FFFFE0";
-                            break;
-                        case("USER"):
-                            color = "#3C54BE";
-                            break;
-                        default:
-                            color = "#FFFFFF";
-                    }
                 } else if (tiling_idx) {
                     label_name = "tile " + tiling_idx.value.value;
-                    color = "#76A44C";
                     font_size = "11px";
                 }
                 if (label_name) {
@@ -230,12 +217,11 @@ grapher.Graph = class {
                       textElement.textContent = label_name;
                       textElement.setAttribute('text-anchor', 'middle');
                       textElement.setAttribute('alignment-baseline', 'bottom');
-                      textElement.setAttribute('x', - node.label.width / 2 - 10);
-                      textElement.setAttribute('y', - node.label.height / 2 + 10);
+                      textElement.setAttribute('x', - node.width / 2 - 10);
+                      textElement.setAttribute('y', - node.height / 2 + 10);
                       textElement.style.fontSize = font_size;
-                      node.label.rectangle.setAttribute('style', 'fill: ' + color);
-                      node.label.element.appendChild(textElement);
-                } 
+                      node.element.appendChild(textElement);
+                }
             }
         }
         for (const edge of this.edges.values()) {
@@ -304,6 +290,9 @@ grapher.Node = class {
     }
 
     update() {
+        // for (const block of this._blocks) {
+        //     block.update();
+        // }
         this.element.setAttribute('transform', 'translate(' + (this.x - (this.width / 2)) + ',' + (this.y - (this.height / 2)) + ')');
         this.element.style.opacity = 1;
     }
@@ -534,13 +523,18 @@ grapher.Node.List = class {
             }
             const name = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
             name.textContent = item.name;
-            if (item.separator.trim() != '=') {
+            if (item.separator.trim() !== '=') {
                 name.style.fontWeight = 'bold';
             }
             text.appendChild(name);
-            const textValueElement = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-            textValueElement.textContent = item.separator + item.value;
-            text.appendChild(textValueElement);
+            if (item.value instanceof grapher.Node) {
+                const node = item.value;
+                node.build(document, this.element);
+            } else {
+                const element = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                element.textContent = item.separator + item.value;
+                text.appendChild(element);
+            }
             const size = text.getBBox();
             const width = xPadding + size.width + xPadding;
             this.width = Math.max(width, this.width);

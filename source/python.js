@@ -2470,16 +2470,17 @@ python.Execution = class {
         this.registerType('sklearn.calibration._CalibratedClassifier', class {});
         this.registerType('sklearn.calibration._SigmoidCalibration', class {});
         this.registerType('sklearn.calibration.CalibratedClassifierCV', class {});
-        this.registerType('sklearn.compose._column_transformer.ColumnTransformer', class {});
-        this.registerType('sklearn.compose._target.TransformedTargetRegressor', class {});
         this.registerType('sklearn.cluster._agglomerative.FeatureAgglomeration', class {});
         this.registerType('sklearn.cluster._dbscan.DBSCAN', class {});
         this.registerType('sklearn.cluster._kmeans.KMeans', class {});
+        this.registerType('sklearn.compose._column_transformer.ColumnTransformer', class {});
+        this.registerType('sklearn.compose._target.TransformedTargetRegressor', class {});
+        this.registerType('sklearn.cross_decomposition._pls.PLSRegression', class {});
         this.registerType('sklearn.decomposition._fastica.FastICA', class {});
         this.registerType('sklearn.decomposition._pca.PCA', class {});
         this.registerType('sklearn.decomposition._truncated_svd.TruncatedSVD', class {});
-        this.registerType('sklearn.decomposition.PCA', class {});
         this.registerType('sklearn.decomposition.pca.PCA', class {});
+        this.registerType('sklearn.decomposition.PCA', class {});
         this.registerType('sklearn.decomposition.truncated_svd.TruncatedSVD', class {});
         this.registerType('sklearn.discriminant_analysis.LinearDiscriminantAnalysis', class {});
         this.registerType('sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis', class {});
@@ -3316,6 +3317,9 @@ python.Execution = class {
             }
             return defaultValue;
         });
+        this.registerFunction('builtins.setattr', function(obj, name, value) {
+            obj[name] = value;
+        });
         this.registerFunction('builtins.set', function(iterable) {
             return iterable ? iterable : [];
         });
@@ -3545,6 +3549,7 @@ python.Execution = class {
                 case 'f': {
                     const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
                     switch (dtype.itemsize) {
+                        case 2: return view.getFloat16(0, dtype.byteorder === '<');
                         case 4: return view.getFloat32(0, dtype.byteorder === '<');
                         case 8: return view.getFloat64(0, dtype.byteorder === '<');
                         default: throw new python.Error("Unsupported scalar dtype float itemsize '" + dtype.itemsize + "'.");
@@ -4408,8 +4413,43 @@ python.Execution = class {
             tensor.quantizer_params = quantizer_params;
             return tensor;
         });
+        this.registerFunction('torch._utils._set_obj_state', function(obj, state) {
+            let dict_state = state;
+            let slots_state = null;
+            if (state instanceof self.builtins.tuple) {
+                if (state.length != 2) {
+                    throw new python.Error("Invalid serialized state: '" + state + "'.");
+                }
+                dict_state = state[0];
+                slots_state = state[1];
+            }
+            if (dict_state) {
+                for (const entry of Object.entries(dict_state)) {
+                    execution.invoke('builtins.setattr', [ obj, entry[0], entry[1] ]);
+                }
+            }
+            if (slots_state) {
+                for (const entry of Object.entries(slots_state)) {
+                    execution.invoke('builtins.setattr', [ obj, entry[0], entry[1] ]);
+                }
+            }
+            return obj;
+        });
         this.registerFunction('torch._set_item', function(dict, key, value) {
             dict[key] = value;
+        });
+        this.registerFunction('torch._tensor._rebuild_from_type_v2', function(func, new_type, args, state) {
+            let ret = func.apply(null, args);
+            if (ret.__class__ !== new_type) {
+                // ret = ret.as_subclass(new_type);
+            }
+            const setstate = execution.invoke('builtins.getattr', [ ret.__class__, '__setstate__', torch.Tensor.__setstate__ ]);
+            if (setstate !== torch.Tensor.__setstate__) {
+                ret.__setstate__(state);
+            } else {
+                ret = execution.invoke('torch._utils._set_obj_state', [ ret, state ]);
+            }
+            return ret;
         });
         this.registerFunction('torch.__and__', function(left, right) {
             return left && right;
@@ -4960,9 +5000,28 @@ python.Execution = class {
         });
         this.registerFunction('torch.warn', function() {
         });
-        this.registerFunction('torch.fx.graph_module.reduce_graph_module', function(body /*, import_block */) {
+        this.registerFunction('torch.fx.graph_module._deserialize_graph_module', function(/* forward, body */) {
+            return execution.invoke('torch.fx.graph_module.GraphModule', []);
+        });
+        this.registerFunction('torch.fx.graph_module._forward_from_src', function(/* src, globals, co_fields */) {
+            throw new python.Error("'torch.fx.graph_module._forward_from_src' not implemented.");
+        });
+        this.registerFunction('torch.fx.graph_module.reduce_graph_module', function(body, import_block) {
             // https://github.com/pytorch/pytorch/blob/master/torch/fx/graph_module.py
-            return body;
+            const fn_src = body._code || body.code;
+            const forward = execution.invoke('torch.fx.graph_module._forward_from_src', [ import_block + fn_src, {} ]);
+            return execution.invoke('torch.fx.graph_module._deserialize_graph_module', [ forward, body ]);
+        });
+        this.registerFunction('torch.fx.graph_module.reduce_package_graph_module', function(importer, body, generated_module_name) {
+            const forward = importer.import_module(generated_module_name).forward;
+            return execution.invoke('torch.fx.graph_module._deserialize_graph_module', [ forward, body ]);
+        });
+        this.registerType('torch.fx.graph_module.GraphModule', class extends torch.nn.Module {
+        });
+        this.registerFunction('torch.fx._symbolic_trace.wrap', function(fn_or_name) {
+            return fn_or_name;
+        });
+        this.registerType('torch.fx._symbolic_trace.Tracer', class {
         });
         this.registerFunction('torch_utils.persistence._reconstruct_persistent_obj', function(meta) {
             const name = '_imported_module_' + Math.floor(Math.random() * 10000).toString();

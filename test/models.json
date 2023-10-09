@@ -8,6 +8,13 @@
   },
   {
     "type":     "_",
+    "target":   "cnn_classifier.h5",
+    "source":   "https://github.com/lutzroeder/netron/files/12706986/cnn_classifier.h5.zip[cnn_classifier.h5]",
+    "error":    "Unexpected end of file. Expected 441 more bytes. The file might be corrupted.",
+    "link":     "https://github.com/lutzroeder/netron/issues/458"
+  },
+  {
+    "type":     "_",
     "target":   "config.json",
     "source":   "https://github.com/lutzroeder/netron/files/5398758/config.json.zip[config.json]",
     "error":    "Invalid file content. File contains keras-yolo2 configuration.",
@@ -37,13 +44,6 @@
   },
   {
     "type":     "_",
-    "target":   "fingerprint.pb",
-    "source":   "https://github.com/lutzroeder/netron/files/10475238/fingerprint.pb.zip[fingerprint.pb]",
-    "error":    "The file 'saved_model.pb' does not exist.",
-    "link":     "https://github.com/lutzroeder/netron/issues/458"
-  },
-  {
-    "type":     "_",
     "target":   "haarcascade_mcs_nose.xml",
     "source":   "https://github.com/lutzroeder/netron/files/7403702/haarcascade_mcs_nose.xml.zip[haarcascade_mcs_nose.xml]",
     "error":    "Invalid file content. File contains OpenCV storage data.",
@@ -54,13 +54,6 @@
     "target":   "imagenet_2012_challenge_label_map_proto.pbtxt",
     "source":   "https://raw.githubusercontent.com/dmlc/web-data/master/tensorflow/models/InceptionV1/imagenet_2012_challenge_label_map_proto.pbtxt",
     "error":    "Invalid file content. File contains ImageNet LabelMap data."
-  },
-  {
-    "type":     "_",
-    "target":   "keras_metadata.pb",
-    "source":   "https://github.com/lutzroeder/netron/files/6751650/keras_metadata.pb.zip[keras_metadata.pb]",
-    "error":    "The file 'saved_model.pb' does not exist.",
-    "link":     "https://github.com/lutzroeder/netron/issues/458"
   },
   {
     "type":     "_",
@@ -2207,6 +2200,13 @@
   },
   {
     "type":     "keras",
+    "target":   "keras_metadata.pb",
+    "source":   "https://github.com/lutzroeder/netron/files/6751650/keras_metadata.pb.zip[keras_metadata.pb]",
+    "format":   "Keras Saved Metadata",
+    "link":     "https://github.com/lutzroeder/netron/issues/458"
+  },
+  {
+    "type":     "keras",
     "target":   "lstm_seq2seq.h5",
     "source":   "https://github.com/lutzroeder/netron/files/2592328/lstm_seq2seq.zip[lstm_seq2seq.h5]",
     "format":   "Keras v2.1.2",
@@ -3434,6 +3434,27 @@
   },
   {
     "type":     "onnx",
+    "target":   "aten_sum_dim_onnx_inlined.onnx",
+    "source":   "https://github.com/lutzroeder/netron/files/12811469/aten_sum_dim_onnx.txt.zip[aten_sum_dim_onnx_inlined.onnx]",
+    "format":   "ONNX v8",
+    "link":     "https://github.com/lutzroeder/netron/issues/884"
+  },
+  {
+    "type":     "onnx",
+    "target":   "aten_sum_dim_onnx.onnx",
+    "source":   "https://github.com/lutzroeder/netron/files/12811469/aten_sum_dim_onnx.txt.zip[aten_sum_dim_onnx.onnx]",
+    "format":   "ONNX v8",
+    "link":     "https://github.com/lutzroeder/netron/issues/884"
+  },
+  {
+    "type":     "onnx",
+    "target":   "aten_sum_dim_onnx.txt",
+    "source":   "https://github.com/lutzroeder/netron/files/12811469/aten_sum_dim_onnx.txt.zip[aten_sum_dim_onnx.txt]",
+    "format":   "ONNX Text v8",
+    "link":     "https://github.com/lutzroeder/netron/issues/884"
+  },
+  {
+    "type":     "onnx",
     "target":   "bert-base-uncased.onnx.zip",
     "source":   "https://github.com/lutzroeder/netron/files/7705191/bert-base-uncased.onnx.zip",
     "format":   "ONNX v7",
@@ -4071,6 +4092,13 @@
   },
   {
     "type":     "om",
+    "target":   "image_HDR_enhance.om",
+    "source":   "https://github.com/lutzroeder/netron/files/12787720/image_HDR_enhance.om.zip[image_HDR_enhance.om]",
+    "format":   "DaVinci OM",
+    "link":     "https://github.com/lutzroeder/netron/issues/799"
+  },
+  {
+    "type":     "om",
     "target":   "netron_issue_788.om",
     "source":   "https://github.com/lutzroeder/netron/files/7104677/netron_issue_788.om.zip[netron_issue_788.om]",
     "format":   "DaVinci OM",
@@ -4122,6 +4150,13 @@
     "type":     "openvino",
     "target":   "2018_R5_vehicle-license-plate-detection-barrier-0106.xml",
     "source":   "https://github.com/lutzroeder/netron/files/8983770/2018_R5_vehicle-license-plate-detection-barrier-0106.xml.zip[2018_R5_vehicle-license-plate-detection-barrier-0106.xml]",
+    "format":   "OpenVINO IR",
+    "link":     "https://github.com/lutzroeder/netron/issues/191"
+  },
+  {
+    "type":     "openvino",
+    "target":   "face-detection-retail-0005.xml,face-detection-retail-0005.bin",
+    "source":   "https://github.com/lutzroeder/netron/files/12750770/face-detection-retail-0005.zip[face-detection-retail-0005.xml,face-detection-retail-0005.bin]",
     "format":   "OpenVINO IR",
     "link":     "https://github.com/lutzroeder/netron/issues/191"
   },
@@ -4642,6 +4677,13 @@
   },
   {
     "type":     "pytorch",
+    "target":   "load_library.pt",
+    "source":   "https://github.com/lutzroeder/netron/files/12839408/load_library.pt.zip[load_library.pt]",
+    "format":   "PyTorch Package v1.9",
+    "link":     "https://github.com/lutzroeder/netron/issues/928"
+  },
+  {
+    "type":     "pytorch",
     "target":   "mask_depthwise_conv.pt",
     "source":   "https://github.com/lutzroeder/netron/files/6186157/mask_depthwise_conv.pt.zip[mask_depthwise_conv.pt]",
     "format":   "TorchScript v1.3",
@@ -4792,6 +4834,13 @@
     "source":   "https://raw.githubusercontent.com/deepware/dFace/master/models/mtcnn.pt",
     "format":   "PyTorch v0.1.10",
     "link":     "https://github.com/deepware/dface/tree/master/dface"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "multi_return.pt",
+    "source":   "https://github.com/lutzroeder/netron/files/12811973/multi_return.pt.zip[multi_return.pt]",
+    "format":   "PyTorch Package v1.9",
+    "link":     "https://github.com/lutzroeder/netron/issues/928"
   },
   {
     "type":     "pytorch",
@@ -5148,6 +5197,13 @@
     "source":   "https://github.com/lutzroeder/netron/files/12439374/silero_vad.zip[silero_vad.jit]",
     "error":    "Supported sampling rates: [8000, 16000] (or multiply of 16000)",
     "link":     "https://github.com/lutzroeder/netron/issues/1142"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "simple_leaf_fx.pt",
+    "source":   "https://github.com/lutzroeder/netron/files/12839399/simple_leaf_fx.pt.zip[simple_leaf_fx.pt]",
+    "format":   "PyTorch Package v1.9",
+    "link":     "https://github.com/lutzroeder/netron/issues/928"
   },
   {
     "type":     "pytorch",
@@ -5800,7 +5856,6 @@
     "type":     "sklearn",
     "target":   "tree.pkl",
     "source":   "https://github.com/wjqkkky/TTS-front-end/raw/56e09ef79bb6679e51a7c8ff3d302ccd917c0992/ChineseRhythmPredictor/tree.pkl",
-    "error":    "Invalid string length",
     "format":   "scikit-learn v0.21.3",
     "link":     "https://github.com/wjqkkky/TTS-front-end"
   },
@@ -6034,6 +6089,13 @@
     "format":   "TensorFlow MetaGraph",
     "action":   "skip-render",
     "link":     "https://github.com/Leavingseason/xDeepFM"
+  },
+  {
+    "type":     "tf",
+    "target":   "fingerprint.pb",
+    "source":   "https://github.com/lutzroeder/netron/files/10475238/fingerprint.pb.zip[fingerprint.pb]",
+    "format":   "TensorFlow Fingerprint",
+    "link":     "https://github.com/lutzroeder/netron/issues/1162"
   },
   {
     "type":     "tf",
