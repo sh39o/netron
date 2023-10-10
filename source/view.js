@@ -1726,9 +1726,11 @@ view.Graph = class extends grapher.Graph {
                 }
             }
         }
-        this.on("click", (_, subg_name) =>
-          this.view.showSubgraphProperties(this._isCompound.get(subg_name))
-        );
+        if (this._isCompound instanceof Map) {
+            this.on("click", (_, subg_name) =>
+            this.view.showSubgraphProperties(this._isCompound.get(subg_name))
+            );
+        }
         for (const output of graph.outputs) {
             const viewOutput = this.createOutput(output);
             this.setNode(viewOutput);
