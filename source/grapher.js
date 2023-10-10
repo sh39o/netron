@@ -1,5 +1,4 @@
 var grapher = {};var dagre = require('./dagre');
-
 grapher.Graph = class {
 
     constructor(compound, layout) {
@@ -194,33 +193,37 @@ grapher.Graph = class {
                 node.rectangle.setAttribute('y', - node.height / 2);
                 node.rectangle.setAttribute('width', node.width);
                 node.rectangle.setAttribute('height', node.height);
-                const device = this._isCompound.get(nodeId).attributes.find((attr)=> attr.name === 'device');
-                const tiling_idx = this._isCompound.get(nodeId).attributes.find((attr)=> attr.name === 'tiling_idx');
-                const root = this._isCompound.get(nodeId).name === "root";
-                let label_name = undefined;
-                let font_size = "10px";
-                if (root) {
-                    label_name = "ROOT";
-                    font_size = "15px";
-                } else if (device) {
-                    label_name = device.value.value;
-                    font_size = "12px";
-                } else if (tiling_idx) {
-                    label_name = "tile " + tiling_idx.value.value;
-                    font_size = "11px";
-                }
-                if (label_name) {
-                    const textElement = document.createElementNS(
-                        "http://www.w3.org/2000/svg",
-                        "text"
-                      );
-                      textElement.textContent = label_name;
-                      textElement.setAttribute('text-anchor', 'middle');
-                      textElement.setAttribute('alignment-baseline', 'bottom');
-                      textElement.setAttribute('x', - node.width / 2 - 10);
-                      textElement.setAttribute('y', - node.height / 2 + 10);
-                      textElement.style.fontSize = font_size;
-                      node.element.appendChild(textElement);
+                if (
+                  typeof this._isCompound === "object" &&
+                  this._isCompound instanceof Map &&
+                  this._isCompound.get(nodeId) &&
+                  this._isCompound.get(nodeId).attributes
+                ) {
+                    const device = this._isCompound.get(nodeId).attributes.find((attr) => attr.name === "device");
+                    const tiling_idx = this._isCompound.get(nodeId).attributes.find((attr) => attr.name === "tiling_idx");
+                    const root = this._isCompound.get(nodeId).name === "root";
+                    let label_name = undefined;
+                    let font_size = "10px";
+                    if (root) {
+                        label_name = "ROOT";
+                        font_size = "15px";
+                    } else if (device) {
+                        label_name = device.value.value;
+                        font_size = "12px";
+                    } else if (tiling_idx) {
+                        label_name = "tile " + tiling_idx.value.value;
+                        font_size = "11px";
+                    }
+                    if (label_name) {
+                        const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        textElement.textContent = label_name;
+                        textElement.setAttribute("text-anchor", "middle");
+                        textElement.setAttribute("alignment-baseline", "bottom");
+                        textElement.setAttribute("x", -node.width / 2 - 10);
+                        textElement.setAttribute("y", -node.height / 2 + 10);
+                        textElement.style.fontSize = font_size;
+                        node.element.appendChild(textElement);
+                    }
                 }
             }
         }

@@ -2327,7 +2327,7 @@ view.NodeSidebar = class extends view.ObjectSidebar {
             }
         }
 
-        if (node.group) {
+        if (node.group && node.groups) {
             this.addHeader("Subgraphs");
             node.groups.forEach((group, name) => {
                 this._addGroup(name, group, this._sidebar);
