@@ -201,9 +201,9 @@ numpy.Node = class {
         this._inputs = [];
         for (const parameter of layer.parameters) {
             const initializer = new numpy.Tensor(parameter.tensor.array);
-            this._inputs.push(new numpy.Argument(parameter.name, [
-                new numpy.Value(parameter.tensor.name || '', initializer)
-            ]));
+            const value = new numpy.Value(parameter.tensor.name || '', initializer);
+            const argument = new numpy.Argument(parameter.name, [ value ]);
+            this._inputs.push(argument);
         }
     }
 
@@ -232,6 +232,7 @@ numpy.Tensor = class  {
 
     constructor(array) {
         this.type = new numpy.TensorType(array.dtype.__name__, new numpy.TensorShape(array.shape));
+        this.stride = array.strides.map((stride) => stride / array.itemsize);
         this.values = this.type.dataType == 'string' || this.type.dataType == 'object' ? array.flatten().tolist() : array.tobytes();
         this.encoding = this.type.dataType == 'string' || this.type.dataType == 'object' ? '|' : array.dtype.byteorder;
     }

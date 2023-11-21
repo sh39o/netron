@@ -1869,24 +1869,10 @@
   },
   {
     "type":     "dl4j",
-    "target":   "lenet_dl4j_mnist_inference.zip",
-    "source":   "https://dl4jdata.blob.core.windows.net/models/lenet_dl4j_mnist_inference.zip",
-    "format":   "Deeplearning4j",
-    "link":     "https://github.com/eclipse/deeplearning4j"
-  },
-  {
-    "type":     "dl4j",
     "target":   "nasnetmobile_dl4j_inference.v1.zip",
     "source":   "https://github.com/lutzroeder/netron/files/11928662/nasnetmobile_dl4j_inference.v1.zip",
     "format":   "Deeplearning4j",
     "link":     "https://github.com/lutzroeder/netron/issues/303"
-  },
-  {
-    "type":     "dl4j",
-    "target":   "squeezenet_dl4j_inference.v2.zip",
-    "source":   "https://dl4jdata.blob.core.windows.net/models/squeezenet_dl4j_inference.v2.zip",
-    "format":   "Deeplearning4j",
-    "link":     "https://github.com/eclipse/deeplearning4j"
   },
   {
     "type":     "dl4j",
@@ -1935,7 +1921,7 @@
     "target":   "model_front_mibokeh_video.dlc",
     "source":   "https://github.com/lutzroeder/netron/files/8767521/model_front_mibokeh_video.dlc.zip[model_front_mibokeh_video.dlc]",
     "format":   "DLC",
-    "error":    "File format is not dlc.v1.NETP (Offset is outside the bounds of the DataView).",
+    "error":    "File format is not dlc.v3.NETP (Offset is outside the bounds of the DataView).",
     "link":     "https://github.com/lutzroeder/netron/issues/640"
   },
   {
@@ -1964,6 +1950,13 @@
     "type":     "dlc",
     "target":   "sample.dlc",
     "source":   "https://github.com/lutzroeder/netron/files/12207883/sample.dlc.zip[sample.dlc]",
+    "format":   "DLC",
+    "link":     "https://github.com/lutzroeder/netron/issues/640"
+  },
+  {
+    "type":     "dlc",
+    "target":   "yolov8n.dlc",
+    "source":   "https://github.com/lutzroeder/netron/files/13344121/yolov8n.dlc.zip[yolov8n.dlc]",
     "format":   "DLC",
     "link":     "https://github.com/lutzroeder/netron/issues/640"
   },
@@ -2022,6 +2015,55 @@
     "source":   "https://github.com/vadimkantorov/metriclearningbench/releases/download/data/googlenet.h5",
     "format":   "Hickle Weights",
     "link":     "https://github.com/lutzroeder/netron/issues/998"
+  },
+  {
+    "type":     "keras",
+    "target":   "0326.json",
+    "source":   "https://github.com/lutzroeder/netron/files/13367043/0326.json.zip[0326.json]",
+    "format":   "Keras v2.2.4-tf",
+    "link":     "https://github.com/lutzroeder/netron/issues/326"
+  },
+  {
+    "type":     "keras",
+    "target":   "1141.1.keras",
+    "source":   "https://github.com/lutzroeder/netron/files/13329220/1141.zip[1141.1.keras]",
+    "format":   "Keras v2.13.1",
+    "link":     "https://github.com/lutzroeder/netron/issues/1141"
+  },
+  {
+    "type":     "keras",
+    "target":   "1141.2.keras",
+    "source":   "https://github.com/lutzroeder/netron/files/13329220/1141.zip[1141.2.keras]",
+    "format":   "Keras v2.13.1",
+    "link":     "https://github.com/lutzroeder/netron/issues/1141"
+  },
+  {
+    "type":     "keras",
+    "target":   "1151.1.keras",
+    "source":   "https://github.com/lutzroeder/netron/files/13329206/1151.zip[1151.1.keras]",
+    "format":   "Keras v2.14.0",
+    "link":     "https://github.com/lutzroeder/netron/issues/1151"
+  },
+  {
+    "type":     "keras",
+    "target":   "1151.2.keras",
+    "source":   "https://github.com/lutzroeder/netron/files/13329206/1151.zip[1151.2.keras]",
+    "format":   "Keras v2.14.0",
+    "link":     "https://github.com/lutzroeder/netron/issues/1151"
+  },
+  {
+    "type":     "keras",
+    "target":   "1151.3.keras",
+    "source":   "https://github.com/lutzroeder/netron/files/13329206/1151.zip[1151.3.keras]",
+    "format":   "Keras v2.14.0",
+    "link":     "https://github.com/lutzroeder/netron/issues/1151"
+  },
+  {
+    "type":     "keras",
+    "target":   "1151.4.keras",
+    "source":   "https://github.com/lutzroeder/netron/files/13329206/1151.zip[1151.4.keras]",
+    "format":   "Keras v2.13.1",
+    "link":     "https://github.com/lutzroeder/netron/issues/1151"
   },
   {
     "type":     "keras",
@@ -2095,6 +2137,13 @@
   },
   {
     "type":     "keras",
+    "target":   "demo_mnist_convnet.keras",
+    "source":   "https://github.com/lutzroeder/netron/files/13066160/demo_mnist_convnet.keras.zip[demo_mnist_convnet.keras]",
+    "format":   "Keras v0.1.7",
+    "link":     "https://github.com/lutzroeder/netron/issues/57"
+  },
+  {
+    "type":     "keras",
     "target":   "DenseNet121.h5.zip",
     "source":   "https://github.com/lutzroeder/netron/files/6251712/DenseNet121.h5.zip",
     "format":   "Keras v2.4.0",
@@ -2144,13 +2193,6 @@
   },
   {
     "type":     "keras",
-    "target":   "issue326.json",
-    "source":   "https://github.com/lutzroeder/netron/files/12449721/issue326.json.zip[issue326.json]",
-    "format":   "Keras v2.2.4-tf",
-    "link":     "https://github.com/lutzroeder/netron/issues/326"
-  },
-  {
-    "type":     "keras",
     "target":   "issue428.h5",
     "source":   "https://github.com/lutzroeder/netron/files/12449731/issue428.h5.zip[issue428.h5]",
     "format":   "Keras v2.2.4-tf",
@@ -2176,20 +2218,6 @@
     "source":   "https://github.com/lutzroeder/netron/files/12449745/issue855.h5.zip[issue855.h5]",
     "format":   "Keras v2.7.0",
     "link":     "https://github.com/lutzroeder/netron/issues/855"
-  },
-  {
-    "type":     "keras",
-    "target":   "issue1142.1.keras",
-    "source":   "https://github.com/lutzroeder/netron/files/12407995/issue1142.1.keras.zip[issue1142.1.keras]",
-    "format":   "Keras v2.13.1",
-    "link":     "https://github.com/lutzroeder/netron/issues/1141"
-  },
-  {
-    "type":     "keras",
-    "target":   "issue1142.2.keras",
-    "source":   "https://github.com/lutzroeder/netron/files/12407996/issue1142.2.keras.zip[issue1142.2.keras]",
-    "format":   "Keras v2.13.1",
-    "link":     "https://github.com/lutzroeder/netron/issues/1141"
   },
   {
     "type":     "keras",
@@ -2276,10 +2304,17 @@
   },
   {
     "type":     "keras",
-    "target":   "model_denoise.h5",
-    "source":   "https://github.com/lutzroeder/netron/files/8452765/model_denoise.h5.zip[model_denoise.h5]",
-    "format":   "Keras v2.4.0",
-    "link":     "https://github.com/lutzroeder/netron/issues/900"
+    "target":   "model.weights.h5",
+    "source":   "https://github.com/lutzroeder/netron/files/13326420/model.weights.h5.zip[model.weights.h5]",
+    "format":   "Keras Weights",
+    "link":     "https://github.com/lutzroeder/netron/issues/57"
+  },
+  {
+    "type":     "keras",
+    "target":   "model.weights.npz",
+    "source":   "https://github.com/lutzroeder/netron/files/13326421/model.weights.npz.zip[model.weights.npz]",
+    "format":   "Keras Weights",
+    "link":     "https://github.com/lutzroeder/netron/issues/57"
   },
   {
     "type":     "keras",
@@ -2297,6 +2332,13 @@
   },
   {
     "type":     "keras",
+    "target":   "multi_input_and_output_model.keras",
+    "source":   "https://github.com/lutzroeder/netron/files/13275502/functional_api.zip[multi_input_and_output_model.keras]",
+    "format":   "Keras v0.1.7",
+    "link":     "https://github.com/lutzroeder/netron/issues/1180"
+  },
+  {
+    "type":     "keras",
     "target":   "NASNetMobile.h5.zip",
     "source":   "https://github.com/lutzroeder/netron/files/6098153/NASNetMobile.h5.zip",
     "format":   "Keras v2.4.0",
@@ -2308,6 +2350,20 @@
     "source":   "https://github.com/lutzroeder/netron/files/4304644/nested_bidrectional.zip[nested_bidrectional.h5]",
     "format":   "Keras v2.3.1",
     "link":     "https://github.com/lutzroeder/netron/issues/428"
+  },
+  {
+    "type":     "keras",
+    "target":   "nested.h5.keras",
+    "source":   "https://github.com/lutzroeder/netron/files/13324444/nested.zip[nested.h5.keras]",
+    "format":   "Keras v2.14.0",
+    "link":     "https://github.com/lutzroeder/netron/issues/57"
+  },
+  {
+    "type":     "keras",
+    "target":   "nested.npz.keras",
+    "source":   "https://github.com/lutzroeder/netron/files/13324444/nested.zip[nested.npz.keras]",
+    "format":   "Keras v2.14.0",
+    "link":     "https://github.com/lutzroeder/netron/issues/57"
   },
   {
     "type":     "keras",
@@ -2342,6 +2398,20 @@
     "target":   "residual_cnn.h5",
     "source":   "https://github.com/lutzroeder/netron/files/2592329/keras_models.zip[residual_cnn.h5]",
     "format":   "Keras v2.1.2",
+    "link":     "https://github.com/lutzroeder/netron/issues/57"
+  },
+  {
+    "type":     "keras",
+    "target":   "resnet50.h5.keras",
+    "source":   "https://github.com/lutzroeder/netron/files/13324443/resnet50.zip[resnet50.h5.keras]",
+    "format":   "Keras v0.1.7",
+    "link":     "https://github.com/lutzroeder/netron/issues/57"
+  },
+  {
+    "type":     "keras",
+    "target":   "resnet50.npz.keras",
+    "source":   "https://github.com/lutzroeder/netron/files/13324443/resnet50.zip[resnet50.npz.keras]",
+    "format":   "Keras v0.1.7",
     "link":     "https://github.com/lutzroeder/netron/issues/57"
   },
   {
@@ -2929,6 +2999,14 @@
     "link":     "https://github.com/xindongzhang/MNN-APPLICATIONS"
   },
   {
+    "type":     "modular",
+    "target":   "resnet34.maxviz",
+    "source":   "https://github.com/lutzroeder/netron/files/13421032/resnet34.maxviz.zip[resnet34.maxviz]",
+    "action":   "skip-render",
+    "format":   "Modular",
+    "link":     "https://github.com/lutzroeder/netron/issues/1187"
+  },
+  {
     "type":     "mslite",
     "target":   "blazeface_quant.ms",
     "source":   "https://github.com/lutzroeder/netron/files/6097966/blazeface_quant.ms.zip[blazeface_quant.ms]",
@@ -3353,6 +3431,13 @@
     "target":   "datasplit.pkl",
     "source":   "https://github.com/lutzroeder/netron/files/10099644/datasplit.pkl.zip[datasplit.pkl]",
     "format":   "NumPy Weights",
+    "link":     "https://github.com/lutzroeder/netron/issues/711"
+  },
+  {
+    "type":     "numpy",
+    "target":   "dill_array.pkl",
+    "source":   "https://github.com/lutzroeder/netron/files/13031222/dill_array.pkl.zip[dill_array.pkl]",
+    "format":   "NumPy NDArray",
     "link":     "https://github.com/lutzroeder/netron/issues/711"
   },
   {
@@ -4126,6 +4211,13 @@
     "link":     "https://github.com/lutzroeder/netron/issues/799"
   },
   {
+    "type":     "om",
+    "target":   "yolov8.om",
+    "source":   "https://github.com/lutzroeder/netron/files/12981666/yolov8.om.zip[yolov8.om]",
+    "format":   "DaVinci OM SVP",
+    "link":     "https://github.com/lutzroeder/netron/issues/1170"
+  },
+  {
     "type":     "openvino",
     "target":   "2018_R3_age-gender-recognition-retail-0013.xml,2018_R3_age-gender-recognition-retail-0013.bin",
     "source":   "https://github.com/lutzroeder/netron/files/8983748/2018_R3_age-gender-recognition-retail-0013.zip[2018_R3_age-gender-recognition-retail-0013.xml,2018_R3_age-gender-recognition-retail-0013.bin]",
@@ -4187,6 +4279,13 @@
     "source":   "https://github.com/lutzroeder/netron/files/5114040/netron_issue_572.zip[netron_issue_572.xml,netron_issue_572.bin]",
     "format":   "OpenVINO IR",
     "link":     "https://github.com/lutzroeder/netron/issues/572"
+  },
+  {
+    "type":     "openvino",
+    "target":   "openvino_i4_matmul_model.xml,openvino_i4_matmul_model.bin",
+    "source":   "https://github.com/lutzroeder/netron/files/13059592/openvino_i4_matmul_model.zip[openvino_i4_matmul_model.xml,openvino_i4_matmul_model.bin]",
+    "format":   "OpenVINO IR",
+    "link":     "https://github.com/lutzroeder/netron/issues/191"
   },
   {
     "type":     "openvino",
@@ -4346,6 +4445,14 @@
   },
   {
     "type":     "pickle",
+    "target":   "dill_custom_class.pkl",
+    "source":   "https://github.com/lutzroeder/netron/files/13035743/dill_custom_class.pkl.zip[dill_custom_class.pkl]",
+    "format":   "Pickle",
+    "error":    "Unknown type name '__builtin__.__main__'.\n'dill._dill._create_type' not implemented.",
+    "link":     "https://github.com/lutzroeder/netron/issues/901"
+  },
+  {
+    "type":     "pickle",
     "target":   "model_final_checkpoint.model.pkl",
     "source":   "https://github.com/lutzroeder/netron/files/11707359/model_final_checkpoint.model.pkl.zip[model_final_checkpoint.model.pkl]",
     "format":   "Pickle",
@@ -4374,6 +4481,13 @@
     "format":   "Pickle",
     "error":    "Unsupported Pickle object.",
     "link":     "https://github.com/omdv/robinhood-portfolio/tree/4622dc61e0556a85ce52c4de178d01a9838acbc5"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "add.pte",
+    "source":   "https://github.com/lutzroeder/netron/files/13156981/add.pte.zip[add.pte]",
+    "error":    "Invalid file content. File contains executorch.Program data.",
+    "link":     "https://github.com/lutzroeder/netron/issues/1175"
   },
   {
     "type":     "pytorch",
@@ -4454,13 +4568,6 @@
   },
   {
     "type":     "pytorch",
-    "target":   "bvlc_googlenet.caffemodel.pth",
-    "source":   "https://www.dropbox.com/s/2ljm35ztj6hllcu/bvlc_googlenet.caffemodel.pth?dl=1",
-    "format":   "PyTorch v0.1.10",
-    "link":     "https://sea-region.github.com/yuminsuh/part_bilinear_reid/issues/2"
-  },
-  {
-    "type":     "pytorch",
     "target":   "ckpt.t7",
     "source":   "https://raw.githubusercontent.com/babajide07/Redundant-Feature-Pruning-Pytorch-Implementation/master/checkpoint/ckpt.t7",
     "format":   "PyTorch v0.1.10",
@@ -4493,7 +4600,7 @@
     "target":   "data.pkl",
     "source":   "https://github.com/lutzroeder/netron/files/9795497/data.pkl.zip[data.pkl]",
     "format":   "PyTorch Pickle",
-    "error":    "PyTorch data.pkl format not supported.",
+    "error":    "PyTorch standalone 'data.pkl' format not supported.",
     "link":     "https://github.com/lutzroeder/netron/issues/720"
   },
   {
@@ -4523,6 +4630,13 @@
     "source":   "https://github.com/lutzroeder/netron/files/9075628/DCGAN2.pt.zip[DCGAN2.pt]",
     "format":   "PyTorch Package v1.9",
     "link":     "https://github.com/lutzroeder/netron/issues/928"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "densenet.data.pkl",
+    "source":   "https://github.com/lutzroeder/netron/files/13064609/densenet.data.pkl.zip[densenet.data.pkl]",
+    "format":   "PyTorch",
+    "link":     "https://github.com/lutzroeder/netron/issues/720"
   },
   {
     "type":     "pytorch",
@@ -4571,6 +4685,13 @@
     "source":   "https://github.com/lutzroeder/netron/files/9145928/fairseq.lightweightconv.pt.zip[fairseq.lightweightconv.pt]",
     "format":   "TorchScript v1.6",
     "link":     "https://github.com/lutzroeder/netron/issues/931"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "fast.ai.data.pkl",
+    "source":   "https://github.com/lutzroeder/netron/files/13064775/fast.ai.data.pkl.zip[fast.ai.data.pkl]",
+    "format":   "PyTorch",
+    "link":     "https://github.com/lutzroeder/netron/issues/720"
   },
   {
     "type":     "pytorch",
@@ -4638,6 +4759,13 @@
     "source":   "https://github.com/lutzroeder/netron/files/5212009/iv3_pertensor.zip[iv3_pertensor.pt]",
     "format":   "TorchScript v1.5",
     "link":     "https://github.com/lutzroeder/netron/issues/546"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "issue1167.pt",
+    "source":   "https://github.com/lutzroeder/netron/files/12901438/issue1167.pt.zip[issue1167.pt]",
+    "format":   "TorchScript v1.6",
+    "link":     "https://github.com/lutzroeder/netron/issues/1167"
   },
   {
     "type":     "pytorch",
@@ -4928,8 +5056,8 @@
   },
   {
     "type":     "pytorch",
-    "target":   "norm_inplace.pt.zip",
-    "source":   "https://github.com/lutzroeder/netron/files/4516621/norm_inplace.pt.zip",
+    "target":   "norm_inplace.pt",
+    "source":   "https://github.com/lutzroeder/netron/files/13404598/norm_inplace.pt.zip[norm_inplace.pt]",
     "format":   "TorchScript v1.3",
     "link":     "https://github.com/lutzroeder/netron/issues/473"
   },
@@ -5326,6 +5454,13 @@
   },
   {
     "type":     "pytorch",
+    "target":   "tensors.data.pkl",
+    "source":   "https://github.com/lutzroeder/netron/files/13061412/tensors.data.pkl.zip[tensors.data.pkl]",
+    "format":   "PyTorch Pickle Weights",
+    "link":     "https://github.com/lutzroeder/netron/issues/720"
+  },
+  {
+    "type":     "pytorch",
     "target":   "test.8bit.pth",
     "source":   "https://github.com/lutzroeder/netron/files/5238524/test.8bit.pth.zip[test.8bit.pth]",
     "format":   "TorchScript v1.6",
@@ -5337,6 +5472,13 @@
     "source":   "https://github.com/lutzroeder/netron/files/10867120/TFModel_traced_eager_quant.pt.zip[TFModel_traced_eager_quant.pt]",
     "error":    "Unknown type name '__torch__.torch.classes.rnn.CellParamsBase'.",
     "link":     "https://github.com/lutzroeder/netron/issues/969"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "torch_fx_sample.pt",
+    "source":   "https://github.com/lutzroeder/netron/files/12889841/torch_fx_sample.pt.zip[torch_fx_sample.pt]",
+    "format":   "PyTorch v1.6",
+    "link":     "https://github.com/lutzroeder/netron/issues/720"
   },
   {
     "type":     "pytorch",
@@ -5488,17 +5630,17 @@
   },
   {
     "type":     "pytorch",
-    "target":   "ViT-B-32.pt",
-    "source":   "https://github.com/lutzroeder/netron/files/5790183/ViT-B-32.pt.zip[ViT-B-32.pt]",
-    "format":   "TorchScript v1.6",
-    "link":     "https://github.com/lutzroeder/netron/issues/546"
-  },
-  {
-    "type":     "pytorch",
     "target":   "video_classification.pt",
     "source":   "https://github.com/lutzroeder/netron/files/6341327/video_classification.pt.zip[video_classification.pt]",
     "format":   "TorchScript v1.6",
     "link":     "https://github.com/lutzroeder/netron/issues/728"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "ViT-B-32.pt",
+    "source":   "https://github.com/lutzroeder/netron/files/5790183/ViT-B-32.pt.zip[ViT-B-32.pt]",
+    "format":   "TorchScript v1.6",
+    "link":     "https://github.com/lutzroeder/netron/issues/546"
   },
   {
     "type":     "pytorch",
@@ -5509,13 +5651,6 @@
   },
   {
     "type":     "pytorch",
-    "target":   "wav2vec2.ptl",
-    "source":   "https://github.com/lutzroeder/netron/files/7447547/wav2vec2.ptl.zip[wav2vec2.ptl]",
-    "format":   "TorchScript v1.6",
-    "link":     "https://github.com/lutzroeder/netron/issues/827"
-  },
-  {
-    "type":     "pytorch",
     "target":   "WAV2VEC2_BASE_quant-none-cpu.pt",
     "source":   "https://github.com/lutzroeder/netron/files/8820082/WAV2VEC2_BASE_quant-none-cpu.pt.zip[WAV2VEC2_BASE_quant-none-cpu.pt]",
     "format":   "TorchScript v1.6",
@@ -5523,11 +5658,17 @@
   },
   {
     "type":     "pytorch",
-    "target":   "yolov5n.torchscript",
-    "source":   "https://github.com/lutzroeder/netron/files/8457287/yolov5n.torchscript.zip[yolov5n.torchscript]",
+    "target":   "wav2vec2.ptl",
+    "source":   "https://github.com/lutzroeder/netron/files/7447547/wav2vec2.ptl.zip[wav2vec2.ptl]",
     "format":   "TorchScript v1.6",
-    "error":    "Invalid tensor data size.",
-    "link":     "https://github.com/lutzroeder/netron/issues/882"
+    "link":     "https://github.com/lutzroeder/netron/issues/827"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "yolo4_tiny.pt",
+    "source":   "https://github.com/lutzroeder/netron/files/7995416/yolo4_tiny.pt.zip[yolo4_tiny.pt]",
+    "format":   "TorchScript v1.5",
+    "link":     "https://github.com/lutzroeder/netron/issues/842"
   },
   {
     "type":     "pytorch",
@@ -5541,15 +5682,21 @@
     "target":   "yolov5n.tensor.pth",
     "source":   "https://github.com/lutzroeder/netron/files/9543602/yolov5n.tensor.pth.zip[yolov5n.tensor.pth]",
     "format":   "PyTorch v1.6",
-    "error":    "Invalid tensor data size.",
     "link":     "https://github.com/lutzroeder/netron/issues/720"
   },
   {
     "type":     "pytorch",
-    "target":   "yolo4_tiny.pt",
-    "source":   "https://github.com/lutzroeder/netron/files/7995416/yolo4_tiny.pt.zip[yolo4_tiny.pt]",
-    "format":   "TorchScript v1.5",
-    "link":     "https://github.com/lutzroeder/netron/issues/842"
+    "target":   "yolov5n.tensor.data.pkl",
+    "source":   "https://github.com/lutzroeder/netron/files/13064842/yolov5n.tensor.data.pkl.zip[yolov5n.tensor.data.pkl]",
+    "format":   "PyTorch Pickle Weights",
+    "link":     "https://github.com/lutzroeder/netron/issues/720"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "yolov5n.torchscript",
+    "source":   "https://github.com/lutzroeder/netron/files/8457287/yolov5n.torchscript.zip[yolov5n.torchscript]",
+    "format":   "TorchScript v1.6",
+    "link":     "https://github.com/lutzroeder/netron/issues/882"
   },
   {
     "type":     "rknn",

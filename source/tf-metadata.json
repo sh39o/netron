@@ -9144,6 +9144,25 @@
     ]
   },
   {
+    "name": "ComputeDedupDataSize",
+    "summary": "An op computes the size of the deduplication data from embedding core and returns the updated config.",
+    "description": "This op is to compute size of the deduplication data so to provide this\ninformation to the op that computes the tuple mask of deduplication data can\nhave static output shape.",
+    "attributes": [
+      {
+        "name": "config",
+        "type": "string",
+        "description": "Serialized TPUEmbeddingConfiguration proto."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "num_elements",
+        "description": "The size of the deduplicated data from infeed.",
+        "type": 3
+      }
+    ]
+  },
+  {
     "name": "ComputeDedupDataTupleMask",
     "summary": "An op computes tuple mask of deduplication data from embedding core.",
     "description": "The deduplication data receiving from embedding core is a Tensor with\ntype=DT_VARIANT. The tensor itself is an XLA nested tuple, whose elements are\nrank 1 tensors. This op is to represents types and length of these elements.",
@@ -10347,6 +10366,48 @@
       {
         "name": "output",
         "typeAttr": "T"
+      }
+    ]
+  },
+  {
+    "name": "ConvertToCooTensor",
+    "attributes": [
+      {
+        "name": "sample_count",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "combiner",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "indices_or_row_splits",
+        "type": 3
+      },
+      {
+        "name": "values",
+        "type": 3
+      },
+      {
+        "name": "weights",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "row_ids",
+        "type": 3
+      },
+      {
+        "name": "col_ids",
+        "type": 3
+      },
+      {
+        "name": "gains",
+        "type": 1
       }
     ]
   },
@@ -15087,7 +15148,7 @@
   {
     "name": "DynamicStitch",
     "summary": "Interleave the values from the `data` tensors into a single tensor.",
-    "description": "Builds a merged tensor such that\n\n```python\n    merged[indices[m][i, ..., j], ...] = data[m][i, ..., j, ...]\n```\n\nFor example, if each `indices[m]` is scalar or vector, we have\n\n```python\n    # Scalar indices:\n    merged[indices[m], ...] = data[m][...]\n\n    # Vector indices:\n    merged[indices[m][i], ...] = data[m][i, ...]\n```\n\nEach `data[i].shape` must start with the corresponding `indices[i].shape`,\nand the rest of `data[i].shape` must be constant w.r.t. `i`.  That is, we\nmust have `data[i].shape = indices[i].shape + constant`.  In terms of this\n`constant`, the output shape is\n\n    merged.shape = [max(indices)] + constant\n\nValues are merged in order, so if an index appears in both `indices[m][i]` and\n`indices[n][j]` for `(m,i) < (n,j)` the slice `data[n][j]` will appear in the\nmerged result. If you do not need this guarantee, ParallelDynamicStitch might\nperform better on some devices.\n\nFor example:\n\n```python\n    indices[0] = 6\n    indices[1] = [4, 1]\n    indices[2] = [[5, 2], [0, 3]]\n    data[0] = [61, 62]\n    data[1] = [[41, 42], [11, 12]]\n    data[2] = [[[51, 52], [21, 22]], [[1, 2], [31, 32]]]\n    merged = [[1, 2], [11, 12], [21, 22], [31, 32], [41, 42],\n              [51, 52], [61, 62]]\n```\n\nThis method can be used to merge partitions created by `dynamic_partition`\nas illustrated on the following example:\n\n```python\n    # Apply function (increments x_i) on elements for which a certain condition\n    # apply (x_i != -1 in this example).\n    x=tf.constant([0.1, -1., 5.2, 4.3, -1., 7.4])\n    condition_mask=tf.not_equal(x,tf.constant(-1.))\n    partitioned_data = tf.dynamic_partition(\n        x, tf.cast(condition_mask, tf.int32) , 2)\n    partitioned_data[1] = partitioned_data[1] + 1.0\n    condition_indices = tf.dynamic_partition(\n        tf.range(tf.shape(x)[0]), tf.cast(condition_mask, tf.int32) , 2)\n    x = tf.dynamic_stitch(condition_indices, partitioned_data)\n    # Here x=[1.1, -1., 6.2, 5.3, -1, 8.4], the -1. values remain\n    # unchanged.\n```\n\n<div style=\"width:70%; margin:auto; margin-bottom:10px; margin-top:20px;\">\n<img style=\"width:100%\" src=\"https://www.tensorflow.org/images/DynamicStitch.png\" alt>\n</div>",
+    "description": "Builds a merged tensor such that\n\n```python\n    merged[indices[m][i, ..., j], ...] = data[m][i, ..., j, ...]\n```\n\nFor example, if each `indices[m]` is scalar or vector, we have\n\n```python\n    # Scalar indices:\n    merged[indices[m], ...] = data[m][...]\n\n    # Vector indices:\n    merged[indices[m][i], ...] = data[m][i, ...]\n```\n\nEach `data[i].shape` must start with the corresponding `indices[i].shape`,\nand the rest of `data[i].shape` must be constant w.r.t. `i`.  That is, we\nmust have `data[i].shape = indices[i].shape + constant`.  In terms of this\n`constant`, the output shape is\n\n    merged.shape = [max(indices) + 1] + constant\n\nValues are merged in order, so if an index appears in both `indices[m][i]` and\n`indices[n][j]` for `(m,i) < (n,j)` the slice `data[n][j]` will appear in the\nmerged result. If you do not need this guarantee, ParallelDynamicStitch might\nperform better on some devices.\n\nFor example:\n\n```python\n    indices[0] = 6\n    indices[1] = [4, 1]\n    indices[2] = [[5, 2], [0, 3]]\n    data[0] = [61, 62]\n    data[1] = [[41, 42], [11, 12]]\n    data[2] = [[[51, 52], [21, 22]], [[1, 2], [31, 32]]]\n    merged = [[1, 2], [11, 12], [21, 22], [31, 32], [41, 42],\n              [51, 52], [61, 62]]\n```\n\nThis method can be used to merge partitions created by `dynamic_partition`\nas illustrated on the following example:\n\n```python\n    # Apply function (increments x_i) on elements for which a certain condition\n    # apply (x_i != -1 in this example).\n    x=tf.constant([0.1, -1., 5.2, 4.3, -1., 7.4])\n    condition_mask=tf.not_equal(x,tf.constant(-1.))\n    partitioned_data = tf.dynamic_partition(\n        x, tf.cast(condition_mask, tf.int32) , 2)\n    partitioned_data[1] = partitioned_data[1] + 1.0\n    condition_indices = tf.dynamic_partition(\n        tf.range(tf.shape(x)[0]), tf.cast(condition_mask, tf.int32) , 2)\n    x = tf.dynamic_stitch(condition_indices, partitioned_data)\n    # Here x=[1.1, -1., 6.2, 5.3, -1, 8.4], the -1. values remain\n    # unchanged.\n```\n\n<div style=\"width:70%; margin:auto; margin-bottom:10px; margin-top:20px;\">\n<img style=\"width:100%\" src=\"https://www.tensorflow.org/images/DynamicStitch.png\" alt>\n</div>",
     "attributes": [
       {
         "name": "N",
@@ -20738,6 +20799,196 @@
     ]
   },
   {
+    "name": "GetMinibatchSplitsWithPhysicalReplica",
+    "attributes": [
+      {
+        "name": "sample_count",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_replica",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_vocab_size",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "feature_width",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_sc_per_chip",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      },
+      {
+        "name": "mini_batch_splits",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "program_key",
+        "type": 7
+      },
+      {
+        "name": "row_ids",
+        "type": 3
+      },
+      {
+        "name": "col_ids",
+        "type": 3
+      },
+      {
+        "name": "gains",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "sorted_row_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_col_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "splits",
+        "type": 9
+      },
+      {
+        "name": "id_counts",
+        "type": 3
+      },
+      {
+        "name": "max_ids",
+        "type": 3
+      },
+      {
+        "name": "max_uniques",
+        "type": 3
+      }
+    ]
+  },
+  {
+    "name": "GetMinibatchesInCsrWithPhysicalReplica",
+    "attributes": [
+      {
+        "name": "sample_count",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_replica",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_minibatches_per_sc",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_ids_per_chip_per_sample",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_vocab_size",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "feature_width",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_sc_per_chip",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      },
+      {
+        "name": "mini_batch_in_csr",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "program_key",
+        "type": 7
+      },
+      {
+        "name": "row_ids",
+        "type": 3
+      },
+      {
+        "name": "col_ids",
+        "type": 3
+      },
+      {
+        "name": "gains",
+        "type": 1
+      },
+      {
+        "name": "splits",
+        "type": 9
+      },
+      {
+        "name": "id_counts",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "row_pointers_unpadded_size",
+        "type": 3
+      },
+      {
+        "name": "ids_unpadded_size",
+        "type": 3
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ]
+  },
+  {
     "name": "GetOptions",
     "summary": "Returns the `tf.data.Options` attached to `input_dataset`.",
     "inputs": [
@@ -20824,6 +21075,15 @@
         "name": "value",
         "description": "The tensor for the given handle.",
         "typeAttr": "dtype"
+      }
+    ]
+  },
+  {
+    "name": "GlobalIterId",
+    "outputs": [
+      {
+        "name": "iter_id",
+        "type": 9
       }
     ]
   },
@@ -56086,6 +56346,53 @@
     ]
   },
   {
+    "name": "StoreMinibatchStatisticsInFdo",
+    "attributes": [
+      {
+        "name": "sample_count",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_replica",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "feature_width",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_sc_per_chip",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      },
+      {
+        "name": "mini_batch_splits",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "program_key",
+        "type": 7
+      },
+      {
+        "name": "max_ids",
+        "type": 3
+      },
+      {
+        "name": "max_uniques",
+        "type": 3
+      }
+    ]
+  },
+  {
     "name": "StridedSlice",
     "category": "Tensor",
     "summary": "Return a strided slice from `input`.",
@@ -57135,6 +57442,28 @@
     ]
   },
   {
+    "name": "TPUAnnotateTensorsWithDynamicShape",
+    "attributes": [
+      {
+        "name": "T",
+        "type": "type[]",
+        "minimum": 1
+      }
+    ],
+    "inputs": [
+      {
+        "name": "tensors",
+        "typeListAttr": "T"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "tpu_tensors",
+        "typeListAttr": "T"
+      }
+    ]
+  },
+  {
     "name": "TPUCompilationResult",
     "summary": "Returns the result of a TPU compilation.",
     "description": "This operation returns the result of a TPU compilation as a serialized\nCompilationResultProto, which holds a status and an error message if an error\noccurred during compilation.",
@@ -57210,6 +57539,39 @@
       {
         "name": "compilation_status",
         "type": 7
+      }
+    ]
+  },
+  {
+    "name": "TPUCopyWithDynamicShape",
+    "summary": "Op that copies host tensor to device with dynamic shape support.\nFor internal use only.",
+    "attributes": [
+      {
+        "name": "N",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "T",
+        "type": "type[]",
+        "minimum": 1
+      }
+    ],
+    "inputs": [
+      {
+        "name": "tensors",
+        "typeListAttr": "T"
+      },
+      {
+        "name": "unpadded_sizes",
+        "numberAttr": "N",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "tpu_tensors",
+        "typeListAttr": "T"
       }
     ]
   },
@@ -60477,7 +60839,7 @@
     "inputs": [
       {
         "name": "input",
-        "description": "1-D or higher.",
+        "description": "Can be of any rank.",
         "typeAttr": "T"
       },
       {
@@ -63778,6 +64140,813 @@
       {
         "name": "input",
         "typeAttr": "Tinput"
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseCoreAdagrad",
+    "attributes": [
+      {
+        "name": "feature_width",
+        "type": "int64"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "indices",
+        "type": 3
+      },
+      {
+        "name": "gradient",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseCoreAdagradMomentum",
+    "attributes": [
+      {
+        "name": "feature_width",
+        "type": "int64"
+      },
+      {
+        "name": "use_nesterov",
+        "type": "boolean"
+      },
+      {
+        "name": "beta_2",
+        "type": "float32"
+      },
+      {
+        "name": "exponent",
+        "type": "float32"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "indices",
+        "type": 3
+      },
+      {
+        "name": "gradient",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "beta_1",
+        "type": 1
+      },
+      {
+        "name": "epsilon",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "momentum",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      },
+      {
+        "name": "updated_momentum",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseCoreAdam",
+    "attributes": [
+      {
+        "name": "feature_width",
+        "type": "int64"
+      },
+      {
+        "name": "use_sum_inside_sqrt",
+        "type": "boolean"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "indices",
+        "type": 3
+      },
+      {
+        "name": "gradient",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "momentum",
+        "type": 1
+      },
+      {
+        "name": "velocity",
+        "type": 1
+      },
+      {
+        "name": "beta_1",
+        "type": 1
+      },
+      {
+        "name": "beta_2",
+        "type": 1
+      },
+      {
+        "name": "epsilon",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_velocity",
+        "type": 1
+      },
+      {
+        "name": "updated_momentum",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseCoreFtrl",
+    "attributes": [
+      {
+        "name": "feature_width",
+        "type": "int64"
+      },
+      {
+        "name": "multiply_linear_by_learning_rate",
+        "type": "boolean"
+      },
+      {
+        "name": "l1_regularization_strength",
+        "type": "float32"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "linear",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "indices",
+        "type": 3
+      },
+      {
+        "name": "gradient",
+        "type": 1
+      },
+      {
+        "name": "beta",
+        "type": 1
+      },
+      {
+        "name": "learning_rate_power",
+        "type": 1
+      },
+      {
+        "name": "l2_regularization_strength",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      },
+      {
+        "name": "updated_linear",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseCoreSgd",
+    "attributes": [
+      {
+        "name": "feature_width",
+        "type": "int64"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "indices",
+        "type": 3
+      },
+      {
+        "name": "gradient",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmul",
+    "attributes": [
+      {
+        "name": "max_ids_per_partition",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "max_unique_ids_per_partition",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "input_size",
+        "type": "int64",
+        "minimum": 0
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_ids",
+        "type": 3
+      },
+      {
+        "name": "col_ids",
+        "type": 22
+      },
+      {
+        "name": "values",
+        "type": 1
+      },
+      {
+        "name": "offsets",
+        "type": 22
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "activations",
+        "type": 1
+      },
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_embedding_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithAdagradAndCsrInput",
+    "attributes": [
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithAdagradMomentumAndCsrInput",
+    "attributes": [
+      {
+        "name": "use_nesterov",
+        "type": "boolean"
+      },
+      {
+        "name": "exponent",
+        "type": "float32"
+      },
+      {
+        "name": "beta1",
+        "type": "float32"
+      },
+      {
+        "name": "beta2",
+        "type": "float32"
+      },
+      {
+        "name": "epsilon",
+        "type": "float32"
+      },
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "momenta",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      },
+      {
+        "name": "updated_momenta",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithAdamAndCsrInput",
+    "attributes": [
+      {
+        "name": "use_sum_inside_sqrt",
+        "type": "boolean"
+      },
+      {
+        "name": "beta1",
+        "type": "float32"
+      },
+      {
+        "name": "beta2",
+        "type": "float32"
+      },
+      {
+        "name": "epsilon",
+        "type": "float32"
+      },
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "momenta",
+        "type": 1
+      },
+      {
+        "name": "velocity",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_momenta",
+        "type": 1
+      },
+      {
+        "name": "updated_velocity",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithFtrlAndCsrInput",
+    "attributes": [
+      {
+        "name": "multiply_linear_by_learning_rate",
+        "type": "boolean"
+      },
+      {
+        "name": "beta",
+        "type": "float32"
+      },
+      {
+        "name": "learning_rate_power",
+        "type": "float32"
+      },
+      {
+        "name": "l1_regularization_strength",
+        "type": "float32"
+      },
+      {
+        "name": "l2_regularization_strength",
+        "type": "float32"
+      },
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "linear",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      },
+      {
+        "name": "updated_linear",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithSgdAndCsrInput",
+    "attributes": [
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulWithCsrInput",
+    "attributes": [
+      {
+        "name": "input_size",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "quantization_config_low",
+        "type": "float32"
+      },
+      {
+        "name": "quantization_config_high",
+        "type": "float32"
+      },
+      {
+        "name": "quantization_config_num_buckets",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "activations",
+        "type": 1
       }
     ]
   },

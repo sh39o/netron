@@ -27,6 +27,8 @@ pickle.ModelFactory = class {
         const obj = target;
         if (obj === null || obj === undefined) {
             context.exception(new pickle.Error("Unsupported Pickle null object."));
+        } else if (obj instanceof Error) {
+            throw obj;
         } else if (Array.isArray(obj)) {
             if (obj.length > 0 && obj[0] && obj.every((item) => item && item.__class__ && obj[0].__class__ && item.__class__.__module__ === obj[0].__class__.__module__ && item.__class__.__name__ === obj[0].__class__.__name__)) {
                 const type = obj[0].__class__.__module__ + "." + obj[0].__class__.__name__;
@@ -107,7 +109,7 @@ pickle.Node = class {
                 this.attributes.push(attribute);
             } else {
                 stack = stack || new Set();
-                if (value && Array.isArray(value) && value.length > 0 && value.every((obj) => obj.__class__ && obj.__class__.__module__ === value[0].__class__.__module__ && obj.__class__.__name__ === value[0].__class__.__name__)) {
+                if (value && Array.isArray(value) && value.length > 0 && value.every((obj) => obj && obj.__class__ && obj.__class__.__module__ === value[0].__class__.__module__ && obj.__class__.__name__ === value[0].__class__.__name__)) {
                     const values = value.filter((value) => !stack.has(value));
                     const nodes = values.map((value) => {
                         stack.add(value);
@@ -147,6 +149,7 @@ pickle.Tensor = class {
 
     constructor(array) {
         this.type = new pickle.TensorType(array.dtype.__name__, new pickle.TensorShape(array.shape));
+        this.stride = array.strides.map((stride) => stride / array.itemsize);
         this.layout = this.type.dataType == 'string' || this.type.dataType == 'object' ? '|' : array.dtype.byteorder;
         this.values = this.type.dataType == 'string' || this.type.dataType == 'object' ? array.tolist() : array.tobytes();
     }

@@ -23,7 +23,11 @@ om.Model = class {
 
     constructor(metadata, target) {
         this.format = target.format;
-        const context = { metadata: metadata, weights: target.weights };
+        const context = {
+            metadata: metadata,
+            signature: target.signature,
+            weights: target.weights
+        };
         this.graphs = target.model.graph.map((graph) => new om.Graph(context, graph));
     }
 };
@@ -31,7 +35,11 @@ om.Model = class {
 om.Graph = class {
 
     constructor(context, graph) {
-        this.name = graph.name;
+        switch (context.signature) {
+            case 'IMOD': this.name = graph.name; break;
+            case 'PICO': this.name = graph.id.toString(); break;
+            default: throw new om.Error('Unsupported DaVinci OM ' + context.signature + ' signature.');
+        }
         this.nodes = [];
         this.inputs = [];
         this.outputs = [];
@@ -189,7 +197,7 @@ om.Attribute = class {
             case 's': {
                 if (typeof value.s === 'string') {
                     this.value = value.s;
-                } else if (value.s.filter(c => c <= 32 && c >= 128).length === 0) {
+                } else if (value.s.filter((c) => c <= 32 && c >= 128).length === 0) {
                     this.value = om.Utility.decodeText(value.s);
                 } else {
                     this.value = value.s;
@@ -209,7 +217,7 @@ om.Attribute = class {
                 const list = value.list;
                 this.value = [];
                 if (list.s && list.s.length > 0) {
-                    this.value = list.s.map(v => String.fromCharCode.apply(null, new Uint16Array(v))).join(', ');
+                    this.value = list.s.map((v) => String.fromCharCode.apply(null, new Uint16Array(v))).join(', ');
                     this.type = 'string[]';
                 } else if (list.b && list.b.length > 0) {
                     this.value = list.b;
@@ -418,7 +426,7 @@ om.Container = class {
                         case 4: { // CUST_AICPU_KERNELS
                             break;
                         }
-                        case 5: { // DEVICE_CONFIG
+                        case 5: { // DEVICE_CONFIG, SO_BINS
                             this.devices = new Map();
                             const decoder = new TextDecoder('ascii');
                             const reader = new base.BinaryReader(buffer);
@@ -431,6 +439,17 @@ om.Container = class {
                                 this.devices.set(name, device);
                                 position += 4 + length + 4;
                             }
+                            break;
+                        }
+                        case 6: // FLOW_MODEL
+                        case 7: // FLOW_SUBMODEL
+                        case 8: // MODEL_INOUT_INFO
+                        case 9: // STATIC_TASK_DESC
+                        case 10: // DYNAMIC_TASK_DESC
+                        case 11: // TASK_PARAM
+                        case 20: // PRE_MODEL_DESC
+                        case 21: // PRE_MODEL_SQE
+                        case 22: { // PRE_KERNEL_ARGS
                             break;
                         }
                         default: {
