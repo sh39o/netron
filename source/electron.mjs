@@ -1,13 +1,14 @@
 
-var host = {};
+import * as electron from 'electron';
+import * as fs from 'fs';
+import * as http from 'http';
+import * as https from 'https';
+import * as path from 'path';
+import * as url from 'url';
+import * as base from './base.js';
+import * as view from './view.js';
 
-const electron = require('electron');
-const fs = require('fs');
-const http = require('http');
-const https = require('https');
-const process = require('process');
-const path = require('path');
-const base = require('./base');
+const host = {};
 
 host.ElectronHost = class {
 
@@ -253,7 +254,7 @@ host.ElectronHost = class {
     }
 
     async require(id) {
-        return require(id);
+        return import(id + '.js');
     }
 
     save(name, extension, defaultPath, callback) {
@@ -301,7 +302,8 @@ host.ElectronHost = class {
 
     async request(file, encoding, basename) {
         return new Promise((resolve, reject) => {
-            const pathname = path.join(basename || __dirname, file);
+            const dirname = path.dirname(url.fileURLToPath(import.meta.url));
+            const pathname = path.join(basename || dirname, file);
             fs.stat(pathname, (err, stat) => {
                 if (err && err.code === 'ENOENT') {
                     reject(new Error("The file '" + file + "' does not exist."));
@@ -351,7 +353,7 @@ host.ElectronHost = class {
                         } else {
                             const match = error.stack.match(/.*\n\s*(.*)\s*/);
                             if (match) {
-                                stack = match[1];
+                                [, stack] = match;
                             }
                         }
                     }
@@ -705,12 +707,12 @@ host.ElectronHost.Context = class {
         return this._entries;
     }
 
-    request(file, encoding, base) {
-        return this._host.request(file, encoding, base === undefined ? this._folder : base);
+    async request(file, encoding, base) {
+        return await this._host.request(file, encoding, base === undefined ? this._folder : base);
     }
 
-    require(id) {
-        return this._host.require(id);
+    async require(id) {
+        return await this._host.require(id);
     }
 
     exception(error, fatal) {
@@ -719,10 +721,7 @@ host.ElectronHost.Context = class {
 };
 
 window.addEventListener('load', () => {
-    global.protobuf = require('./protobuf');
-    global.flatbuffers = require('./flatbuffers');
     const value = new host.ElectronHost();
-    const view = require('./view');
     window.__view__ = new view.View(value);
     window.__view__.start();
 });

@@ -1,64 +1,67 @@
 
-var darknet = {};
-var text = require('./text');
+import * as text from './text.js';
+
+const darknet = {};
 
 darknet.ModelFactory = class {
 
     match(context) {
         const identifier = context.identifier;
         const extension = identifier.split('.').pop().toLowerCase();
-        switch (extension) {
-            case 'weights':
-                if (darknet.Weights.open(context.stream)) {
-                    return 'darknet.weights';
+        if (extension === 'weights') {
+            const weights = darknet.Weights.open(context.stream);
+            if (weights) {
+                return { name: 'darknet.weights', value: weights };
+            }
+            return undefined;
+        }
+        try {
+            const reader = text.Reader.open(context.stream, 65536);
+            for (;;) {
+                const line = reader.read();
+                if (line === undefined) {
+                    break;
                 }
-                break;
-            default:
-                try {
-                    const reader = text.Reader.open(context.stream, 65536);
-                    for (;;) {
-                        const line = reader.read();
-                        if (line === undefined) {
-                            break;
-                        }
-                        const content = line.trim();
-                        if (content.length === 0 || content.startsWith('#')) {
-                            continue;
-                        }
-                        if (content.startsWith('[') && content.endsWith(']')) {
-                            return 'darknet.model';
-                        }
-                        return undefined;
-                    }
-                } catch (err) {
-                    // continue regardless of error
+                const content = line.trim();
+                if (content.length === 0 || content.startsWith('#')) {
+                    continue;
                 }
-                break;
+                if (content.startsWith('[') && content.endsWith(']')) {
+                    return { name: 'darknet.model', value: context.stream };
+                }
+                return undefined;
+            }
+        } catch (err) {
+            // continue regardless of error
         }
         return undefined;
     }
 
     async open(context, target) {
         const metadata = await context.metadata('darknet-metadata.json');
-        const openModel = (metadata, cfg, weights) => {
-            return new darknet.Model(metadata, cfg, darknet.Weights.open(weights));
-        };
         const identifier = context.identifier;
         const parts = identifier.split('.');
         parts.pop();
         const basename = parts.join('.');
-        switch (target) {
+        switch (target.name) {
             case 'darknet.weights': {
-                const stream = await context.request(basename + '.cfg', null);
-                const buffer = stream.read();
-                return openModel(metadata, buffer, context.stream);
+                const weights = target.value;
+                const name = basename + '.cfg';
+                const content = await context.fetch(name);
+                const buffer = content.stream.peek();
+                return new darknet.Model(metadata, buffer, weights);
             }
             case 'darknet.model': {
+                const stream = target.value;
                 try {
-                    const stream = await context.request(basename + '.weights', null);
-                    return openModel(metadata, context.stream.peek(), stream);
+                    const name = basename + '.weights';
+                    const content = await context.fetch(name);
+                    const weights = darknet.Weights.open(content.stream);
+                    const buffer = stream.peek();
+                    return new darknet.Model(metadata, buffer, weights);
                 } catch (error) {
-                    return openModel(metadata, context.stream.peek(), null);
+                    const buffer = stream.peek();
+                    return new darknet.Model(metadata, buffer, null);
                 }
             }
             default: {
@@ -989,10 +992,6 @@ darknet.Tensor = class {
         this._values = data;
     }
 
-    get category() {
-        return 'Weights';
-    }
-
     get name() {
         return '';
     }
@@ -1091,6 +1090,5 @@ darknet.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = darknet.ModelFactory;
-}
+export const ModelFactory = darknet.ModelFactory;
+

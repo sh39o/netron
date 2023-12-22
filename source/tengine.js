@@ -1,8 +1,9 @@
 
 // Experimental
 
-var tengine = {};
-var base = require('./base');
+import * as base from './base.js';
+
+const tengine = {};
 
 tengine.ModelFactory = class {
 
@@ -309,7 +310,7 @@ tengine.Metadata = class {
             return tengine.Metadata._metadata;
         }
         try {
-            const data = await context.request('tengine-metadata.json', 'utf-8', null);
+            const data = await context.request('tengine-metadata.json');
             tengine.Metadata._metadata = new tengine.Metadata(data);
             return tengine.Metadata._metadata;
         } catch (error) {
@@ -647,10 +648,14 @@ tengine.Reader = class {
                     if (node.type === 'Convolution') {
                         switch (subgraph.graphLayout) {
                             case 0: // NCHW
+                                /* eslint-disable prefer-destructuring */
                                 node.params[6] = subgraph.tensors[node.inputs[1]].dims[1];
+                                /* eslint-enable prefer-destructuring */
                                 break;
                             case 1: // NHWC
+                                /* eslint-disable prefer-destructuring */
                                 node.params[6] = subgraph.tensors[node.inputs[1]].dims[3];
+                                /* eslint-enable prefer-destructuring */
                                 break;
                             default:
                                 throw new tengine.Error("Unsupported 'Convolution' layout '" + subgraph.graphLayout + "'.");
@@ -785,6 +790,5 @@ tengine.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = tengine.ModelFactory;
-}
+export const ModelFactory = tengine.ModelFactory;
+

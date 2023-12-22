@@ -1,6 +1,7 @@
 
-var openvino = {};
-var xml = require('./xml');
+import * as xml from './xml.js';
+
+const openvino = {};
 
 openvino.ModelFactory = class {
 
@@ -53,15 +54,18 @@ openvino.ModelFactory = class {
             case 'openvino.xml': {
                 stream = context.stream;
                 try {
-                    const stream = await context.request(base + '.bin', null);
-                    bin = stream.read();
+                    const file = base + '.bin';
+                    const content = await context.fetch(file);
+                    bin = content.stream.peek();
                 } catch (error) {
                     // continue regardless of error
                 }
                 break;
             }
             case 'openvino.bin': {
-                stream = await context.request(base + '.xml', null);
+                const file = base + '.xml';
+                const content = await context.fetch(file, null);
+                stream = content.stream;
                 bin = context.stream.peek();
                 break;
             }
@@ -252,23 +256,21 @@ openvino.Graph = class {
                     constants.set(from, { layer: layer, counter: 0 });
                 }
             }
-            for (const entry of Object.entries(edges)) {
-                const from = entry[1];
+            for (const from of Object.values(edges)) {
                 if (constants.has(from)) {
                     constants.get(from).counter++;
                 }
             }
             if (back_edges) {
-                for (const to of Object.keys(back_edges)) {
-                    const from = back_edges[to];
+                for (const from of Object.values(back_edges)) {
                     if (constants.has(from)) {
                         constants.get(from).counter++;
                     }
                 }
             }
-            for (const entry of constants) {
-                if (entry[1].counter !== 1) {
-                    constants.delete(entry[0]);
+            for (const [name, value] of constants) {
+                if (value.counter !== 1) {
+                    constants.delete(name);
                 }
             }
             for (const layer of layers) {
@@ -281,8 +283,8 @@ openvino.Graph = class {
                             break;
                         }
                         const constLayer = constants.get(from).layer;
-                        if (constLayer && Array.isArray(constLayer.blobs)) {
-                            const blob = constLayer.blobs[0];
+                        if (constLayer && Array.isArray(constLayer.blobs) && constLayer.blobs.length > 0) {
+                            const [blob] = constLayer.blobs;
                             if (blob) {
                                 blob.id = constLayer.name || constLayer.id;
                                 layer.input[i].blob = blob;
@@ -375,8 +377,7 @@ openvino.Graph = class {
                 const to = layer.id + ':' + input.id;
                 if (body.edges[to]) {
                     const output = body.edges[to] ? body.edges[to].split(':') : [];
-                    const outputLayerId = output[0];
-                    const outputId = output[1];
+                    const [outputLayerId, outputId] = output;
                     const outputLayer = layers.get(outputLayerId);
                     if (outputLayer && outputId) {
                         const output = outputLayer.output.find((output) => output.id === outputId);
@@ -410,12 +411,11 @@ openvino.Graph = class {
         if (net.port_map) {
             const createMapLayer = (obj) => {
                 const data = {};
-                for (const entry of Object.entries(obj)) {
-                    const name = entry[0];
+                for (const [name, value] of Object.entries(obj)) {
                     if (name === 'external_port_id' || name === 'internal_layer_id' || name === 'internal_port_id') {
                         continue;
                     }
-                    data[name] = entry[1];
+                    data[name] = value;
                 }
                 const layer = {};
                 layer.type = '-';
@@ -465,8 +465,8 @@ openvino.Node = class {
             this.outputs.push(argument);
             i += count;
         }
-        for (const entry of Object.entries(layer.data)) {
-            const attribute = new openvino.Attribute(metadata.attribute(type, entry[0]), entry[0], entry[1]);
+        for (const [name, value] of Object.entries(layer.data)) {
+            const attribute = new openvino.Attribute(metadata.attribute(type, name), name, value);
             this.attributes.push(attribute);
         }
         if (layer.type === 'TensorIterator') {
@@ -518,7 +518,9 @@ openvino.Node = class {
                     }
                     case 'Convolution:weights':
                     case 'Deconvolution:weights': {
+                        /* eslint-disable prefer-destructuring */
                         const c = this.inputs[0].value[0].type.shape.dimensions[1];
+                        /* eslint-enable prefer-destructuring */
                         const group = parseInt(layer.data.group || '1', 10);
                         const kernel = layer.data['kernel-x'] !== undefined && layer.data['kernel-y'] !== undefined ?
                             [ parseInt(layer.data['kernel-x'], 10), parseInt(layer.data['kernel-y'], 10) ] :
@@ -528,7 +530,9 @@ openvino.Node = class {
                         break;
                     }
                     case 'LSTMCell:weights': {
+                        /* eslint-disable prefer-destructuring */
                         const input_size = inputs[0].type.shape.dimensions[1];
+                        /* eslint-enable prefer-destructuring */
                         const hidden_size = parseInt(layer.data.hidden_size, 10);
                         data = weight('W', precision, [ 4 * hidden_size, input_size ], data);
                         data = weight('R', precision, [ 4 * hidden_size, hidden_size ], data);
@@ -540,7 +544,9 @@ openvino.Node = class {
                         break;
                     }
                     case 'GRUCell:weights': {
+                        /* eslint-disable prefer-destructuring */
                         const input_size = inputs[0].type.shape.dimensions[1];
+                        /* eslint-enable prefer-destructuring */
                         const hidden_size = parseInt(layer.data.hidden_size, 10);
                         data = weight('W', precision, [ 3 * hidden_size, input_size ], data);
                         data = weight('R', precision, [ 3 * hidden_size, hidden_size ], data);
@@ -785,6 +791,5 @@ openvino.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = openvino.ModelFactory;
-}
+export const ModelFactory = openvino.ModelFactory;
+

@@ -1,6 +1,6 @@
 
-var xml = {};
-var text = require('./text');
+const xml = {};
+import * as text from './text.js';
 
 // https://www.w3.org/TR/xml
 
@@ -181,10 +181,10 @@ xml.TextReader = class {
                             for (const entry of attributes.reverse()) {
                                 const name = entry.qualifiedName;
                                 const value = entry.value;
-                                const pair = xml.Utility.split(name);
                                 this._assert(name !== 'xmlns:');
-                                entry.prefix = pair[0];
-                                entry.localName = pair[1];
+                                const [prefix, localName] = xml.Utility.split(name);
+                                entry.prefix = prefix;
+                                entry.localName = localName;
                                 if (entry.prefix !== null) {
                                     this._assert(entry.localName !== '');
                                     if (entry.prefix === 'xmlns' && entry.localName) {
@@ -1343,9 +1343,9 @@ xml.Element = class extends xml.Node {
             this._prefix = null;
             this._localName = qualifiedName;
         } else {
-            const pair = xml.Utility.split(qualifiedName);
-            this._prefix = pair[0];
-            this._localName = pair[1];
+            const [prefix, localName] = xml.Utility.split(qualifiedName);
+            this._prefix = prefix;
+            this._localName = localName;
         }
     }
 
@@ -1419,9 +1419,9 @@ xml.Attribute = class extends xml.Node {
             this._prefix = null;
             this._localName = qualifiedName;
         } else {
-            const pair = xml.Utility.split(qualifiedName);
-            this._prefix = pair[0];
-            this._localName = pair[1];
+            const [prefix, localName] = xml.Utility.split(qualifiedName);
+            this._prefix = prefix;
+            this._localName = localName;
         }
     }
 
@@ -1748,6 +1748,5 @@ xml.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.TextReader = xml.TextReader;
-}
+export const TextReader = xml.TextReader;
+

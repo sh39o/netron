@@ -1,10 +1,11 @@
 
 // Experimental
 
-var om = {};
-var svp = {};
-var protobuf = require('./protobuf');
-var base = require('./base');
+import * as base from './base.js';
+import * as protobuf from './protobuf.js';
+
+const om = {};
+const svp = {};
 
 om.ModelFactory = class {
 
@@ -138,9 +139,7 @@ om.Node = class {
                 this.outputs.push(argument);
             }
         }
-        for (const attr of Object.entries(op.attr || {})) {
-            const name = attr[0];
-            const value = attr[1];
+        for (const [name, value] of Object.entries(op.attr || {})) {
             if (name === 'device') {
                 this.device = value;
                 continue;
@@ -407,9 +406,7 @@ om.Container = class {
                     throw new om.Error('File does not contain a model definition.');
                 }
                 const offset = header.headsize + size;
-                for (const entry of partitions) {
-                    const type = entry[0];
-                    const partition = entry[1];
+                for (const [type, partition] of partitions) {
                     reader.seek(offset + partition.offset);
                     const buffer = reader.read(partition.size);
                     switch (type) {
@@ -793,6 +790,4 @@ svp.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = om.ModelFactory;
-}
+export const ModelFactory = om.ModelFactory;

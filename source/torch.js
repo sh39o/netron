@@ -1,5 +1,5 @@
 
-var torch = {};
+const torch = {};
 
 torch.ModelFactory = class {
 
@@ -45,17 +45,17 @@ torch.Graph = class {
         this.outputs = [];
         this.nodes = [];
         this.groups = 'false';
-        const args = new Map();
-        const arg = (name, type, tensor) => {
+        const values = new Map();
+        values.map = (name, type, tensor) => {
             if (name.length === 0 && tensor) {
                 return new torch.Value(name, type || null, tensor || null);
             }
-            if (!args.has(name)) {
-                args.set(name, new torch.Value(name, type || null, tensor || null));
+            if (!values.has(name)) {
+                values.set(name, new torch.Value(name, type || null, tensor || null));
             } else if (type || tensor) {
                 throw new torch.Error("Duplicate value '" + name + "'.");
             }
-            return args.get(name);
+            return values.get(name);
         };
         if (Object.prototype.hasOwnProperty.call(root, 'model')) {
             root = root.model;
@@ -114,7 +114,7 @@ torch.Graph = class {
                 case 'nn.ConcatTable': {
                     const prefix = key;
                     if (inputs.length == 0) {
-                        inputs.push(arg(groups.join('/') + ':' + key + ':in', null, null));
+                        inputs.push(values.map(groups.join('/') + ':' + key + ':in', null, null));
                     }
                     let concatInputs = [];
                     let index = 0;
@@ -127,7 +127,8 @@ torch.Graph = class {
                     }
                     delete module.modules;
                     delete module.dimension;
-                    this.nodes.push(new torch.Node(metadata, module, groups, key, inputs, outputs, arg));
+                    const node = new torch.Node(metadata, module, groups, key, inputs, outputs, values);
+                    this.nodes.push(node);
                     break;
                 }
                 case 'nn.Inception': {
@@ -135,7 +136,8 @@ torch.Graph = class {
                     delete module.module; // TODO
                     delete module.transfer; // TODO
                     delete module.pool; // TODO
-                    this.nodes.push(new torch.Node(metadata, module, groups, key, inputs, outputs, arg));
+                    const node = new torch.Node(metadata, module, groups, key, inputs, outputs, values);
+                    this.nodes.push(node);
                     break;
                 }
                 case 'nn.gModule': {
@@ -147,11 +149,13 @@ torch.Graph = class {
                         index++;
                     }
                     */
-                    this.nodes.push(new torch.Node(metadata, module, groups, key, inputs, outputs, arg));
+                    const node = new torch.Node(metadata, module, groups, key, inputs, outputs, values);
+                    this.nodes.push(node);
                     break;
                 }
                 default: {
-                    this.nodes.push(new torch.Node(metadata, module, groups, key, inputs, outputs, arg));
+                    const node = new torch.Node(metadata, module, groups, key, inputs, outputs, values);
+                    this.nodes.push(node);
                     break;
                 }
             }
@@ -190,7 +194,7 @@ torch.Value = class {
 
 torch.Node = class {
 
-    constructor(metadata, module, groups, name, inputs, outputs, arg) {
+    constructor(metadata, module, groups, name, inputs, outputs, values) {
         this.group = groups.join('/');
         if (module.name && typeof module.name === 'string') {
             this.name = module.name;
@@ -201,9 +205,7 @@ torch.Node = class {
         const type = module.__class__ ? module.__class__.__module__ + '.' + module.__class__.__name__ : 'nn.Module';
         this.type = metadata.type(type);
         let initializers = [];
-        for (const entry of Object.entries(module)) {
-            const key = entry[0];
-            const obj = entry[1];
+        for (const [key, obj] of Object.entries(module)) {
             if (obj && obj.__class__ && obj.__class__.__module__ === 'torch' && obj.__class__.__name__.endsWith('Storage')) {
                 module[key] = obj.data();
             }
@@ -298,9 +300,7 @@ torch.Node = class {
         }
         this.attributes = [];
         if (module.__class__) {
-            for (const entry of Object.entries(module)) {
-                const key = entry[0];
-                const obj = entry[1];
+            for (const [key, obj] of Object.entries(module)) {
                 if (key == '_type') {
                     continue;
                 }
@@ -308,7 +308,7 @@ torch.Node = class {
                     continue;
                 }
                 if (obj.__class__ && obj.__class__.__module__ === 'torch' && obj.__class__.__name__.endsWith('Tensor')) {
-                    initializers.push(new torch.Argument(key, [ arg('', null, new torch.Tensor(obj)) ]));
+                    initializers.push(new torch.Argument(key, [ values.map('', null, new torch.Tensor(obj)) ]));
                     continue;
                 }
                 if (key == 'modules') {
@@ -323,11 +323,11 @@ torch.Node = class {
         }
         this.inputs = [];
         if (inputs.length == 0 && this.name) {
-            inputs.push(arg(this.name + ':in'));
+            inputs.push(values.map(this.name + ':in'));
         }
         this.inputs.push(new torch.Argument('input', inputs));
         if (outputs.length == 0 && this.name) {
-            outputs.push(arg(this.name));
+            outputs.push(values.map(this.name));
         }
         this.outputs = [];
         this.outputs.push(new torch.Argument('output', outputs));
@@ -906,9 +906,8 @@ torch.T7Reader = class {
         } else {
             const attributes = this.read();
             if (attributes != null) {
-                for (const entry of Object.entries(attributes)) {
-                    const key = entry[0];
-                    obj[key] = entry[1];
+                for (const [key, value] of Object.entries(attributes)) {
+                    obj[key] = value;
                 }
             }
         }
@@ -1179,6 +1178,5 @@ torch.TextReader = class {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = torch.ModelFactory;
-}
+export const ModelFactory = torch.ModelFactory;
+

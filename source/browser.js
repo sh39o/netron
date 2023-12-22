@@ -1,5 +1,7 @@
 ﻿
-var host = {};
+import * as base from './base.js';
+
+const host = {};
 
 host.BrowserHost = class {
 
@@ -7,7 +9,6 @@ host.BrowserHost = class {
         this._window = window;
         this._navigator = window.navigator;
         this._document = window.document;
-        const base = require('./base');
         this._telemetry = new base.Telemetry(this._window);
         this._window.eval = () => {
             throw new Error('window.eval() not supported.');
@@ -57,7 +58,7 @@ host.BrowserHost = class {
             const days = (new Date() - new Date(this._environment.date)) / (24 * 60 * 60 * 1000);
             if (days > 180) {
                 this.document.body.classList.remove('spinner');
-                this.window.terminate('Please update to the newest version.', 'Download', () => {
+                this.window.exports.terminate('Please update to the newest version.', 'Download', () => {
                     const link = this._element('logo-github').href;
                     this.openURL(link);
                 });
@@ -123,26 +124,10 @@ host.BrowserHost = class {
                     return obj;
                 });
             };
-            const required = [
-                'TextDecoder', 'TextEncoder',
-                'URLSearchParams',
-                'HTMLCanvasElement.prototype.toBlob',
-                'Promise', 'Symbol.asyncIterator'
-            ];
-            const optional = [
-                'fetch',
-                'DataView.prototype.getBigInt64',
-                'Worker',
-            ];
-            const available = filter(required);
-            const capabilities = available.concat(filter(optional));
+            const capabilities = filter([ 'fetch', 'DataView.prototype.getBigInt64', 'Worker' ]);
             this.event('browser_open', {
                 browser_capabilities: capabilities.map((capability) => capability.split('.').pop()).join(',')
             });
-            if (required.length > available.length) {
-                this.window.terminate('Your browser is not supported.');
-                return new Promise(() => {});
-            }
             return Promise.resolve();
         };
         await age();
@@ -156,7 +141,7 @@ host.BrowserHost = class {
         const search = this.window.location.search;
         const params = new URLSearchParams(search + (hash ? '&' + hash : ''));
         if (this._meta.file && this._meta.identifier) {
-            const url = this._meta.file[0];
+            const [url] = this._meta.file;
             if (this._view.accept(url)) {
                 this._openModel(this._url(url), null);
                 this._document.title = this._meta.identifier;
@@ -191,7 +176,6 @@ host.BrowserHost = class {
             });
             const mobileSafari = this.environment('platform') === 'darwin' && navigator.maxTouchPoints && navigator.maxTouchPoints > 1;
             if (!mobileSafari) {
-                const base = require('./base');
                 const extensions = new base.Metadata().extensions.map((extension) => '.' + extension);
                 openFileDialog.setAttribute('accept', extensions.join(', '));
             }
@@ -237,10 +221,8 @@ host.BrowserHost = class {
         return confirm(message + ' ' + detail);
     }
 
-    require(id) {
-        return new Promise((resolve, reject) => {
-            this.window.require(id, (module) => resolve(module), (error) => reject(error));
-        });
+    async require(id) {
+        return import(id + '.js');
     }
 
     save(name, extension, defaultPath, callback) {
@@ -317,7 +299,7 @@ host.BrowserHost = class {
                             } else {
                                 const match = error.stack.match(/.*\n\s*(.*)\s*/);
                                 if (match) {
-                                    stack = match[1];
+                                    [, stack] = match;
                                 }
                             }
                         }
@@ -371,7 +353,6 @@ host.BrowserHost = class {
                 progress(0);
                 if (request.status == 200) {
                     if (request.responseType == 'arraybuffer') {
-                        const base = require('./base');
                         const buffer = new Uint8Array(request.response);
                         const stream = new base.BinaryStream(buffer);
                         resolve(stream);
@@ -403,8 +384,8 @@ host.BrowserHost = class {
             };
             request.open('GET', url, true);
             if (headers) {
-                for (const name of Object.keys(headers)) {
-                    request.setRequestHeader(name, headers[name]);
+                for (const [name, value] of Object.entries(headers)) {
+                    request.setRequestHeader(name, value);
                 }
             }
             request.send();
@@ -479,13 +460,11 @@ host.BrowserHost = class {
                 this.error('Error while loading Gist.', json.message);
                 return;
             }
-            const key = Object.keys(json.files).find((key) => this._view.accept(json.files[key].filename));
-            if (!key) {
+            const file = Object.values(json.files).find((file) => this._view.accept(file.filename));
+            if (!file) {
                 this.error('Error while loading Gist.', 'Gist does not contain a model file.');
                 return;
             }
-            const base = require('./base');
-            const file = json.files[key];
             const identifier = file.filename;
             const encoder = new TextEncoder();
             const buffer = encoder.encode(file.content);
@@ -620,7 +599,6 @@ host.BrowserHost.BrowserFileContext = class {
                 } else {
                     const buffer = new Uint8Array(e.target.result);
                     if (position === 0 && buffer.length === blob.size) {
-                        const base = require('./base');
                         const stream = new base.BinaryStream(buffer);
                         resolve(stream);
                     } else {
@@ -665,8 +643,8 @@ host.BrowserHost.BrowserFileContext = class {
         });
     }
 
-    require(id) {
-        return this._host.require(id);
+    async require(id) {
+        return await this._host.require(id);
     }
 
     exception(error, fatal) {
@@ -848,3 +826,9 @@ if (!('scrollBehavior' in window.document.documentElement.style)) {
         }
     };
 }
+
+if (typeof window !== 'undefined' && window.exports) {
+    window.exports.browser = host;
+}
+
+export const BrowserHost = host.BrowserHost;

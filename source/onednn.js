@@ -1,10 +1,10 @@
 
-var onednn = {};
+const onednn = {};
 
 onednn.ModelFactory = class {
 
     match(context) {
-        const obj = context.open('json');
+        const obj = context.peek('json');
         if (obj && obj.version && obj.engine_kind && obj.fpmath_mode && obj.graph) {
             return obj;
         }
@@ -137,9 +137,7 @@ onednn.Node = class {
         this._location = node.id;
         const attrs = node.attrs;
         if (attrs) {
-            for (const entry of Object.entries(attrs)) {
-                const name = entry[0];
-                const value = entry[1];
+            for (const [name, value] of Object.entries(attrs)) {
                 this._attributes.push(new onednn.Attribute(name, value.type, value.value));
             }
         }
@@ -405,6 +403,5 @@ onednn.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = onednn.ModelFactory;
-}
+export const ModelFactory = onednn.ModelFactory;
+

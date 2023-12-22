@@ -1,6 +1,7 @@
 
-var sentencepiece = {};
-var protobuf = require('./protobuf');
+import * as protobuf from './protobuf.js';
+
+const sentencepiece = {};
 
 sentencepiece.ModelFactory = class {
 
@@ -8,7 +9,7 @@ sentencepiece.ModelFactory = class {
         const tags = context.tags('pb');
         if ((tags.size >= 3 && tags.size <= 5 &&
             tags.get(1) === 2 && tags.get(2) === 2 & tags.get(3) === 2) &&
-            Array.from(tags).every((entry) => entry[0] <= 5 && entry[1] === 2)) {
+            Array.from(tags).every(([key, value]) => key <= 5 && value === 2)) {
             const model = context.tags('pb+');
             if (model &&
                 model['1'] && model['1']['1'] === 2 && model['1']['2'] === 5 && model['1']['3'] === 0 &&
@@ -54,6 +55,5 @@ sentencepiece.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = sentencepiece.ModelFactory;
-}
+export const ModelFactory = sentencepiece.ModelFactory;
+

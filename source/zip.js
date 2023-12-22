@@ -1,9 +1,15 @@
 
-var zip = {};
-var gzip = {};
-var zlib = {};
+const zip = {};
+const gzip = {};
+const zlib = {};
 
 zip.Archive = class {
+
+    static async import() {
+        if (typeof process === 'object' && typeof process.versions == 'object' && typeof process.versions.node !== 'undefined') {
+            zip.zlib = await import('zlib');
+        }
+    }
 
     static open(data, format) {
         const stream = data instanceof Uint8Array ? new zip.BinaryReader(data) : data;
@@ -241,8 +247,8 @@ zip.Inflater = class {
 
     inflateRaw(data, length) {
         let buffer = null;
-        if (typeof process === 'object' && typeof process.versions == 'object' && typeof process.versions.node !== 'undefined') {
-            buffer = require('zlib').inflateRawSync(data);
+        if (zip.zlib) {
+            buffer = zip.zlib.inflateRawSync(data);
         } else {
             const reader = new zip.BitReader(data);
             const writer = length === undefined ? new zip.BlockWriter() : new zip.BufferWriter(length);
@@ -379,12 +385,7 @@ zip.Inflater = class {
 zip.HuffmanTree = class {
 
     static create(tree) {
-        let bits = tree[0];
-        for (let i = 1; i < tree.length; ++i) {
-            if (tree[i] > bits) {
-                bits = tree[i];
-            }
-        }
+        const bits = Math.max.apply(null, tree);
         // Algorithm from https://github.com/photopea/UZIP.js
         let rev15 = zip.HuffmanTree._rev15;
         if (!rev15) {
@@ -815,6 +816,7 @@ gzip.Archive = class {
         const reader = new zip.BinaryReader(stream.read(8));
         const compressionMethod = reader.byte();
         if (compressionMethod != 8) {
+            stream.seek(position);
             throw new gzip.Error("Invalid compression method '" + compressionMethod.toString() + "'.");
         }
         const flags = reader.byte();
@@ -921,6 +923,4 @@ gzip.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.Archive = zip.Archive;
-}
+export const Archive = zip.Archive;

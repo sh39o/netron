@@ -1101,8 +1101,16 @@
   {
     "type":     "coreml",
     "target":   "Exermote.mlmodel",
-    "source":   "https://raw.githubusercontent.com/Lausbert/Exermote/master/ExermoteInference/ExermoteCoreML/ExermoteCoreML/Model/Exermote.mlmodel",
-    "format":   "Core ML v1"
+    "source":   "https://github.com/lutzroeder/netron/files/13663126/Exermote.mlmodel.zip[Exermote.mlmodel]",
+    "format":   "Core ML v1",
+    "link":     "https://github.com/lutzroeder/netron/issues/193"
+  },
+  {
+    "type":     "coreml",
+    "target":   "Exermote.pbtxt",
+    "source":   "https://github.com/lutzroeder/netron/files/13663128/Exermote.pbtxt.zip[Exermote.pbtxt]",
+    "format":   "Core ML v1",
+    "link":     "https://github.com/lutzroeder/netron/issues/193"
   },
   {
     "type":     "coreml",
@@ -1319,6 +1327,13 @@
     "source":   "https://raw.githubusercontent.com/kingreza/quantization/master/food_linear_lut_16.mlmodel",
     "format":   "Core ML v2",
     "link":     "https://github.com/kingreza/quantization"
+  },
+  {
+    "type":     "coreml",
+    "target":   "FrameGRUModel.mlpackage.zip",
+    "source":   "https://github.com/lutzroeder/netron/files/13643385/FrameGRUModel.mlpackage.zip",
+    "format":   "Core ML Package v4",
+    "link":     "https://github.com/lutzroeder/netron/issues/193"
   },
   {
     "type":     "coreml",
@@ -1997,6 +2012,14 @@
   },
   {
     "type":     "hailo",
+    "target":   "fcn_hailo_pp_v2.har",
+    "source":   "https://github.com/lutzroeder/netron/files/13482814/fcn_hailo_pp_v2.har.zip[fcn_hailo_pp_v2.har]",
+    "format":   "Hailo Archive v3.26.0.dev0",
+    "error":    "Duplicate value 'fcn_hailo_pp_v2/feature_splitter1'.",
+    "link":     "https://github.com/lutzroeder/netron/issues/1058"
+  },
+  {
+    "type":     "hailo",
     "target":   "resnet_v1_8.hn",
     "source":   "https://github.com/lutzroeder/netron/files/11015765/resnet_v1_8.zip[resnet_v1_8.hn]",
     "format":   "Hailo NN",
@@ -2304,14 +2327,14 @@
   },
   {
     "type":     "keras",
-    "target":   "model.weights.h5",
+    "target":   "model.weights.h5/model.weights.h5",
     "source":   "https://github.com/lutzroeder/netron/files/13326420/model.weights.h5.zip[model.weights.h5]",
     "format":   "Keras Weights",
     "link":     "https://github.com/lutzroeder/netron/issues/57"
   },
   {
     "type":     "keras",
-    "target":   "model.weights.npz",
+    "target":   "model.weights.npz/model.weights.npz",
     "source":   "https://github.com/lutzroeder/netron/files/13326421/model.weights.npz.zip[model.weights.npz]",
     "format":   "Keras Weights",
     "link":     "https://github.com/lutzroeder/netron/issues/57"
@@ -2360,9 +2383,23 @@
   },
   {
     "type":     "keras",
+    "target":   "nested.h5/config.json,nested.h5/model.weights.h5",
+    "source":   "https://github.com/lutzroeder/netron/files/13432710/nested.h5.zip[config.json,model.weights.h5]",
+    "format":   "Keras",
+    "link":     "https://github.com/lutzroeder/netron/issues/57"
+  },
+  {
+    "type":     "keras",
     "target":   "nested.npz.keras",
     "source":   "https://github.com/lutzroeder/netron/files/13324444/nested.zip[nested.npz.keras]",
     "format":   "Keras v2.14.0",
+    "link":     "https://github.com/lutzroeder/netron/issues/57"
+  },
+  {
+    "type":     "keras",
+    "target":   "nested.npz/config.json,nested.npz/model.weights.npz",
+    "source":   "https://github.com/lutzroeder/netron/files/13432711/nested.npz.zip[config.json,model.weights.npz]",
+    "format":   "Keras",
     "link":     "https://github.com/lutzroeder/netron/issues/57"
   },
   {
@@ -3706,13 +3743,6 @@
   },
   {
     "type":     "onnx",
-    "target":   "emotion-ferplus-8.onnx",
-    "source":   "https://github.com/onnx/models/raw/main/vision/body_analysis/emotion_ferplus/model/emotion-ferplus-8.onnx",
-    "format":   "ONNX v3",
-    "link":     "https://github.com/onnx/models/tree/main/vision/body_analysis/emotion_ferplus"
-  },
-  {
-    "type":     "onnx",
     "target":   "end2end_tfc_w1a1_oqnt_streamlined.onnx",
     "source":   "https://github.com/lutzroeder/netron/files/4885362/end2end_tfc_w1a1_oqnt_streamlined.zip[end2end_tfc_w1a1_oqnt_streamlined.onnx]",
     "format":   "ONNX v4",
@@ -4073,14 +4103,6 @@
     "source":   "https://gist.github.com/zhreshold/bcda4716699ac97ea44f791c24310193/raw/b385b1b242dc89a35dd808235b885ed8a19aedc1/super_resolution.onnx",
     "format":   "ONNX",
     "link":     "https://gist.github.com/zhreshold/bcda4716699ac97ea44f791c24310193"
-  },
-  {
-    "type":     "onnx",
-    "target":   "super-resolution-10.onnx",
-    "source":   "https://media.githubusercontent.com/media/onnx/models/main/vision/super_resolution/sub_pixel_cnn_2016/model/super-resolution-10.onnx",
-    "format":   "ONNX v4",
-    "producer": "pytorch 1.1",
-    "link":     "https://github.com/onnx/models/tree/main/vision/super_resolution/sub_pixel_cnn_2016"
   },
   {
     "type":     "onnx",
@@ -4481,6 +4503,14 @@
     "format":   "Pickle",
     "error":    "Unsupported Pickle object.",
     "link":     "https://github.com/omdv/robinhood-portfolio/tree/4622dc61e0556a85ce52c4de178d01a9838acbc5"
+  },
+  {
+    "type":     "pickle",
+    "target":   "word2vec.model",
+    "source":   "https://github.com/lutzroeder/netron/files/13628139/word2vec.model.zip[word2vec.model]",
+    "format":   "Pickle",
+    "error":    "Unsupported Pickle type 'gensim.models.word2vec.Word2Vec'.",
+    "link":     "https://github.com/lutzroeder/netron/issues/901"
   },
   {
     "type":     "pytorch",
@@ -5307,13 +5337,6 @@
   },
   {
     "type":     "pytorch",
-    "target":   "semantic_lstm_vehicle_model.pt",
-    "source":   "https://raw.githubusercontent.com/ApolloAuto/apollo/master/modules/prediction/data/semantic_lstm_vehicle_model.pt",
-    "format":   "TorchScript v1.1",
-    "link":     "https://github.com/ApolloAuto/apollo"
-  },
-  {
-    "type":     "pytorch",
     "target":   "SiamFC_50_model.pth",
     "source":   "https://raw.githubusercontent.com/HengLan/SiamFC-PyTorch/master/Train/model/SiamFC_50_model.pth",
     "format":   "PyTorch v0.1.10",
@@ -5857,6 +5880,15 @@
     "target":   "simple.safetensors",
     "source":   "https://github.com/lutzroeder/netron/files/11943528/simple.safetensors.zip[simple.safetensors]",
     "format":   "Safetensors",
+    "assert":   [ "model.graphs[0].nodes[0].inputs[0].name == 'uint64'" ],
+    "link":     "https://github.com/lutzroeder/netron/issues/1113"
+  },
+  {
+    "type":     "safetensors",
+    "target":   "model.safetensors.index.json,model.safetensors",
+    "source":   "https://github.com/lutzroeder/netron/files/13689293/model.safetensors.index.json.zip[model.safetensors.index.json,model.safetensors]",
+    "format":   "Safetensors",
+    "assert":   [ "model.graphs[0].nodes[0].inputs[0].name == 'float32'" ],
     "link":     "https://github.com/lutzroeder/netron/issues/1113"
   },
   {
@@ -6851,6 +6883,27 @@
     "source":   "https://github.com/lutzroeder/netron/files/5184953/quicknet.zip[quicknet.tflite]",
     "format":   "TensorFlow Lite v3",
     "link":     "https://github.com/lutzroeder/netron/issues/499"
+  },
+  {
+    "type":     "tflite",
+    "target":   "signature_concrete_functions.tflite",
+    "source":   "https://github.com/lutzroeder/netron/files/13687443/signature_tflite_samples.zip[signature_concrete_functions.tflite]",
+    "format":   "TensorFlow Lite v3",
+    "link":     "https://github.com/lutzroeder/netron/issues/783"
+  },
+  {
+    "type":     "tflite",
+    "target":   "signature_keras.tflite",
+    "source":   "https://github.com/lutzroeder/netron/files/13687443/signature_tflite_samples.zip[signature_keras.tflite]",
+    "format":   "TensorFlow Lite v3",
+    "link":     "https://github.com/lutzroeder/netron/issues/783"
+  },
+  {
+    "type":     "tflite",
+    "target":   "signature_saved_model.tflite",
+    "source":   "https://github.com/lutzroeder/netron/files/13687443/signature_tflite_samples.zip[signature_saved_model.tflite]",
+    "format":   "TensorFlow Lite v3",
+    "link":     "https://github.com/lutzroeder/netron/issues/783"
   },
   {
     "type":     "tflite",

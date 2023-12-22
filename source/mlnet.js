@@ -1,25 +1,26 @@
 
 // Experimental
 
-var mlnet = {};
-var base = require('./base');
+import * as base from './base.js';
+
+const mlnet = {};
 
 mlnet.ModelFactory = class {
 
     match(context) {
-        const entries = context.entries('zip');
-        if (entries.size > 0) {
+        const entries = context.peek('zip');
+        if (entries instanceof Map && entries.size > 0) {
             const root = new Set([ 'TransformerChain', 'Predictor']);
             if (Array.from(entries.keys()).some((name) => root.has(name.split('\\').shift().split('/').shift()))) {
-                return 'mlnet';
+                return entries;
             }
         }
         return null;
     }
 
-    async open(context) {
+    async open(context, target) {
         const metadata = await context.metadata('mlnet-metadata.json');
-        const entries = context.entries('zip');
+        const entries = target;
         const reader = new mlnet.ModelReader(entries);
         return new mlnet.Model(metadata, reader);
     }
@@ -52,18 +53,19 @@ mlnet.Graph = class {
         this._outputs = [];
         this._nodes = [];
         this._groups = false;
-        const args = new Map();
-        const arg = (name, type) => {
-            if (!args.has(name)) {
-                args.set(name, new mlnet.Value(name, type || null));
+        const values = new Map();
+        values.map = (name, type) => {
+            if (!values.has(name)) {
+                values.set(name, new mlnet.Value(name, type || null));
             } else if (type) {
                 throw new mlnet.Error("Duplicate value '" + name + "'.");
             }
-            return args.get(name);
+            return values.get(name);
         };
         if (reader.schema && reader.schema.inputs) {
             for (const input of reader.schema.inputs) {
-                this._inputs.push(new mlnet.Argument(input.name, [ arg(input.name, new mlnet.TensorType(input.type)) ]));
+                const argument = new mlnet.Argument(input.name, [ values.map(input.name, new mlnet.TensorType(input.type)) ]);
+                this._inputs.push(argument);
             }
         }
         const createNode = (scope, group, transformer) => {
@@ -85,7 +87,8 @@ mlnet.Graph = class {
                     }
                 }
             }
-            this._nodes.push(new mlnet.Node(metadata, group, transformer, arg));
+            const node = new mlnet.Node(metadata, group, transformer, values);
+            this._nodes.push(node);
         };
         /* eslint-disable no-use-before-define */
         const loadChain = (scope, name, chain) => {
@@ -173,7 +176,7 @@ mlnet.Value = class {
 
 mlnet.Node = class {
 
-    constructor(metadata, group, transformer, arg) {
+    constructor(metadata, group, transformer, values) {
         this._metadata = metadata;
         this._group = group;
         this._name = transformer.__name__;
@@ -185,14 +188,16 @@ mlnet.Node = class {
         if (transformer.inputs) {
             let i = 0;
             for (const input of transformer.inputs) {
-                this._inputs.push(new mlnet.Argument(i.toString(), [ arg(input.name) ]));
+                const argument = new mlnet.Argument(i.toString(), [ values.map(input.name) ]);
+                this._inputs.push(argument);
                 i++;
             }
         }
         if (transformer.outputs) {
             let i = 0;
             for (const output of transformer.outputs) {
-                this._outputs.push(new mlnet.Argument(i.toString(), [ arg(output.name) ]));
+                const argument = new mlnet.Argument(i.toString(), [ values.map(output.name) ]);
+                this._outputs.push(argument);
                 i++;
             }
         }
@@ -2451,6 +2456,4 @@ mlnet.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = mlnet.ModelFactory;
-}
+export const ModelFactory = mlnet.ModelFactory;

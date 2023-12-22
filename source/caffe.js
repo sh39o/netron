@@ -1,6 +1,7 @@
 
-var caffe = {};
-var protobuf = require('./protobuf');
+import * as protobuf from './protobuf.js';
+
+const caffe = {};
 
 caffe.ModelFactory = class {
 
@@ -101,15 +102,15 @@ caffe.ModelFactory = class {
                 if (solver.net_param) {
                     return openModel(context, solver.net_param);
                 }
-                let file = solver.net || solver.train_net;
-                file = file.split('/').pop();
+                let name = solver.net || solver.train_net;
+                name = name.split('/').pop();
                 try {
-                    const stream = await context.request(file, null);
-                    const buffer = stream.peek();
-                    return openNetParameterText(context, file, buffer);
+                    const content = await context.fetch(name);
+                    const buffer = content.stream.peek();
+                    return openNetParameterText(context, name, buffer);
                 } catch (error) {
                     const message = error.message ? error.message : error.toString();
-                    throw new caffe.Error("Failed to load '" + file + "' (" + message.replace(/\.$/, '') + ').');
+                    throw new caffe.Error("Failed to load '" + name + "' (" + message.replace(/\.$/, '') + ').');
                 }
             }
             case 'caffe.pbtxt': {
@@ -695,7 +696,7 @@ caffe.Utility = class {
         if (type) {
             caffe.Utility._enumKeyMap = caffe.Utility._enumKeyMap || new Map();
             if (!caffe.Utility._enumKeyMap.has(name)) {
-                const map = new Map(Object.entries(type).map((pair) => [ pair[1], pair[0] ]));
+                const map = new Map(Object.entries(type).map(([name, value]) => [ value, name ]));
                 caffe.Utility._enumKeyMap.set(name, map);
             }
             const map = caffe.Utility._enumKeyMap.get(name);
@@ -715,6 +716,4 @@ caffe.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = caffe.ModelFactory;
-}
+export const ModelFactory = caffe.ModelFactory;

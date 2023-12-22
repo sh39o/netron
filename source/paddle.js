@@ -1,9 +1,10 @@
 
-var paddle = {};
-var flatbuffers = require('./flatbuffers');
-var protobuf = require('./protobuf');
-var python = require('./python');
-var base = require('./base');
+import * as base from './base.js';
+import * as flatbuffers from './flatbuffers.js';
+import * as protobuf from './protobuf.js';
+import * as python from './python.js';
+
+const paddle = {};
 
 paddle.ModelFactory = class {
 
@@ -153,8 +154,8 @@ paddle.ModelFactory = class {
                         const file = identifier !== 'params' ? base + '.pdmodel' : 'model';
                         const params = loadParams(context.stream);
                         try {
-                            const stream = await context.request(file, null);
-                            const program = openProgram(stream, 'paddle.pb');
+                            const content = await context.fetch(file);
+                            const program = openProgram(content.stream, 'paddle.pb');
                             const weights = mapParams(params, program);
                             return createModel(metadata, program.format, program.desc, weights);
                         } catch (error) {
@@ -165,7 +166,7 @@ paddle.ModelFactory = class {
                     case 'paddle.pb':
                     case 'paddle.pbtxt': {
                         const loadEntries = async (context, program) => {
-                            const promises = program.vars.map((name) => context.request(name, null).then((stream) => stream).catch(() => null));
+                            const promises = program.vars.map((name) => context.fetch(name).then((context) => context.stream).catch(() => null));
                             const streams = await Promise.all(promises);
                             const params = streams.map((stream) => stream ? paddle.Utility.openTensorDesc(stream) : null);
                             const weights = mapParams(params, program);
@@ -181,19 +182,22 @@ paddle.ModelFactory = class {
                         const program = openProgram(context.stream, target);
                         if (extension === 'pdmodel') {
                             try {
-                                const stream = await context.request(base + '.pdiparams', null);
-                                const params = loadParams(stream);
+                                const name = base + '.pdiparams';
+                                const content = await context.fetch(name);
+                                const params = loadParams(content.stream);
                                 const weights = mapParams(params, program);
                                 return createModel(metadata, program.format, program.desc, weights);
                             } catch (error) {
                                 try {
-                                    const stream = await context.request(base + '.pdparams', null);
-                                    const weights = openNumPyArrayPickle(stream);
+                                    const name = base + '.pdparams';
+                                    const content = await context.fetch(name);
+                                    const weights = openNumPyArrayPickle(content.stream);
                                     try {
-                                        const stream = await context.request(base + '.pdopt', null);
-                                        for (const entry of openNumPyArrayPickle(stream)) {
-                                            if (!weights.has(entry[0])) {
-                                                weights.set(entry[0], entry[1]);
+                                        const name = base + '.pdopt';
+                                        const content = await context.fetch(name);
+                                        for (const [name, value] of openNumPyArrayPickle(content.stream)) {
+                                            if (!weights.has(name)) {
+                                                weights.set(name, value);
                                             }
                                         }
                                         return createModel(metadata, program.format, program.desc, weights);
@@ -202,8 +206,9 @@ paddle.ModelFactory = class {
                                     }
                                 } catch (error) {
                                     try {
-                                        const stream = await context.request(base + '.pdopt', null);
-                                        const weights = openNumPyArrayPickle(stream);
+                                        const name = base + '.pdopt';
+                                        const content = await context.fetch(name);
+                                        const weights = openNumPyArrayPickle(content.stream);
                                         return createModel(metadata, program.format, program.desc, weights);
                                     } catch (error) {
                                         return loadEntries(context, program);
@@ -213,8 +218,8 @@ paddle.ModelFactory = class {
                         }
                         if (identifier === 'model') {
                             try {
-                                const stream = await context.request('params', null);
-                                const params = loadParams(stream);
+                                const content = await context.fetch('params');
+                                const params = loadParams(content.stream);
                                 const weights = mapParams(params, program);
                                 return createModel(metadata, program.format, program.desc, weights);
                             } catch (error) {
@@ -334,9 +339,7 @@ paddle.Graph = class {
         } else {
             const args = new Map();
             const ops = new Map();
-            for (const pair of tensors) {
-                const name = pair[0];
-                const tensor = pair[1];
+            for (const [name, tensor] of tensors) {
                 args.set(name, new paddle.Value(name, tensor.type, tensor));
                 const separator = name.indexOf('.') !== -1 ? '.' : '_';
                 const regex = /(.*)_((w_attr|scale|weights|offset|b|w|b_attr)_(moment|beta|velocity|mean_square|mean_grad).*)/;
@@ -349,8 +352,7 @@ paddle.Graph = class {
                 const op = ops.get(op_name);
                 op.inputs.push({ parameter: parameter_name, arguments: [ name ] });
             }
-            for (const pair of ops) {
-                const op = pair[1];
+            for (const op of Array.from(ops.values())) {
                 this._nodes.push(new paddle.Node(metadata, op, args));
             }
         }
@@ -658,10 +660,12 @@ paddle.TensorShape = class {
 paddle.Entries = class {
 
     static open(context) {
-        const extension = [ 'zip', 'tar' ].find((extension) => context.entries(extension).size > 0);
-        if (extension) {
-            const entries = new Map(Array.from(context.entries(extension)).filter((entry) => !entry[0].endsWith('/') && !entry[0].split('/').pop().startsWith('.')).slice());
-            if (entries.size > 2 && Array.from(entries).every((entry) => entry[0].split('_').length > 0 && entry[1].peek(16).every((value) => value === 0x00))) {
+        let entries = context.peek('zip');
+        entries = entries instanceof Map ? entries : context.peek('tar');
+        if (entries instanceof Map) {
+            entries = Array.from(entries);
+            entries = new Map(entries.filter(([name]) => !name.endsWith('/') && !name.split('/').pop().startsWith('.')).slice());
+            if (entries.size > 2 && Array.from(entries).every(([name, value]) => name.split('_').length > 0 && value.peek(16).every((value) => value === 0x00))) {
                 return new paddle.Entries(entries);
             }
         }
@@ -684,8 +688,7 @@ paddle.Entries = class {
     _read() {
         if (!this._weights) {
             let rootFolder = null;
-            for (const entry of this._data) {
-                const name = entry[0];
+            for (const [name] of this._data) {
                 if (!name.startsWith('.') || name.startsWith('./')) {
                     const parts = name.split('/');
                     const folder = ((parts.length > 2 && parts[0] === '.') ? ('./' + parts[1] + '/') : (parts.length > 1 ? parts[0] + '/' : ''));
@@ -693,12 +696,11 @@ paddle.Entries = class {
                 }
             }
             this._weights = new Map();
-            for (const entry of this._data) {
-                if (entry[0].startsWith(rootFolder)) {
-                    const name = entry[0].substring(rootFolder.length);
-                    const stream = entry[1];
+            for (const [name, stream] of this._data) {
+                if (name.startsWith(rootFolder)) {
+                    const key = name.substring(rootFolder.length);
                     const tensor = paddle.Utility.openTensorDesc(stream);
-                    this._weights.set(name, tensor);
+                    this._weights.set(key, tensor);
                 }
             }
         }
@@ -708,7 +710,7 @@ paddle.Entries = class {
 paddle.Pickle = class {
 
     static open(context) {
-        const obj = context.open('pkl');
+        const obj = context.peek('pkl');
         const container = new paddle.Pickle(obj);
         return container.weights !== null ? container : null;
     }
@@ -722,13 +724,11 @@ paddle.Pickle = class {
             const filter = (obj) => {
                 const list = [];
                 if (obj && !Array.isArray(obj)) {
-                    for (const entry of entries(obj)) {
-                        const name = entry[0];
+                    for (const [name, value] of entries(obj)) {
                         if (name !== 'StructuredToParameterName@@') {
-                            let value = entry[1];
-                            value = value && Array.isArray(value) && value.length === 2 && value[0] === name ? value[1] : value;
-                            if (value && !Array.isArray(value) && value.__class__ && value.__class__.__module__ === 'numpy' && value.__class__.__name__ === 'ndarray') {
-                                list.push([ name, value ]);
+                            const obj = value && Array.isArray(value) && value.length === 2 && value[0] === name ? value[1] : value;
+                            if (obj && !Array.isArray(obj) && obj.__class__ && obj.__class__.__module__ === 'numpy' && obj.__class__.__name__ === 'ndarray') {
+                                list.push([ name, obj ]);
                             }
                         }
                     }
@@ -740,13 +740,13 @@ paddle.Pickle = class {
                 this._weights = weights;
             } else {
                 const list = entries(obj);
-                if (list.filter((entry) => entry[0] !== 'StructuredToParameterName@@').length === 1) {
+                if (list.filter(([name]) => name !== 'StructuredToParameterName@@').length === 1) {
                     const weights = filter(list[0][1]);
                     if (weights.length > 0) {
                         this._weights = weights;
                     }
                 }
-                if (this._weights === null && list.filter((entry) => entry[0] === 'StructuredToParameterName@@').length > 0) {
+                if (this._weights === null && list.filter(([name]) => name === 'StructuredToParameterName@@').length > 0) {
                     this._weights = [];
                 }
             }
@@ -760,9 +760,7 @@ paddle.Pickle = class {
     get weights() {
         if (this._weights && Array.isArray(this._weights)) {
             const weights = new Map();
-            for (const entry of this._weights) {
-                const name = entry[0];
-                const value = entry[1];
+            for (const [name, value] of this._weights) {
                 const type = new paddle.TensorType(value.dtype.__name__, new paddle.TensorShape(value.shape));
                 const data = value.data;
                 const tensor = new paddle.Tensor(type, data, 'NumPy Array');
@@ -879,12 +877,11 @@ paddle.Utility = class {
 
     static createTensorType(data_type, shape) {
         if (!paddle.Utility._dataTypes) {
-            const length = Math.max.apply(null, Object.entries(paddle.DataType).map((entry) => entry[1]));
+            const length = Math.max.apply(null, Object.entries(paddle.DataType).map(([, value]) => value));
             paddle.Utility._dataTypes = new Array(length);
             const map = new Map([ [ 'bool', 'boolean' ], [ 'bf16', 'bfloat16' ], [ 'fp16', 'float16' ], [ 'fp32', 'float32' ], [ 'fp64', 'float64' ] ]);
-            for (const entry of Object.entries(paddle.DataType)) {
-                const index = entry[1];
-                const key = entry[0].toLowerCase();
+            for (const [name, index] of Object.entries(paddle.DataType)) {
+                const key = name.toLowerCase();
                 paddle.Utility._dataTypes[index] = map.has(key) ? map.get(key) : key;
             }
         }
@@ -974,6 +971,4 @@ paddle.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = paddle.ModelFactory;
-}
+export const ModelFactory = paddle.ModelFactory;

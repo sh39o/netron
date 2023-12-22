@@ -257,7 +257,8 @@ xmodel.Node = class {
                         default:
                             break;
                     }
-                    this.attributes.push(new xmodel.Attribute(metadata.attribute(this.type, name), name, {"type": "byte[]", "value": np_value}));
+                    const attribute = new xmodel.Attribute(metadata.attribute(this.type, name), name, {"type": typeof(np_value), "value": np_value});
+                    // this.attributes.push(attribute);
                     continue;
                 }
                 const attribute = new xmodel.Attribute(metadata.attribute(this.type, name), name, value);
@@ -325,7 +326,7 @@ xmodel.TensorType = class {
               .sort()
               .forEach((key) => {
                 denotation.push(
-                  `${key}: ${attr[key]}`
+                  `${key}: ${xmodel.Utility.attribute(attr[key]).value}`
                 );
               });
             this.denotation = '\n' + denotation.join('\n');

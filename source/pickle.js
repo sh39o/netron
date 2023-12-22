@@ -1,7 +1,7 @@
 
 // Experimental
 
-var pickle = {};
+const pickle = {};
 
 pickle.ModelFactory = class {
 
@@ -12,7 +12,7 @@ pickle.ModelFactory = class {
             // Reject PyTorch models with .pkl file extension.
             return null;
         }
-        const obj = context.open('pkl');
+        const obj = context.peek('pkl');
         if (obj !== undefined) {
             const name = obj && obj.__class__ && obj.__class__.__module__ && obj.__class__.__name__ ? obj.__class__.__module__ + '.' + obj.__class__.__name__ : '';
             if (!name.startsWith('__torch__.')) {
@@ -72,8 +72,9 @@ pickle.Graph = class {
                 this.nodes.push(new pickle.Node(item));
             }
         } else if (obj && obj instanceof Map && !Array.from(obj.values()).some((value) => typeof value === 'string' || typeof value === 'number')) {
-            for (const entry of obj) {
-                this.nodes.push(new pickle.Node(entry[1], entry[0]));
+            for (const [name, value] of obj) {
+                const node = new pickle.Node(value, name);
+                this.nodes.push(node);
             }
         } else if (obj && obj.__class__) {
             this.nodes.push(new pickle.Node(obj));
@@ -86,7 +87,7 @@ pickle.Graph = class {
 pickle.Node = class {
 
     constructor(obj, name, stack) {
-        const type = obj.__class__ ? obj.__class__.__module__ + '.' + obj.__class__.__name__ : 'Object';
+        const type = obj.__class__ ? obj.__class__.__module__ + '.' + obj.__class__.__name__ : 'builtins.object';
         this.type = { name: type };
         this.name = name || '';
         this.inputs = [];
@@ -95,21 +96,40 @@ pickle.Node = class {
         const isArray = (obj) => {
             return obj && obj.__class__ && obj.__class__.__module__ === 'numpy' && obj.__class__.__name__ === 'ndarray';
         };
+        const isObject = (obj) => {
+            if (obj && typeof obj === 'object') {
+                const proto = Object.getPrototypeOf(obj);
+                return proto === Object.prototype || proto === null;
+            }
+            return false;
+        };
         const entries = obj instanceof Map ? Array.from(obj) : Object.entries(obj);
-        for (const entry of entries) {
-            const name = entry[0];
-            const value = entry[1];
-            if (value && isArray(value)) {
+        for (const [name, value] of entries) {
+            if (name === '__class__') {
+                continue;
+            } else if (value && isArray(value)) {
                 const tensor = new pickle.Tensor(value);
-                const attribute = new pickle.Attribute(name, 'tensor', tensor);
+                const attribute = new pickle.Attribute(name, tensor, 'tensor');
                 this.attributes.push(attribute);
             } else if (Array.isArray(value) && value.length > 0 && value.every((obj) => isArray(obj))) {
                 const tensors = value.map((obj) => new pickle.Tensor(obj));
-                const attribute = new pickle.Attribute(name, 'tensor[]', tensors);
+                const attribute = new pickle.Attribute(name, tensors, 'tensor[]');
+                this.attributes.push(attribute);
+            } else if (value && value.__class__ && value.__class__.__module__ === 'builtins' && (value.__class__.__name__ === 'function' || value.__class__.__name__ === 'type')) {
+                const obj = {};
+                obj.__class__ = value;
+                const node = new pickle.Node(obj, '', stack);
+                const attribute = new pickle.Attribute(name, node, 'object');
                 this.attributes.push(attribute);
             } else {
                 stack = stack || new Set();
-                if (value && Array.isArray(value) && value.length > 0 && value.every((obj) => obj && obj.__class__ && obj.__class__.__module__ === value[0].__class__.__module__ && obj.__class__.__name__ === value[0].__class__.__name__)) {
+                if (value && Array.isArray(value) && value.every((obj) => typeof obj === 'string')) {
+                    const attribute = new pickle.Attribute(name, value, 'string[]');
+                    this.attributes.push(attribute);
+                } else if (value && Array.isArray(value) && value.every((obj) => typeof obj === 'number')) {
+                    const attribute = new pickle.Attribute(name, value);
+                    this.attributes.push(attribute);
+                } else if (value && Array.isArray(value) && value.length > 0 && value.every((obj) => obj && (obj.__class__ || obj === Object(obj)))) {
                     const values = value.filter((value) => !stack.has(value));
                     const nodes = values.map((value) => {
                         stack.add(value);
@@ -117,18 +137,18 @@ pickle.Node = class {
                         stack.delete(value);
                         return node;
                     });
-                    const attribute = new pickle.Attribute(name, 'object[]', nodes);
+                    const attribute = new pickle.Attribute(name, nodes, 'object[]');
                     this.attributes.push(attribute);
-                } else if (value && value.__class__) {
+                } else if (value && (value.__class__ || isObject(value))) {
                     if (!stack.has(value)) {
                         stack.add(value);
                         const node = new pickle.Node(value, '', stack);
-                        const attribute = new pickle.Attribute(name, 'object', node);
+                        const attribute = new pickle.Attribute(name, node, 'object');
                         this.attributes.push(attribute);
                         stack.delete(value);
                     }
                 } else {
-                    const attribute = new pickle.Attribute(name, null, value);
+                    const attribute = new pickle.Attribute(name, value);
                     this.attributes.push(attribute);
                 }
             }
@@ -138,10 +158,15 @@ pickle.Node = class {
 
 pickle.Attribute = class {
 
-    constructor(name, type, value) {
-        this.name = name;
-        this.type = type;
+    constructor(name, value, type, visible) {
+        this.name = name.toString();
         this.value = value;
+        if (type) {
+            this.type = type;
+        }
+        if (visible === false) {
+            this.visible = visible;
+        }
     }
 };
 
@@ -186,6 +211,4 @@ pickle.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = pickle.ModelFactory;
-}
+export const ModelFactory = pickle.ModelFactory;

@@ -1,7 +1,8 @@
 
-var mxnet = {};
-var json = require('./json');
-var base = require('./base');
+import * as base from './base.js';
+import * as json from './json.js';
+
+const mxnet = {};
 
 mxnet.ModelFactory = class {
 
@@ -9,16 +10,16 @@ mxnet.ModelFactory = class {
         const identifier = context.identifier;
         const extension = identifier.split('.').pop().toLowerCase();
         if (extension === 'json') {
-            const obj = context.open('json');
+            const obj = context.peek('json');
             if (obj && obj.nodes && obj.arg_nodes && obj.heads) {
-                return 'mxnet.json';
+                return { name: 'mxnet.json', value: obj };
             }
         }
         if (extension === 'params') {
             const stream = context.stream;
             const signature = [ 0x12, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
             if (stream && stream.length > signature.length && stream.peek(signature.length).every((value, index) => value == signature[index])) {
-                return 'mxnet.params';
+                return { name: 'mxnet.params', value: stream };
             }
         }
         return undefined;
@@ -128,9 +129,8 @@ mxnet.ModelFactory = class {
                         }
                         if (obj.Model && obj.Model.Signature) {
                             try {
-                                const stream = await context.request(obj.Model.Signature);
-                                const reader = json.TextReader.open(stream);
-                                manifest.signature = reader.read();
+                                const content = await context.fetch(obj.Model.Signature);
+                                manifest.signature = content.read('json');
                                 return manifest;
                             } catch (error) {
                                 return manifest;
@@ -143,12 +143,12 @@ mxnet.ModelFactory = class {
                 }
             };
             try {
-                const stream = await context.request('MANIFEST.json');
-                return parse(stream);
+                const content = await context.fetch('MANIFEST.json');
+                return parse(content.stream);
             } catch (error) {
                 try {
-                    const stream = await context.request('MAR-INF/MANIFEST.json');
-                    return parse(stream);
+                    const content = await context.fetch('MAR-INF/MANIFEST.json');
+                    return parse(content.stream);
                 } catch (error) {
                     return parse(null);
                 }
@@ -158,9 +158,7 @@ mxnet.ModelFactory = class {
             const parameters = new Map();
             if (params) {
                 try {
-                    for (const entry of mxnet.ndarray.load(params)) {
-                        const key = entry[0];
-                        const array = entry[1];
+                    for (const [key, array] of mxnet.ndarray.load(params)) {
                         const name = (key.startsWith('arg:') || key.startsWith('aux:')) ? key.substring(4) : key;
                         parameters.set(name, array);
                     }
@@ -180,11 +178,11 @@ mxnet.ModelFactory = class {
             return new mxnet.Model(metadata, manifest, symbol, parameters);
         };
         const identifier = context.identifier;
-        switch (target) {
+        switch (target.name) {
             case 'mxnet.json': {
                 let symbol = null;
                 try {
-                    symbol = context.open('json');
+                    symbol = target.value;
                 } catch (error) {
                     const message = error && error.message ? error.message : error.toString();
                     throw new mxnet.Error("Failed to load symbol entry (" + message.replace(/\.$/, '') + ').');
@@ -193,8 +191,8 @@ mxnet.ModelFactory = class {
                     const file = basename(manifest.params, identifier, '.json', 'symbol', '-0000.params');
                     if (file) {
                         try {
-                            const stream = await context.request(file, null);
-                            const buffer = stream.peek();
+                            const content = await context.fetch(file);
+                            const buffer = content.stream.peek();
                             return createModel(metadata, manifest, symbol, buffer);
                         } catch (error) {
                             return createModel(metadata, manifest, symbol, null);
@@ -206,13 +204,14 @@ mxnet.ModelFactory = class {
                 return requestParams(manifest);
             }
             case 'mxnet.params': {
-                const params = context.stream.peek();
+                const stream = target.value;
+                const params = stream.peek();
                 const requestSymbol = async (manifest) => {
-                    const file = basename(manifest.symbol, identifier, '.params', null, '-symbol.json');
-                    if (file) {
+                    const name = basename(manifest.symbol, identifier, '.params', null, '-symbol.json');
+                    if (name) {
                         try {
-                            const text = await context.request(file, 'utf-8');
-                            const symbol = JSON.parse(text);
+                            const content = await context.fetch(name);
+                            const symbol = content.read('json');
                             return createModel(metadata, manifest, symbol, params);
                         } catch (error) {
                             return createModel(metadata, manifest, null, params);
@@ -305,9 +304,7 @@ mxnet.Graph = class {
         this._outputs = [];
         const tensors = new Map();
         if (params) {
-            for (const entry of params) {
-                const name = entry[0];
-                const value = entry[1];
+            for (const [name, value] of params) {
                 const shape = new mxnet.TensorShape(value.shape);
                 const type = new mxnet.TensorType(value.dtype, shape);
                 const tensor = new mxnet.Tensor(name, type, value.data);
@@ -324,9 +321,8 @@ mxnet.Graph = class {
             return values.get(name);
         };
         const updateOutput = (nodes, input) => {
-            const nodeIndex = input[0];
+            const [nodeIndex, outputIndex] = input;
             const node = nodes[nodeIndex];
-            const outputIndex = input[1];
             if (node) {
                 while (outputIndex >= node.outputs.length) {
                     node.outputs.push([ nodeIndex, node.outputs.length ]);
@@ -377,7 +373,7 @@ mxnet.Graph = class {
             for (const node of nodes) {
                 if (node.op == 'RNN') {
                     node.inputs = node.inputs.filter((input) => {
-                        const index = input[0];
+                        const [index] = input;
                         const arg_node = arg_nodes.get(index);
                         if (arg_node && arg_node.op == 'null' && arg_node.name && arg_node.name.endsWith('_parameters') && arg_node.attr && arg_node.attr.__init__) {
                             let attr = node.attrs || node.attr || node.param;
@@ -395,7 +391,7 @@ mxnet.Graph = class {
                 for (const input of node.inputs) {
                     const identifier = '[' + input.join(',') + ']';
                     if (!initializers.has(identifier)) {
-                        const index = input[0];
+                        const [index] = input;
                         const arg_node = arg_nodes.get(index);
                         if (arg_node && arg_node.name && (!arg_node.inputs || arg_node.inputs.length == 0) && (arg_node.outputs && arg_node.outputs.length == 1)) {
                             if (tensors.has(arg_node.name)) {
@@ -430,8 +426,7 @@ mxnet.Graph = class {
                     }
                 }
             }
-            for (const entry of arg_nodes) {
-                const arg_node = entry[1];
+            for (const [, arg_node] of arg_nodes) {
                 if (arg_node && (!arg_node.inputs || arg_node.inputs.length == 0) && (arg_node.outputs && arg_node.outputs.length == 1)) {
                     const identifier = '[' + arg_node.outputs[0].join(',') + ']';
                     const name = arg_node.name;
@@ -452,8 +447,7 @@ mxnet.Graph = class {
                 separator = Array.from(params.keys()).every((key) => key.indexOf('.') != -1) ? '.' : '';
             }
             if (separator.length > 0) {
-                for (const param of params) {
-                    const key = param[0];
+                for (const [key] of params) {
                     const parts = key.split(separator);
                     let argumentName = parts.pop();
                     if (key.endsWith('moving_mean') || key.endsWith('moving_var')) {
@@ -552,9 +546,9 @@ mxnet.Node = class {
             if (type == 'tvm_op' && attrs.func_name) {
                 type = attrs.func_name;
             }
-            for (const entry of Object.entries(attrs)) {
-                if (type != 'tvm_op' && entry[0] != 'func_name') {
-                    const attribute = new mxnet.Attribute(metadata, type, entry[0], entry[1]);
+            for (const [name, value] of Object.entries(attrs)) {
+                if (type != 'tvm_op' && name != 'func_name') {
+                    const attribute = new mxnet.Attribute(metadata, type, name, value);
                     this._attributes.push(attribute);
                 }
             }
@@ -953,6 +947,4 @@ mxnet.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = mxnet.ModelFactory;
-}
+export const ModelFactory = mxnet.ModelFactory;

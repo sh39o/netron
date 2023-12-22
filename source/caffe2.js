@@ -1,6 +1,7 @@
 
-var caffe2 = {};
-var protobuf = require('./protobuf');
+import * as protobuf from './protobuf.js';
+
+const caffe2 = {};
 
 caffe2.ModelFactory = class {
 
@@ -16,12 +17,12 @@ caffe2.ModelFactory = class {
                     return undefined;
                 }
                 const schema = [[1,2],[2,2],[3,2],[4,0],[5,2],[6,2],[7,2],[8,2],[9,2]];
-                if (schema.every((pair) => !tags.has(pair[0]) || tags.get(pair[0]) === pair[1])) {
+                if (schema.every(([key, value]) => !tags.has(key) || tags.get(key) === value)) {
                     const stream = context.stream;
                     if (stream.length > 3) {
                         const buffer = stream.peek(Math.min(stream.length, 67));
-                        if (buffer[0] == 0x0A) {
-                            const size = buffer[1];
+                        const [signature, size] = buffer;
+                        if (signature == 0x0A) {
                             if (size < 64 &&
                                 buffer.length > 2 + size + 1 &&
                                 buffer.slice(2, 2 + size).every((c) => c >= 32 && c <= 127) &&
@@ -29,7 +30,7 @@ caffe2.ModelFactory = class {
                                 return 'caffe2.pb';
                             }
                         }
-                        if (buffer[0] == 0x12) {
+                        if (signature == 0x12) {
                             return 'caffe2.pb';
                         }
                     }
@@ -90,8 +91,9 @@ caffe2.ModelFactory = class {
                 };
                 if (base.toLowerCase().endsWith('init_net') || base.toLowerCase().startsWith('init_net')) {
                     try {
-                        const stream =  await context.request(identifier.replace('init_net', 'predict_net'), null);
-                        const buffer = stream.read();
+                        const name = identifier.replace('init_net', 'predict_net');
+                        const content = await context.fetch(name);
+                        const buffer = content.stream.peek();
                         return openText(buffer, context.stream.peek(), true);
                     } catch (error) {
                         return openText(context.stream.peek(), null, true);
@@ -99,13 +101,15 @@ caffe2.ModelFactory = class {
                 }
                 if (base.toLowerCase().endsWith('predict_net') || base.toLowerCase().startsWith('predict_net')) {
                     try {
-                        const stream = await context.request(identifier.replace('predict_net', 'init_net').replace(/\.pbtxt/, '.pb'), null);
-                        const buffer = stream.read();
+                        const name = identifier.replace('predict_net', 'init_net').replace(/\.pbtxt/, '.pb');
+                        const content = await context.fetch(name);
+                        const buffer = content.stream.peek();
                         return openText(context.stream.peek(), buffer, false);
                     } catch (error) {
                         try {
-                            const stream = await context.request(identifier.replace('predict_net', 'init_net'), null);
-                            const buffer = stream.read();
+                            const name = identifier.replace('predict_net', 'init_net');
+                            const content = await context.fetch(name);
+                            const buffer = content.stream.read();
                             return openText(context.stream.peek(), buffer, true);
                         } catch (error) {
                             return openText(context.stream.peek(), null, true);
@@ -113,8 +117,9 @@ caffe2.ModelFactory = class {
                     }
                 }
                 try {
-                    const stream = await context.request(base + '_init.pb', null);
-                    const buffer = stream.read();
+                    const name = base + '_init.pb';
+                    const content = await context.fetch(name);
+                    const buffer = content.stream.read();
                     return openText(context.stream.peek(), buffer, false);
                 } catch (error) {
                     return openText(context.stream.peek(), null, false);
@@ -145,8 +150,9 @@ caffe2.ModelFactory = class {
                 };
                 if (base.toLowerCase().endsWith('init_net')) {
                     try {
-                        const stream = await context.request(base.replace(/init_net$/, '') + 'predict_net.' + extension, null);
-                        const buffer = stream.read();
+                        const name = base.replace(/init_net$/, '') + 'predict_net.' + extension;
+                        const content = await context.fetch(name);
+                        const buffer = content.stream.peek();
                         return openBinary(buffer, context.stream.peek());
                     } catch (error) {
                         return openBinary(context.stream.peek(), null);
@@ -154,8 +160,9 @@ caffe2.ModelFactory = class {
                 }
                 if (base.toLowerCase().endsWith('_init')) {
                     try {
-                        const stream = await context.request(base.replace(/_init$/, '') + '.' + extension, null);
-                        const buffer = stream.read();
+                        const name = base.replace(/_init$/, '') + '.' + extension;
+                        const content = await context.fetch(name);
+                        const buffer = content.stream.peek();
                         return openBinary(buffer, context.stream.peek());
                     } catch (error) {
                         return openBinary(context.stream.peek(), null);
@@ -163,16 +170,18 @@ caffe2.ModelFactory = class {
                 }
                 if (base.toLowerCase().endsWith('predict_net') || base.toLowerCase().startsWith('predict_net')) {
                     try {
-                        const stream = await context.request(identifier.replace('predict_net', 'init_net'), null);
-                        const buffer = stream.read();
+                        const name = identifier.replace('predict_net', 'init_net');
+                        const content = await context.fetch(name);
+                        const buffer = content.stream.peek();
                         return openBinary(context.stream.peek(), buffer);
                     } catch (error) {
                         return openBinary(context.stream.peek(), null);
                     }
                 }
                 try {
-                    const stream = await context.request(base + '_init.' + extension, null);
-                    const buffer = stream.read();
+                    const file = base + '_init.' + extension;
+                    const content = await context.fetch(file, null);
+                    const buffer = content.stream.peek();
                     return openBinary(context.stream.peek(), buffer);
                 } catch (error) {
                     return openBinary(context.stream.peek(), null);
@@ -235,7 +244,9 @@ caffe2.Graph = class {
             ]);
             for (const op of init.op) {
                 if (op.output && op.output.length == 1) {
+                    /* eslint-disable prefer-destructuring */
                     const name = op.output[0];
+                    /* eslint-enable prefer-destructuring */
                     const tensor = {};
                     for (const arg of op.arg) {
                         tensor[arg.name] = arg;
@@ -266,21 +277,21 @@ caffe2.Graph = class {
             });
             index++;
         }
-        const args = new Map();
-        const arg = (name, type, tensor) => {
-            if (!args.has(name)) {
-                args.set(name, new caffe2.Value(name, type || null, tensor || null));
+        const values = new Map();
+        values.map = (name, type, tensor) => {
+            if (!values.has(name)) {
+                values.set(name, new caffe2.Value(name, type || null, tensor || null));
             } else if (type || tensor) {
                 throw new caffe2.Value("Duplicate value '" + name + "'.");
             }
-            return args.get(name);
+            return values.get(name);
         };
         for (const op of netDef.op) {
             let index = 0;
             for (const name of op.input) {
                 if (index > 0 && tensors.has(name)) {
-                    if (!args.has(name)) {
-                        args.set(name, new caffe2.Value(name, null, tensors.get(name)));
+                    if (!values.has(name)) {
+                        values.set(name, new caffe2.Value(name, null, tensors.get(name)));
                     }
                     initializers.add(name);
                 }
@@ -297,7 +308,7 @@ caffe2.Graph = class {
         let lastNode = null;
         let lastOutput = null;
         for (const op of netDef.op) {
-            const node = new caffe2.Node(metadata, op, arg);
+            const node = new caffe2.Node(metadata, op, values);
             if (op.input.length == 1 &&
                 op.output.length >= 1 &&
                 op.input[0].split('\n').shift() == op.output[0].split('\n').shift() &&
@@ -319,11 +330,13 @@ caffe2.Graph = class {
             if (netDef.external_input.length > 1 && initializers.has(input)) {
                 continue;
             }
-            this._inputs.push(new caffe2.Argument(input, [ arg(input) ]));
+            const argument = new caffe2.Argument(input, [ values.map(input) ]);
+            this._inputs.push(argument);
         }
         this._outputs = [];
         for (const output of netDef.external_output) {
-            this._outputs.push(new caffe2.Argument(output, [ arg(output) ]));
+            const argument = new caffe2.Argument(output, [ values.map(output) ]);
+            this._outputs.push(argument);
         }
     }
 
@@ -400,7 +413,7 @@ caffe2.Value = class {
 
 caffe2.Node = class {
 
-    constructor(metadata, op, arg) {
+    constructor(metadata, op, values) {
         this._name = op.name || '';
         this._device = op.engine || '';
         this._metadata = metadata;
@@ -415,7 +428,7 @@ caffe2.Node = class {
             for (const inputDef of this._type.inputs) {
                 if (inputIndex < inputs.length || inputDef.option != 'optional') {
                     const inputCount = (inputDef.option == 'variadic') ? (inputs.length - inputIndex) : 1;
-                    const inputArguments = inputs.slice(inputIndex, inputIndex + inputCount).filter((id) => id != '' || inputDef.option != 'optional').map((id) => arg(id));
+                    const inputArguments = inputs.slice(inputIndex, inputIndex + inputCount).filter((id) => id != '' || inputDef.option != 'optional').map((id) => values.map(id));
                     this._inputs.push(new caffe2.Argument(inputDef.name, inputArguments));
                     inputIndex += inputCount;
                 }
@@ -423,7 +436,7 @@ caffe2.Node = class {
         } else {
             this._inputs.push(...inputs.slice(inputIndex).map((input, index) => {
                 const inputName = ((inputIndex + index) == 0) ? 'input' : (inputIndex + index).toString();
-                return new caffe2.Argument(inputName, [ arg(input) ]);
+                return new caffe2.Argument(inputName, [ values.map(input) ]);
             }));
         }
         this._outputs = [];
@@ -432,7 +445,7 @@ caffe2.Node = class {
             for (const outputDef of this._type.outputs) {
                 if (outputIndex < outputs.length || outputDef.option != 'optional') {
                     const outputCount = (outputDef.option == 'variadic') ? (outputs.length - outputIndex) : 1;
-                    const outputArguments = outputs.slice(outputIndex, outputIndex + outputCount).map((id) => arg(id));
+                    const outputArguments = outputs.slice(outputIndex, outputIndex + outputCount).map((id) => values.map(id));
                     this._outputs.push(new caffe2.Argument(outputDef.name, outputArguments));
                     outputIndex += outputCount;
                 }
@@ -440,7 +453,7 @@ caffe2.Node = class {
         } else {
             this._outputs.push(...outputs.slice(outputIndex).map((output, index) => {
                 const outputName = ((outputIndex + index) == 0) ? 'output' : (outputIndex + index).toString();
-                return new caffe2.Argument(outputName, [ arg(output) ]);
+                return new caffe2.Argument(outputName, [ values.map(output) ]);
             }));
         }
     }
@@ -622,6 +635,4 @@ caffe2.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = caffe2.ModelFactory;
-}
+export const ModelFactory = caffe2.ModelFactory;

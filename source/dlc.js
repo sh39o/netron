@@ -1,7 +1,8 @@
 
-var dlc = {};
-var text = require('./text');
-var flatbuffers = require('./flatbuffers');
+import * as text from './text.js';
+import * as flatbuffers from './flatbuffers.js';
+
+const dlc = {};
 
 dlc.ModelFactory = class {
 
@@ -94,9 +95,7 @@ dlc.Graph = class {
                 break;
             }
         }
-        for (const entry of values) {
-            const name = entry[0];
-            const tensor = entry[1];
+        for (const [name, tensor] of values) {
             const type = tensor.shape ? new dlc.TensorType(tensor.dtype, tensor.shape) : null;
             const initializer = tensor.data && tensor.data ? new dlc.Tensor(type, tensor.data) : null;
             const value = new dlc.Value(name, type, initializer);
@@ -259,9 +258,11 @@ dlc.Tensor = class {
 dlc.Container = class {
 
     static open(context) {
-        const entries = context.entries('zip');
-        if (entries.has('model') || entries.has('model.params')) {
-            return new dlc.Container(entries.get('model'), entries.get('model.params'), entries.get('dlc.metadata'));
+        const entries = context.peek('zip');
+        if (entries instanceof Map) {
+            if (entries.has('model') || entries.has('model.params')) {
+                return new dlc.Container(entries.get('model'), entries.get('model.params'), entries.get('dlc.metadata'));
+            }
         }
         const stream = context.stream;
         switch (dlc.Container._signature(stream).split('.').pop()) {
@@ -285,7 +286,8 @@ dlc.Container = class {
     async read(context) {
         const request = async (context, name) => {
             try {
-                return await context.request(name, null);
+                context = await context.fetch(name);
+                return context.stream;
             } catch (error) {
                 return null;
             }
@@ -313,7 +315,8 @@ dlc.Container = class {
                 case '3.NETD':
                 case 'NETD': {
                     this.version = 3;
-                    this.graphs = dlc.Container._model3(stream, signature);
+                    this.graph = dlc.Container._model3(stream, signature);
+                    this.graphs = [ this.graph ];
                     break;
                 }
                 case '4.NETD': {
@@ -340,7 +343,8 @@ dlc.Container = class {
                 case '3.NETP':
                 case 'NETP': {
                     this.version = this.graphs.length > 0 ? this.version : 3;
-                    this.graphs = dlc.Container._params3(stream, signature, this.graphs);
+                    this.graph = dlc.Container._params3(stream, signature, this.graph);
+                    this.graphs = [ this.graph ];
                     break;
                 }
                 case '4.NETP':
@@ -402,8 +406,8 @@ dlc.Container = class {
                     let list = true;
                     for (const attribute of attr.attributes) {
                         const name = attribute.name;
-                        const entry = updateAttribute(attribute);
-                        obj[name] = entry[1];
+                        const [, data] = updateAttribute(attribute);
+                        obj[name] = data;
                         list = list && index.toString() === attribute.name;
                         index++;
                     }
@@ -415,12 +419,12 @@ dlc.Container = class {
         };
         for (const node of model.nodes) {
             for (const attribute of node.attributes) {
-                const entry = updateAttribute(attribute);
-                attribute.type = entry[0];
-                attribute.data = entry[1];
+                const [type, data] = updateAttribute(attribute);
+                attribute.type = type;
+                attribute.data = data;
             }
         }
-        return [ model ];
+        return model;
     }
 
     static _model4(stream) {
@@ -435,9 +439,12 @@ dlc.Container = class {
         }
         const dataType = (value) => {
             switch (value) {
+                case 0x0008: return 'int8';
+                case 0x0016: return 'int16';
                 case 0x0032: return 'int32';
                 case 0x0108: return 'int8';
                 case 0x0132: return 'int32';
+                case 0x0216: return 'float16';
                 case 0x0232: return 'float32';
                 case 0x0308: return 'qint8';
                 case 0x0332: return 'qint32';
@@ -506,7 +513,7 @@ dlc.Container = class {
         return model.graphs;
     }
 
-    static _params3(stream, signature, graphs) {
+    static _params3(stream, signature, graph) {
         let params = null;
         try {
             const buffer = new Uint8Array(signature === 'NETP' ? stream.peek() : stream.peek().subarray(8));
@@ -516,8 +523,8 @@ dlc.Container = class {
             const message = error && error.message ? error.message : error.toString();
             throw new dlc.Error('File format is not dlc.v3.NETP (' + message.replace(/\.$/, '') + ').');
         }
-        if (graphs.length === 0) {
-            const graph = new dlc.schema.v3.ModelParameters();
+        if (!graph) {
+            graph = new dlc.schema.v3.ModelParameters();
             graph.nodes = new Array(params.nodes.length);
             graph.tensors = [];
             for (let i = 0; i < graph.nodes.length; i++) {
@@ -529,9 +536,7 @@ dlc.Container = class {
                 node.attributes = [];
                 graph.nodes[i] = node;
             }
-            graphs.push(graph);
         }
-        const graph = graphs[0];
         const dataType = (value) => {
             switch (value) {
                 case null: return '?';
@@ -551,7 +556,7 @@ dlc.Container = class {
                 node.weights = tensors;
             }
         }
-        return graphs;
+        return graph;
     }
 
     static _params4(stream, graphs, signature) {
@@ -643,8 +648,8 @@ dlc.Utility = class {
                 dlc.Utility[version] = dlc.Utility[version] || new Map();
                 const enums = dlc.Utility[version];
                 if (!enums.has(name)) {
-                    const map = new Map(Object.keys(type).map((key) => [ type[key], key ]));
-                    enums.set(name, map);
+                    const entries = new Map(Object.entries(type).map(([key, value]) => [ value, key ]));
+                    enums.set(name, entries);
                 }
                 const values = enums.get(name);
                 if (values.has(value)) {
@@ -664,6 +669,5 @@ dlc.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = dlc.ModelFactory;
-}
+export const ModelFactory = dlc.ModelFactory;
+

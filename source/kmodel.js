@@ -1,6 +1,7 @@
 
-var kmodel = {};
-var base = require('./base');
+import * as base from './base.js';
+
+const kmodel = {};
 
 kmodel.ModelFactory = class {
 
@@ -196,9 +197,7 @@ kmodel.Node = class {
         this.chain = [];
         this.attributes = [];
         this.chain = [];
-        for (const entry of Object.entries(layer)) {
-            const name = entry[0];
-            const value = entry[1];
+        for (const [name, value] of Object.entries(layer)) {
             if (name === 'type' || name === 'location' || name === 'inputs' || name === 'outputs' || name === 'chain') {
                 continue;
             }
@@ -1025,10 +1024,12 @@ kmodel.BinaryReader = class extends base.BinaryReader {
         fields.push([ null, Math.min(64, fields[fields.length - 1][1] + 56)]);
         const obj = {};
         for (let i = 0; i < fields.length - 1; i++) {
-            const key = fields[i][0];
+            const current = fields[i];
+            const next = fields[i + 1];
+            const [key, start] = current;
+            const [, end] = next;
             let value = 0;
-            let position = fields[i][1];
-            const end = fields[i + 1][1];
+            let position = start;
             while (position < end) {
                 const offset = (position / 8) >> 0;
                 const start = (position & 7);
@@ -1351,6 +1352,4 @@ kmodel.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = kmodel.ModelFactory;
-}
+export const ModelFactory = kmodel.ModelFactory;

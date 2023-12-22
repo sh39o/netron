@@ -1,4 +1,7 @@
-var $root = protobuf.get('coreml');
+
+import * as protobuf from './protobuf.js';
+
+const $root = protobuf.get('coreml');
 
 $root.CoreML = {};
 
@@ -30,6 +33,26 @@ $root.CoreML.Specification.Pipeline = class Pipeline {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Pipeline();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "models":
+                    message.models.push($root.CoreML.Specification.Model.decodeText(reader));
+                    break;
+                case "names":
+                    reader.array(message.names, () => reader.string());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.PipelineClassifier = class PipelineClassifier {
@@ -48,6 +71,23 @@ $root.CoreML.Specification.PipelineClassifier = class PipelineClassifier {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.PipelineClassifier();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "pipeline":
+                    message.pipeline = $root.CoreML.Specification.Pipeline.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -73,6 +113,23 @@ $root.CoreML.Specification.PipelineRegressor = class PipelineRegressor {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.PipelineRegressor();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "pipeline":
+                    message.pipeline = $root.CoreML.Specification.Pipeline.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -104,6 +161,29 @@ $root.CoreML.Specification.FeatureDescription = class FeatureDescription {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.FeatureDescription();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "name":
+                    message.name = reader.string();
+                    break;
+                case "shortDescription":
+                    message.shortDescription = reader.string();
+                    break;
+                case "type":
+                    message.type = $root.CoreML.Specification.FeatureType.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -144,6 +224,35 @@ $root.CoreML.Specification.Metadata = class Metadata {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Metadata();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "shortDescription":
+                    message.shortDescription = reader.string();
+                    break;
+                case "versionString":
+                    message.versionString = reader.string();
+                    break;
+                case "author":
+                    message.author = reader.string();
+                    break;
+                case "license":
+                    message.license = reader.string();
+                    break;
+                case "userDefined":
+                    reader.entry(message.userDefined, () => reader.string(), () => reader.string());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -195,6 +304,38 @@ $root.CoreML.Specification.ModelDescription = class ModelDescription {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ModelDescription();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "input":
+                    message.input.push($root.CoreML.Specification.FeatureDescription.decodeText(reader));
+                    break;
+                case "output":
+                    message.output.push($root.CoreML.Specification.FeatureDescription.decodeText(reader));
+                    break;
+                case "predictedFeatureName":
+                    message.predictedFeatureName = reader.string();
+                    break;
+                case "predictedProbabilitiesName":
+                    message.predictedProbabilitiesName = reader.string();
+                    break;
+                case "trainingInput":
+                    message.trainingInput.push($root.CoreML.Specification.FeatureDescription.decodeText(reader));
+                    break;
+                case "metadata":
+                    message.metadata = $root.CoreML.Specification.Metadata.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ModelDescription.prototype.predictedFeatureName = "";
@@ -220,6 +361,26 @@ $root.CoreML.Specification.SerializedModel = class SerializedModel {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SerializedModel();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "identifier":
+                    message.identifier = reader.string();
+                    break;
+                case "model":
+                    message.model = reader.bytes();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -373,6 +534,140 @@ $root.CoreML.Specification.Model = class Model {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Model();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "specificationVersion":
+                    message.specificationVersion = reader.int32();
+                    break;
+                case "description":
+                    message.description = $root.CoreML.Specification.ModelDescription.decodeText(reader);
+                    break;
+                case "isUpdatable":
+                    message.isUpdatable = reader.bool();
+                    break;
+                case "pipelineClassifier":
+                    message.pipelineClassifier = $root.CoreML.Specification.PipelineClassifier.decodeText(reader);
+                    break;
+                case "pipelineRegressor":
+                    message.pipelineRegressor = $root.CoreML.Specification.PipelineRegressor.decodeText(reader);
+                    break;
+                case "pipeline":
+                    message.pipeline = $root.CoreML.Specification.Pipeline.decodeText(reader);
+                    break;
+                case "glmRegressor":
+                    message.glmRegressor = $root.CoreML.Specification.GLMRegressor.decodeText(reader);
+                    break;
+                case "supportVectorRegressor":
+                    message.supportVectorRegressor = $root.CoreML.Specification.SupportVectorRegressor.decodeText(reader);
+                    break;
+                case "treeEnsembleRegressor":
+                    message.treeEnsembleRegressor = $root.CoreML.Specification.TreeEnsembleRegressor.decodeText(reader);
+                    break;
+                case "neuralNetworkRegressor":
+                    message.neuralNetworkRegressor = $root.CoreML.Specification.NeuralNetworkRegressor.decodeText(reader);
+                    break;
+                case "bayesianProbitRegressor":
+                    message.bayesianProbitRegressor = $root.CoreML.Specification.BayesianProbitRegressor.decodeText(reader);
+                    break;
+                case "glmClassifier":
+                    message.glmClassifier = $root.CoreML.Specification.GLMClassifier.decodeText(reader);
+                    break;
+                case "supportVectorClassifier":
+                    message.supportVectorClassifier = $root.CoreML.Specification.SupportVectorClassifier.decodeText(reader);
+                    break;
+                case "treeEnsembleClassifier":
+                    message.treeEnsembleClassifier = $root.CoreML.Specification.TreeEnsembleClassifier.decodeText(reader);
+                    break;
+                case "neuralNetworkClassifier":
+                    message.neuralNetworkClassifier = $root.CoreML.Specification.NeuralNetworkClassifier.decodeText(reader);
+                    break;
+                case "kNearestNeighborsClassifier":
+                    message.kNearestNeighborsClassifier = $root.CoreML.Specification.KNearestNeighborsClassifier.decodeText(reader);
+                    break;
+                case "neuralNetwork":
+                    message.neuralNetwork = $root.CoreML.Specification.NeuralNetwork.decodeText(reader);
+                    break;
+                case "itemSimilarityRecommender":
+                    message.itemSimilarityRecommender = $root.CoreML.Specification.ItemSimilarityRecommender.decodeText(reader);
+                    break;
+                case "mlProgram":
+                    message.mlProgram = $root.CoreML.Specification.MILSpec.Program.decodeText(reader);
+                    break;
+                case "customModel":
+                    message.customModel = $root.CoreML.Specification.CustomModel.decodeText(reader);
+                    break;
+                case "linkedModel":
+                    message.linkedModel = $root.CoreML.Specification.LinkedModel.decodeText(reader);
+                    break;
+                case "classConfidenceThresholding":
+                    message.classConfidenceThresholding = $root.CoreML.Specification.ClassConfidenceThresholding.decodeText(reader);
+                    break;
+                case "oneHotEncoder":
+                    message.oneHotEncoder = $root.CoreML.Specification.OneHotEncoder.decodeText(reader);
+                    break;
+                case "imputer":
+                    message.imputer = $root.CoreML.Specification.Imputer.decodeText(reader);
+                    break;
+                case "featureVectorizer":
+                    message.featureVectorizer = $root.CoreML.Specification.FeatureVectorizer.decodeText(reader);
+                    break;
+                case "dictVectorizer":
+                    message.dictVectorizer = $root.CoreML.Specification.DictVectorizer.decodeText(reader);
+                    break;
+                case "scaler":
+                    message.scaler = $root.CoreML.Specification.Scaler.decodeText(reader);
+                    break;
+                case "categoricalMapping":
+                    message.categoricalMapping = $root.CoreML.Specification.CategoricalMapping.decodeText(reader);
+                    break;
+                case "normalizer":
+                    message.normalizer = $root.CoreML.Specification.Normalizer.decodeText(reader);
+                    break;
+                case "arrayFeatureExtractor":
+                    message.arrayFeatureExtractor = $root.CoreML.Specification.ArrayFeatureExtractor.decodeText(reader);
+                    break;
+                case "nonMaximumSuppression":
+                    message.nonMaximumSuppression = $root.CoreML.Specification.NonMaximumSuppression.decodeText(reader);
+                    break;
+                case "identity":
+                    message.identity = $root.CoreML.Specification.Identity.decodeText(reader);
+                    break;
+                case "textClassifier":
+                    message.textClassifier = $root.CoreML.Specification.CoreMLModels.TextClassifier.decodeText(reader);
+                    break;
+                case "wordTagger":
+                    message.wordTagger = $root.CoreML.Specification.CoreMLModels.WordTagger.decodeText(reader);
+                    break;
+                case "visionFeaturePrint":
+                    message.visionFeaturePrint = $root.CoreML.Specification.CoreMLModels.VisionFeaturePrint.decodeText(reader);
+                    break;
+                case "soundAnalysisPreprocessing":
+                    message.soundAnalysisPreprocessing = $root.CoreML.Specification.CoreMLModels.SoundAnalysisPreprocessing.decodeText(reader);
+                    break;
+                case "gazetteer":
+                    message.gazetteer = $root.CoreML.Specification.CoreMLModels.Gazetteer.decodeText(reader);
+                    break;
+                case "wordEmbedding":
+                    message.wordEmbedding = $root.CoreML.Specification.CoreMLModels.WordEmbedding.decodeText(reader);
+                    break;
+                case "audioFeaturePrint":
+                    message.audioFeaturePrint = $root.CoreML.Specification.CoreMLModels.AudioFeaturePrint.decodeText(reader);
+                    break;
+                case "serializedModel":
+                    message.serializedModel = $root.CoreML.Specification.SerializedModel.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.Model.prototype.specificationVersion = 0;
@@ -410,6 +705,26 @@ $root.CoreML.Specification.CoreMLModels.VisionFeaturePrint = class VisionFeature
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CoreMLModels.VisionFeaturePrint();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "scene":
+                    message.scene = $root.CoreML.Specification.CoreMLModels.VisionFeaturePrint.Scene.decodeText(reader);
+                    break;
+                case "objects":
+                    message.objects = $root.CoreML.Specification.CoreMLModels.VisionFeaturePrint.Objects.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.CoreMLModels.VisionFeaturePrint.Scene = class Scene {
@@ -428,6 +743,23 @@ $root.CoreML.Specification.CoreMLModels.VisionFeaturePrint.Scene = class Scene {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CoreMLModels.VisionFeaturePrint.Scene();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "version":
+                    message.version = reader.enum($root.CoreML.Specification.CoreMLModels.VisionFeaturePrint.Scene.SceneVersion);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -468,6 +800,26 @@ $root.CoreML.Specification.CoreMLModels.VisionFeaturePrint.Objects = class Objec
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CoreMLModels.VisionFeaturePrint.Objects();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "version":
+                    message.version = reader.enum($root.CoreML.Specification.CoreMLModels.VisionFeaturePrint.Objects.ObjectsVersion);
+                    break;
+                case "output":
+                    reader.array(message.output, () => reader.string());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.CoreMLModels.VisionFeaturePrint.Objects.prototype.version = 0;
@@ -503,6 +855,23 @@ $root.CoreML.Specification.CoreMLModels.AudioFeaturePrint = class AudioFeaturePr
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CoreMLModels.AudioFeaturePrint();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "sound":
+                    message.sound = $root.CoreML.Specification.CoreMLModels.AudioFeaturePrint.Sound.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.CoreMLModels.AudioFeaturePrint.Sound = class Sound {
@@ -521,6 +890,23 @@ $root.CoreML.Specification.CoreMLModels.AudioFeaturePrint.Sound = class Sound {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CoreMLModels.AudioFeaturePrint.Sound();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "version":
+                    message.version = reader.enum($root.CoreML.Specification.CoreMLModels.AudioFeaturePrint.Sound.SoundVersion);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -565,6 +951,32 @@ $root.CoreML.Specification.CoreMLModels.TextClassifier = class TextClassifier {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CoreMLModels.TextClassifier();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "revision":
+                    message.revision = reader.uint32();
+                    break;
+                case "language":
+                    message.language = reader.string();
+                    break;
+                case "modelParameterData":
+                    message.modelParameterData = reader.bytes();
+                    break;
+                case "stringClassLabels":
+                    message.stringClassLabels = $root.CoreML.Specification.StringVector.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -623,6 +1035,44 @@ $root.CoreML.Specification.CoreMLModels.WordTagger = class WordTagger {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CoreMLModels.WordTagger();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "revision":
+                    message.revision = reader.uint32();
+                    break;
+                case "language":
+                    message.language = reader.string();
+                    break;
+                case "tokensOutputFeatureName":
+                    message.tokensOutputFeatureName = reader.string();
+                    break;
+                case "tokenTagsOutputFeatureName":
+                    message.tokenTagsOutputFeatureName = reader.string();
+                    break;
+                case "tokenLocationsOutputFeatureName":
+                    message.tokenLocationsOutputFeatureName = reader.string();
+                    break;
+                case "tokenLengthsOutputFeatureName":
+                    message.tokenLengthsOutputFeatureName = reader.string();
+                    break;
+                case "modelParameterData":
+                    message.modelParameterData = reader.bytes();
+                    break;
+                case "stringTags":
+                    message.stringTags = $root.CoreML.Specification.StringVector.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.CoreMLModels.WordTagger.prototype.revision = 0;
@@ -668,6 +1118,32 @@ $root.CoreML.Specification.CoreMLModels.Gazetteer = class Gazetteer {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CoreMLModels.Gazetteer();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "revision":
+                    message.revision = reader.uint32();
+                    break;
+                case "language":
+                    message.language = reader.string();
+                    break;
+                case "modelParameterData":
+                    message.modelParameterData = reader.bytes();
+                    break;
+                case "stringClassLabels":
+                    message.stringClassLabels = $root.CoreML.Specification.StringVector.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.CoreMLModels.Gazetteer.prototype.revision = 0;
@@ -696,6 +1172,29 @@ $root.CoreML.Specification.CoreMLModels.WordEmbedding = class WordEmbedding {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CoreMLModels.WordEmbedding();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "revision":
+                    message.revision = reader.uint32();
+                    break;
+                case "language":
+                    message.language = reader.string();
+                    break;
+                case "modelParameterData":
+                    message.modelParameterData = reader.bytes();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -733,6 +1232,23 @@ $root.CoreML.Specification.CoreMLModels.SoundAnalysisPreprocessing = class Sound
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CoreMLModels.SoundAnalysisPreprocessing();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "vggish":
+                    message.vggish = $root.CoreML.Specification.CoreMLModels.SoundAnalysisPreprocessing.Vggish.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.CoreMLModels.SoundAnalysisPreprocessing.Vggish = class Vggish {
@@ -748,6 +1264,20 @@ $root.CoreML.Specification.CoreMLModels.SoundAnalysisPreprocessing.Vggish = clas
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CoreMLModels.SoundAnalysisPreprocessing.Vggish();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -777,6 +1307,23 @@ $root.CoreML.Specification.StringToInt64Map = class StringToInt64Map {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.StringToInt64Map();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "map":
+                    reader.entry(message.map, () => reader.string(), () => reader.int64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.Int64ToStringMap = class Int64ToStringMap {
@@ -796,6 +1343,23 @@ $root.CoreML.Specification.Int64ToStringMap = class Int64ToStringMap {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Int64ToStringMap();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "map":
+                    reader.entry(message.map, () => reader.int64(), () => reader.string());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -825,6 +1389,23 @@ $root.CoreML.Specification.StringToDoubleMap = class StringToDoubleMap {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.StringToDoubleMap();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "map":
+                    reader.entry(message.map, () => reader.string(), () => reader.double());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.Int64ToDoubleMap = class Int64ToDoubleMap {
@@ -844,6 +1425,23 @@ $root.CoreML.Specification.Int64ToDoubleMap = class Int64ToDoubleMap {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Int64ToDoubleMap();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "map":
+                    reader.entry(message.map, () => reader.int64(), () => reader.double());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -873,6 +1471,23 @@ $root.CoreML.Specification.StringVector = class StringVector {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.StringVector();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "vector":
+                    reader.array(message.vector, () => reader.string());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.Int64Vector = class Int64Vector {
@@ -892,6 +1507,23 @@ $root.CoreML.Specification.Int64Vector = class Int64Vector {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Int64Vector();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "vector":
+                    reader.array(message.vector, () => reader.int64());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -921,6 +1553,23 @@ $root.CoreML.Specification.FloatVector = class FloatVector {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.FloatVector();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "vector":
+                    reader.array(message.vector, () => reader.float());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.DoubleVector = class DoubleVector {
@@ -940,6 +1589,23 @@ $root.CoreML.Specification.DoubleVector = class DoubleVector {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.DoubleVector();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "vector":
+                    reader.array(message.vector, () => reader.double());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -966,6 +1632,26 @@ $root.CoreML.Specification.Int64Range = class Int64Range {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Int64Range();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "minValue":
+                    message.minValue = reader.int64();
+                    break;
+                case "maxValue":
+                    message.maxValue = reader.int64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -998,6 +1684,23 @@ $root.CoreML.Specification.Int64Set = class Int64Set {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Int64Set();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "values":
+                    reader.array(message.values, () => reader.int64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.DoubleRange = class DoubleRange {
@@ -1019,6 +1722,26 @@ $root.CoreML.Specification.DoubleRange = class DoubleRange {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.DoubleRange();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "minValue":
+                    message.minValue = reader.double();
+                    break;
+                case "maxValue":
+                    message.maxValue = reader.double();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -1059,6 +1782,32 @@ $root.CoreML.Specification.PrecisionRecallCurve = class PrecisionRecallCurve {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.PrecisionRecallCurve();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "precisionValues":
+                    message.precisionValues = $root.CoreML.Specification.FloatVector.decodeText(reader);
+                    break;
+                case "precisionConfidenceThresholds":
+                    message.precisionConfidenceThresholds = $root.CoreML.Specification.FloatVector.decodeText(reader);
+                    break;
+                case "recallValues":
+                    message.recallValues = $root.CoreML.Specification.FloatVector.decodeText(reader);
+                    break;
+                case "recallConfidenceThresholds":
+                    message.recallConfidenceThresholds = $root.CoreML.Specification.FloatVector.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.PrecisionRecallCurve.prototype.precisionValues = null;
@@ -1084,6 +1833,20 @@ $root.CoreML.Specification.Int64FeatureType = class Int64FeatureType {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Int64FeatureType();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.DoubleFeatureType = class DoubleFeatureType {
@@ -1104,6 +1867,20 @@ $root.CoreML.Specification.DoubleFeatureType = class DoubleFeatureType {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.DoubleFeatureType();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.StringFeatureType = class StringFeatureType {
@@ -1119,6 +1896,20 @@ $root.CoreML.Specification.StringFeatureType = class StringFeatureType {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.StringFeatureType();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -1145,6 +1936,26 @@ $root.CoreML.Specification.SizeRange = class SizeRange {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SizeRange();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "lowerBound":
+                    message.lowerBound = reader.uint64();
+                    break;
+                case "upperBound":
+                    message.upperBound = reader.int64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -1193,6 +2004,35 @@ $root.CoreML.Specification.ImageFeatureType = class ImageFeatureType {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ImageFeatureType();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "width":
+                    message.width = reader.int64();
+                    break;
+                case "height":
+                    message.height = reader.int64();
+                    break;
+                case "enumeratedSizes":
+                    message.enumeratedSizes = $root.CoreML.Specification.ImageFeatureType.EnumeratedImageSizes.decodeText(reader);
+                    break;
+                case "imageSizeRange":
+                    message.imageSizeRange = $root.CoreML.Specification.ImageFeatureType.ImageSizeRange.decodeText(reader);
+                    break;
+                case "colorSpace":
+                    message.colorSpace = reader.enum($root.CoreML.Specification.ImageFeatureType.ColorSpace);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ImageFeatureType.prototype.width = protobuf.Int64.create(0);
@@ -1231,6 +2071,26 @@ $root.CoreML.Specification.ImageFeatureType.ImageSize = class ImageSize {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ImageFeatureType.ImageSize();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "width":
+                    message.width = reader.uint64();
+                    break;
+                case "height":
+                    message.height = reader.uint64();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ImageFeatureType.ImageSize.prototype.width = protobuf.Uint64.create(0);
@@ -1258,6 +2118,23 @@ $root.CoreML.Specification.ImageFeatureType.EnumeratedImageSizes = class Enumera
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ImageFeatureType.EnumeratedImageSizes();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "sizes":
+                    message.sizes.push($root.CoreML.Specification.ImageFeatureType.ImageSize.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ImageFeatureType.ImageSizeRange = class ImageSizeRange {
@@ -1279,6 +2156,26 @@ $root.CoreML.Specification.ImageFeatureType.ImageSizeRange = class ImageSizeRang
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ImageFeatureType.ImageSizeRange();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "widthRange":
+                    message.widthRange = $root.CoreML.Specification.SizeRange.decodeText(reader);
+                    break;
+                case "heightRange":
+                    message.heightRange = $root.CoreML.Specification.SizeRange.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -1339,6 +2236,41 @@ $root.CoreML.Specification.ArrayFeatureType = class ArrayFeatureType {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ArrayFeatureType();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "shape":
+                    reader.array(message.shape, () => reader.int64());
+                    break;
+                case "dataType":
+                    message.dataType = reader.enum($root.CoreML.Specification.ArrayFeatureType.ArrayDataType);
+                    break;
+                case "enumeratedShapes":
+                    message.enumeratedShapes = $root.CoreML.Specification.ArrayFeatureType.EnumeratedShapes.decodeText(reader);
+                    break;
+                case "shapeRange":
+                    message.shapeRange = $root.CoreML.Specification.ArrayFeatureType.ShapeRange.decodeText(reader);
+                    break;
+                case "intDefaultValue":
+                    message.intDefaultValue = reader.int32();
+                    break;
+                case "floatDefaultValue":
+                    message.floatDefaultValue = reader.float();
+                    break;
+                case "doubleDefaultValue":
+                    message.doubleDefaultValue = reader.double();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ArrayFeatureType.prototype.dataType = 0;
@@ -1373,6 +2305,23 @@ $root.CoreML.Specification.ArrayFeatureType.Shape = class Shape {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ArrayFeatureType.Shape();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "shape":
+                    reader.array(message.shape, () => reader.int64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ArrayFeatureType.EnumeratedShapes = class EnumeratedShapes {
@@ -1397,6 +2346,23 @@ $root.CoreML.Specification.ArrayFeatureType.EnumeratedShapes = class EnumeratedS
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ArrayFeatureType.EnumeratedShapes();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "shapes":
+                    message.shapes.push($root.CoreML.Specification.ArrayFeatureType.Shape.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ArrayFeatureType.ShapeRange = class ShapeRange {
@@ -1416,6 +2382,23 @@ $root.CoreML.Specification.ArrayFeatureType.ShapeRange = class ShapeRange {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ArrayFeatureType.ShapeRange();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "sizeRanges":
+                    message.sizeRanges.push($root.CoreML.Specification.SizeRange.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -1452,6 +2435,26 @@ $root.CoreML.Specification.DictionaryFeatureType = class DictionaryFeatureType {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.DictionaryFeatureType();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "int64KeyType":
+                    message.int64KeyType = $root.CoreML.Specification.Int64FeatureType.decodeText(reader);
+                    break;
+                case "stringKeyType":
+                    message.stringKeyType = $root.CoreML.Specification.StringFeatureType.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SequenceFeatureType = class SequenceFeatureType {
@@ -1481,6 +2484,29 @@ $root.CoreML.Specification.SequenceFeatureType = class SequenceFeatureType {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SequenceFeatureType();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "int64Type":
+                    message.int64Type = $root.CoreML.Specification.Int64FeatureType.decodeText(reader);
+                    break;
+                case "stringType":
+                    message.stringType = $root.CoreML.Specification.StringFeatureType.decodeText(reader);
+                    break;
+                case "sizeRange":
+                    message.sizeRange = $root.CoreML.Specification.SizeRange.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -1537,6 +2563,44 @@ $root.CoreML.Specification.FeatureType = class FeatureType {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.FeatureType();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "int64Type":
+                    message.int64Type = $root.CoreML.Specification.Int64FeatureType.decodeText(reader);
+                    break;
+                case "doubleType":
+                    message.doubleType = $root.CoreML.Specification.DoubleFeatureType.decodeText(reader);
+                    break;
+                case "stringType":
+                    message.stringType = $root.CoreML.Specification.StringFeatureType.decodeText(reader);
+                    break;
+                case "imageType":
+                    message.imageType = $root.CoreML.Specification.ImageFeatureType.decodeText(reader);
+                    break;
+                case "multiArrayType":
+                    message.multiArrayType = $root.CoreML.Specification.ArrayFeatureType.decodeText(reader);
+                    break;
+                case "dictionaryType":
+                    message.dictionaryType = $root.CoreML.Specification.DictionaryFeatureType.decodeText(reader);
+                    break;
+                case "sequenceType":
+                    message.sequenceType = $root.CoreML.Specification.SequenceFeatureType.decodeText(reader);
+                    break;
+                case "isOptional":
+                    message.isOptional = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.FeatureType.prototype.isOptional = false;
@@ -1558,6 +2622,23 @@ $root.CoreML.Specification.ArrayFeatureExtractor = class ArrayFeatureExtractor {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ArrayFeatureExtractor();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "extractIndex":
+                    reader.array(message.extractIndex, () => reader.uint64());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -1617,6 +2698,53 @@ $root.CoreML.Specification.BayesianProbitRegressor = class BayesianProbitRegress
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BayesianProbitRegressor();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "numberOfFeatures":
+                    message.numberOfFeatures = reader.uint32();
+                    break;
+                case "bias":
+                    message.bias = $root.CoreML.Specification.BayesianProbitRegressor.Gaussian.decodeText(reader);
+                    break;
+                case "features":
+                    message.features.push($root.CoreML.Specification.BayesianProbitRegressor.FeatureWeight.decodeText(reader));
+                    break;
+                case "regressionInputFeatureName":
+                    message.regressionInputFeatureName = reader.string();
+                    break;
+                case "optimismInputFeatureName":
+                    message.optimismInputFeatureName = reader.string();
+                    break;
+                case "samplingScaleInputFeatureName":
+                    message.samplingScaleInputFeatureName = reader.string();
+                    break;
+                case "samplingTruncationInputFeatureName":
+                    message.samplingTruncationInputFeatureName = reader.string();
+                    break;
+                case "meanOutputFeatureName":
+                    message.meanOutputFeatureName = reader.string();
+                    break;
+                case "varianceOutputFeatureName":
+                    message.varianceOutputFeatureName = reader.string();
+                    break;
+                case "pessimisticProbabilityOutputFeatureName":
+                    message.pessimisticProbabilityOutputFeatureName = reader.string();
+                    break;
+                case "sampledProbabilityOutputFeatureName":
+                    message.sampledProbabilityOutputFeatureName = reader.string();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.BayesianProbitRegressor.prototype.numberOfFeatures = 0;
@@ -1654,6 +2782,26 @@ $root.CoreML.Specification.BayesianProbitRegressor.Gaussian = class Gaussian {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BayesianProbitRegressor.Gaussian();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "mean":
+                    message.mean = reader.double();
+                    break;
+                case "precision":
+                    message.precision = reader.double();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.BayesianProbitRegressor.Gaussian.prototype.mean = 0;
@@ -1678,6 +2826,26 @@ $root.CoreML.Specification.BayesianProbitRegressor.FeatureValueWeight = class Fe
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BayesianProbitRegressor.FeatureValueWeight();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "featureValue":
+                    message.featureValue = reader.uint32();
+                    break;
+                case "featureWeight":
+                    message.featureWeight = $root.CoreML.Specification.BayesianProbitRegressor.Gaussian.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -1708,6 +2876,26 @@ $root.CoreML.Specification.BayesianProbitRegressor.FeatureWeight = class Feature
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BayesianProbitRegressor.FeatureWeight();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "featureId":
+                    message.featureId = reader.uint32();
+                    break;
+                case "weights":
+                    message.weights.push($root.CoreML.Specification.BayesianProbitRegressor.FeatureValueWeight.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -1757,6 +2945,32 @@ $root.CoreML.Specification.CategoricalMapping = class CategoricalMapping {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CategoricalMapping();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "stringToInt64Map":
+                    message.stringToInt64Map = $root.CoreML.Specification.StringToInt64Map.decodeText(reader);
+                    break;
+                case "int64ToStringMap":
+                    message.int64ToStringMap = $root.CoreML.Specification.Int64ToStringMap.decodeText(reader);
+                    break;
+                case "strValue":
+                    message.strValue = reader.string();
+                    break;
+                case "int64Value":
+                    message.int64Value = reader.int64();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.CustomModel = class CustomModel {
@@ -1782,6 +2996,29 @@ $root.CoreML.Specification.CustomModel = class CustomModel {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CustomModel();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "className":
+                    message.className = reader.string();
+                    break;
+                case "parameters":
+                    reader.entry(message.parameters, () => reader.string(), () => $root.CoreML.Specification.CustomModel.CustomModelParamValue.decodeText(reader));
+                    break;
+                case "description":
+                    message.description = reader.string();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -1833,6 +3070,38 @@ $root.CoreML.Specification.CustomModel.CustomModelParamValue = class CustomModel
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CustomModel.CustomModelParamValue();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "doubleValue":
+                    message.doubleValue = reader.double();
+                    break;
+                case "stringValue":
+                    message.stringValue = reader.string();
+                    break;
+                case "intValue":
+                    message.intValue = reader.int32();
+                    break;
+                case "longValue":
+                    message.longValue = reader.int64();
+                    break;
+                case "boolValue":
+                    message.boolValue = reader.bool();
+                    break;
+                case "bytesValue":
+                    message.bytesValue = reader.bytes();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.DictVectorizer = class DictVectorizer {
@@ -1864,6 +3133,26 @@ $root.CoreML.Specification.DictVectorizer = class DictVectorizer {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.DictVectorizer();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "stringToIndex":
+                    message.stringToIndex = $root.CoreML.Specification.StringVector.decodeText(reader);
+                    break;
+                case "int64ToIndex":
+                    message.int64ToIndex = $root.CoreML.Specification.Int64Vector.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.FeatureVectorizer = class FeatureVectorizer {
@@ -1883,6 +3172,23 @@ $root.CoreML.Specification.FeatureVectorizer = class FeatureVectorizer {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.FeatureVectorizer();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "inputList":
+                    message.inputList.push($root.CoreML.Specification.FeatureVectorizer.InputColumn.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -1909,6 +3215,26 @@ $root.CoreML.Specification.FeatureVectorizer.InputColumn = class InputColumn {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.FeatureVectorizer.InputColumn();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "inputColumn":
+                    message.inputColumn = reader.string();
+                    break;
+                case "inputDimensions":
+                    message.inputDimensions = reader.uint64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -1948,6 +3274,29 @@ $root.CoreML.Specification.GLMRegressor = class GLMRegressor {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.GLMRegressor();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "weights":
+                    message.weights.push($root.CoreML.Specification.GLMRegressor.DoubleArray.decodeText(reader));
+                    break;
+                case "offset":
+                    reader.array(message.offset, () => reader.double());
+                    break;
+                case "postEvaluationTransform":
+                    message.postEvaluationTransform = reader.enum($root.CoreML.Specification.GLMRegressor.PostEvaluationTransform);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.GLMRegressor.prototype.postEvaluationTransform = 0;
@@ -1969,6 +3318,23 @@ $root.CoreML.Specification.GLMRegressor.DoubleArray = class DoubleArray {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.GLMRegressor.DoubleArray();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "value":
+                    reader.array(message.value, () => reader.double());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2025,6 +3391,38 @@ $root.CoreML.Specification.GLMClassifier = class GLMClassifier {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.GLMClassifier();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "weights":
+                    message.weights.push($root.CoreML.Specification.GLMClassifier.DoubleArray.decodeText(reader));
+                    break;
+                case "offset":
+                    reader.array(message.offset, () => reader.double());
+                    break;
+                case "postEvaluationTransform":
+                    message.postEvaluationTransform = reader.enum($root.CoreML.Specification.GLMClassifier.PostEvaluationTransform);
+                    break;
+                case "classEncoding":
+                    message.classEncoding = reader.enum($root.CoreML.Specification.GLMClassifier.ClassEncoding);
+                    break;
+                case "stringClassLabels":
+                    message.stringClassLabels = $root.CoreML.Specification.StringVector.decodeText(reader);
+                    break;
+                case "int64ClassLabels":
+                    message.int64ClassLabels = $root.CoreML.Specification.Int64Vector.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.GLMClassifier.prototype.postEvaluationTransform = 0;
@@ -2047,6 +3445,23 @@ $root.CoreML.Specification.GLMClassifier.DoubleArray = class DoubleArray {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.GLMClassifier.DoubleArray();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "value":
+                    reader.array(message.value, () => reader.double());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2121,6 +3536,44 @@ $root.CoreML.Specification.KNearestNeighborsClassifier = class KNearestNeighbors
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.KNearestNeighborsClassifier();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "nearestNeighborsIndex":
+                    message.nearestNeighborsIndex = $root.CoreML.Specification.NearestNeighborsIndex.decodeText(reader);
+                    break;
+                case "numberOfNeighbors":
+                    message.numberOfNeighbors = $root.CoreML.Specification.Int64Parameter.decodeText(reader);
+                    break;
+                case "stringClassLabels":
+                    message.stringClassLabels = $root.CoreML.Specification.StringVector.decodeText(reader);
+                    break;
+                case "int64ClassLabels":
+                    message.int64ClassLabels = $root.CoreML.Specification.Int64Vector.decodeText(reader);
+                    break;
+                case "defaultStringLabel":
+                    message.defaultStringLabel = reader.string();
+                    break;
+                case "defaultInt64Label":
+                    message.defaultInt64Label = reader.int64();
+                    break;
+                case "uniformWeighting":
+                    message.uniformWeighting = $root.CoreML.Specification.UniformWeighting.decodeText(reader);
+                    break;
+                case "inverseDistanceWeighting":
+                    message.inverseDistanceWeighting = $root.CoreML.Specification.InverseDistanceWeighting.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.KNearestNeighborsClassifier.prototype.nearestNeighborsIndex = null;
@@ -2170,6 +3623,35 @@ $root.CoreML.Specification.NearestNeighborsIndex = class NearestNeighborsIndex {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.NearestNeighborsIndex();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "numberOfDimensions":
+                    message.numberOfDimensions = reader.int32();
+                    break;
+                case "floatSamples":
+                    message.floatSamples.push($root.CoreML.Specification.FloatVector.decodeText(reader));
+                    break;
+                case "linearIndex":
+                    message.linearIndex = $root.CoreML.Specification.LinearIndex.decodeText(reader);
+                    break;
+                case "singleKdTreeIndex":
+                    message.singleKdTreeIndex = $root.CoreML.Specification.SingleKdTreeIndex.decodeText(reader);
+                    break;
+                case "squaredEuclideanDistance":
+                    message.squaredEuclideanDistance = $root.CoreML.Specification.SquaredEuclideanDistance.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.NearestNeighborsIndex.prototype.numberOfDimensions = 0;
@@ -2187,6 +3669,20 @@ $root.CoreML.Specification.UniformWeighting = class UniformWeighting {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.UniformWeighting();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2212,6 +3708,20 @@ $root.CoreML.Specification.InverseDistanceWeighting = class InverseDistanceWeigh
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.InverseDistanceWeighting();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.LinearIndex = class LinearIndex {
@@ -2227,6 +3737,20 @@ $root.CoreML.Specification.LinearIndex = class LinearIndex {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LinearIndex();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2255,6 +3779,23 @@ $root.CoreML.Specification.SingleKdTreeIndex = class SingleKdTreeIndex {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SingleKdTreeIndex();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "leafSize":
+                    message.leafSize = reader.int32();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SingleKdTreeIndex.prototype.leafSize = 0;
@@ -2272,6 +3813,20 @@ $root.CoreML.Specification.SquaredEuclideanDistance = class SquaredEuclideanDist
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SquaredEuclideanDistance();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2311,6 +3866,29 @@ $root.CoreML.Specification.Int64Parameter = class Int64Parameter {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Int64Parameter();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "defaultValue":
+                    message.defaultValue = reader.int64();
+                    break;
+                case "range":
+                    message.range = $root.CoreML.Specification.Int64Range.decodeText(reader);
+                    break;
+                case "set":
+                    message.set = $root.CoreML.Specification.Int64Set.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.Int64Parameter.prototype.defaultValue = protobuf.Int64.create(0);
@@ -2344,6 +3922,26 @@ $root.CoreML.Specification.DoubleParameter = class DoubleParameter {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.DoubleParameter();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "defaultValue":
+                    message.defaultValue = reader.double();
+                    break;
+                case "range":
+                    message.range = $root.CoreML.Specification.DoubleRange.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.DoubleParameter.prototype.defaultValue = 0;
@@ -2364,6 +3962,23 @@ $root.CoreML.Specification.StringParameter = class StringParameter {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.StringParameter();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "defaultValue":
+                    message.defaultValue = reader.string();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2394,6 +4009,23 @@ $root.CoreML.Specification.BoolParameter = class BoolParameter {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BoolParameter();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "defaultValue":
+                    message.defaultValue = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.BoolParameter.prototype.defaultValue = false;
@@ -2411,6 +4043,20 @@ $root.CoreML.Specification.Identity = class Identity {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Identity();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2476,6 +4122,50 @@ $root.CoreML.Specification.Imputer = class Imputer {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Imputer();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "imputedDoubleValue":
+                    message.imputedDoubleValue = reader.double();
+                    break;
+                case "imputedInt64Value":
+                    message.imputedInt64Value = reader.int64();
+                    break;
+                case "imputedStringValue":
+                    message.imputedStringValue = reader.string();
+                    break;
+                case "imputedDoubleArray":
+                    message.imputedDoubleArray = $root.CoreML.Specification.DoubleVector.decodeText(reader);
+                    break;
+                case "imputedInt64Array":
+                    message.imputedInt64Array = $root.CoreML.Specification.Int64Vector.decodeText(reader);
+                    break;
+                case "imputedStringDictionary":
+                    message.imputedStringDictionary = $root.CoreML.Specification.StringToDoubleMap.decodeText(reader);
+                    break;
+                case "imputedInt64Dictionary":
+                    message.imputedInt64Dictionary = $root.CoreML.Specification.Int64ToDoubleMap.decodeText(reader);
+                    break;
+                case "replaceDoubleValue":
+                    message.replaceDoubleValue = reader.double();
+                    break;
+                case "replaceInt64Value":
+                    message.replaceInt64Value = reader.int64();
+                    break;
+                case "replaceStringValue":
+                    message.replaceStringValue = reader.string();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MILSpec = {};
@@ -2507,6 +4197,32 @@ $root.CoreML.Specification.MILSpec.Program = class Program {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.Program();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "version":
+                    message.version = reader.int64();
+                    break;
+                case "functions":
+                    reader.entry(message.functions, () => reader.string(), () => $root.CoreML.Specification.MILSpec.Function.decodeText(reader));
+                    break;
+                case "docString":
+                    message.docString = reader.string();
+                    break;
+                case "attributes":
+                    reader.entry(message.attributes, () => reader.string(), () => $root.CoreML.Specification.MILSpec.Value.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2550,6 +4266,32 @@ $root.CoreML.Specification.MILSpec.Function = class Function {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.Function();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "inputs":
+                    message.inputs.push($root.CoreML.Specification.MILSpec.NamedValueType.decodeText(reader));
+                    break;
+                case "opset":
+                    message.opset = reader.string();
+                    break;
+                case "block_specializations":
+                    reader.entry(message.block_specializations, () => reader.string(), () => $root.CoreML.Specification.MILSpec.Block.decodeText(reader));
+                    break;
+                case "attributes":
+                    reader.entry(message.attributes, () => reader.string(), () => $root.CoreML.Specification.MILSpec.Value.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MILSpec.Function.prototype.opset = "";
@@ -2588,6 +4330,32 @@ $root.CoreML.Specification.MILSpec.Block = class Block {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.Block();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "inputs":
+                    message.inputs.push($root.CoreML.Specification.MILSpec.NamedValueType.decodeText(reader));
+                    break;
+                case "outputs":
+                    reader.array(message.outputs, () => reader.string());
+                    break;
+                case "operations":
+                    message.operations.push($root.CoreML.Specification.MILSpec.Operation.decodeText(reader));
+                    break;
+                case "attributes":
+                    reader.entry(message.attributes, () => reader.string(), () => $root.CoreML.Specification.MILSpec.Value.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MILSpec.Argument = class Argument {
@@ -2607,6 +4375,23 @@ $root.CoreML.Specification.MILSpec.Argument = class Argument {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.Argument();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "arguments":
+                    message["arguments"].push($root.CoreML.Specification.MILSpec.Argument.Binding.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2638,6 +4423,26 @@ $root.CoreML.Specification.MILSpec.Argument.Binding = class Binding {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.Argument.Binding();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "name":
+                    message.name = reader.string();
+                    break;
+                case "value":
+                    message.value = $root.CoreML.Specification.MILSpec.Value.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2682,6 +4487,35 @@ $root.CoreML.Specification.MILSpec.Operation = class Operation {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.Operation();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "type":
+                    message.type = reader.string();
+                    break;
+                case "inputs":
+                    reader.entry(message.inputs, () => reader.string(), () => $root.CoreML.Specification.MILSpec.Argument.decodeText(reader));
+                    break;
+                case "outputs":
+                    message.outputs.push($root.CoreML.Specification.MILSpec.NamedValueType.decodeText(reader));
+                    break;
+                case "blocks":
+                    message.blocks.push($root.CoreML.Specification.MILSpec.Block.decodeText(reader));
+                    break;
+                case "attributes":
+                    reader.entry(message.attributes, () => reader.string(), () => $root.CoreML.Specification.MILSpec.Value.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MILSpec.Operation.prototype.type = "";
@@ -2705,6 +4539,26 @@ $root.CoreML.Specification.MILSpec.NamedValueType = class NamedValueType {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.NamedValueType();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "name":
+                    message.name = reader.string();
+                    break;
+                case "type":
+                    message.type = $root.CoreML.Specification.MILSpec.ValueType.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2745,6 +4599,32 @@ $root.CoreML.Specification.MILSpec.ValueType = class ValueType {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.ValueType();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "tensorType":
+                    message.tensorType = $root.CoreML.Specification.MILSpec.TensorType.decodeText(reader);
+                    break;
+                case "listType":
+                    message.listType = $root.CoreML.Specification.MILSpec.ListType.decodeText(reader);
+                    break;
+                case "tupleType":
+                    message.tupleType = $root.CoreML.Specification.MILSpec.TupleType.decodeText(reader);
+                    break;
+                case "dictionaryType":
+                    message.dictionaryType = $root.CoreML.Specification.MILSpec.DictionaryType.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2802,6 +4682,32 @@ $root.CoreML.Specification.MILSpec.TensorType = class TensorType {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.TensorType();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "dataType":
+                    message.dataType = reader.enum($root.CoreML.Specification.MILSpec.DataType);
+                    break;
+                case "rank":
+                    message.rank = reader.int64();
+                    break;
+                case "dimensions":
+                    message.dimensions.push($root.CoreML.Specification.MILSpec.Dimension.decodeText(reader));
+                    break;
+                case "attributes":
+                    reader.entry(message.attributes, () => reader.string(), () => $root.CoreML.Specification.MILSpec.Value.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MILSpec.TensorType.prototype.dataType = 0;
@@ -2824,6 +4730,23 @@ $root.CoreML.Specification.MILSpec.TupleType = class TupleType {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.TupleType();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "types":
+                    message.types.push($root.CoreML.Specification.MILSpec.ValueType.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2855,6 +4778,26 @@ $root.CoreML.Specification.MILSpec.ListType = class ListType {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.ListType();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "type":
+                    message.type = $root.CoreML.Specification.MILSpec.ValueType.decodeText(reader);
+                    break;
+                case "length":
+                    message.length = $root.CoreML.Specification.MILSpec.Dimension.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MILSpec.ListType.prototype.type = null;
@@ -2879,6 +4822,26 @@ $root.CoreML.Specification.MILSpec.DictionaryType = class DictionaryType {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.DictionaryType();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "keyType":
+                    message.keyType = $root.CoreML.Specification.MILSpec.ValueType.decodeText(reader);
+                    break;
+                case "valueType":
+                    message.valueType = $root.CoreML.Specification.MILSpec.ValueType.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2918,6 +4881,26 @@ $root.CoreML.Specification.MILSpec.Dimension = class Dimension {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.Dimension();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "constant":
+                    message.constant = $root.CoreML.Specification.MILSpec.Dimension.ConstantDimension.decodeText(reader);
+                    break;
+                case "unknown":
+                    message.unknown = $root.CoreML.Specification.MILSpec.Dimension.UnknownDimension.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MILSpec.Dimension.ConstantDimension = class ConstantDimension {
@@ -2936,6 +4919,23 @@ $root.CoreML.Specification.MILSpec.Dimension.ConstantDimension = class ConstantD
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.Dimension.ConstantDimension();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "size":
+                    message.size = reader.uint64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -2961,6 +4961,23 @@ $root.CoreML.Specification.MILSpec.Dimension.UnknownDimension = class UnknownDim
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.Dimension.UnknownDimension();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "variadic":
+                    message.variadic = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3000,6 +5017,32 @@ $root.CoreML.Specification.MILSpec.Value = class Value {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.Value();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "docString":
+                    message.docString = reader.string();
+                    break;
+                case "type":
+                    message.type = $root.CoreML.Specification.MILSpec.ValueType.decodeText(reader);
+                    break;
+                case "immediateValue":
+                    message.immediateValue = $root.CoreML.Specification.MILSpec.Value.ImmediateValue.decodeText(reader);
+                    break;
+                case "blobFileValue":
+                    message.blobFileValue = $root.CoreML.Specification.MILSpec.Value.BlobFileValue.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3045,6 +5088,32 @@ $root.CoreML.Specification.MILSpec.Value.ImmediateValue = class ImmediateValue {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.Value.ImmediateValue();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "tensor":
+                    message.tensor = $root.CoreML.Specification.MILSpec.TensorValue.decodeText(reader);
+                    break;
+                case "tuple":
+                    message.tuple = $root.CoreML.Specification.MILSpec.TupleValue.decodeText(reader);
+                    break;
+                case "list":
+                    message.list = $root.CoreML.Specification.MILSpec.ListValue.decodeText(reader);
+                    break;
+                case "dictionary":
+                    message.dictionary = $root.CoreML.Specification.MILSpec.DictionaryValue.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MILSpec.Value.BlobFileValue = class BlobFileValue {
@@ -3066,6 +5135,26 @@ $root.CoreML.Specification.MILSpec.Value.BlobFileValue = class BlobFileValue {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.Value.BlobFileValue();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "fileName":
+                    message.fileName = reader.string();
+                    break;
+                case "offset":
+                    message.offset = reader.uint64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3120,6 +5209,41 @@ $root.CoreML.Specification.MILSpec.TensorValue = class TensorValue {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.TensorValue();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "floats":
+                    message.floats = $root.CoreML.Specification.MILSpec.TensorValue.RepeatedFloats.decodeText(reader);
+                    break;
+                case "ints":
+                    message.ints = $root.CoreML.Specification.MILSpec.TensorValue.RepeatedInts.decodeText(reader);
+                    break;
+                case "bools":
+                    message.bools = $root.CoreML.Specification.MILSpec.TensorValue.RepeatedBools.decodeText(reader);
+                    break;
+                case "strings":
+                    message.strings = $root.CoreML.Specification.MILSpec.TensorValue.RepeatedStrings.decodeText(reader);
+                    break;
+                case "longInts":
+                    message.longInts = $root.CoreML.Specification.MILSpec.TensorValue.RepeatedLongInts.decodeText(reader);
+                    break;
+                case "doubles":
+                    message.doubles = $root.CoreML.Specification.MILSpec.TensorValue.RepeatedDoubles.decodeText(reader);
+                    break;
+                case "bytes":
+                    message.bytes = $root.CoreML.Specification.MILSpec.TensorValue.RepeatedBytes.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MILSpec.TensorValue.RepeatedFloats = class RepeatedFloats {
@@ -3139,6 +5263,23 @@ $root.CoreML.Specification.MILSpec.TensorValue.RepeatedFloats = class RepeatedFl
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.TensorValue.RepeatedFloats();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "values":
+                    reader.array(message.values, () => reader.float());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3168,6 +5309,23 @@ $root.CoreML.Specification.MILSpec.TensorValue.RepeatedDoubles = class RepeatedD
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.TensorValue.RepeatedDoubles();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "values":
+                    reader.array(message.values, () => reader.double());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MILSpec.TensorValue.RepeatedInts = class RepeatedInts {
@@ -3187,6 +5345,23 @@ $root.CoreML.Specification.MILSpec.TensorValue.RepeatedInts = class RepeatedInts
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.TensorValue.RepeatedInts();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "values":
+                    reader.array(message.values, () => reader.int32());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3216,6 +5391,23 @@ $root.CoreML.Specification.MILSpec.TensorValue.RepeatedLongInts = class Repeated
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.TensorValue.RepeatedLongInts();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "values":
+                    reader.array(message.values, () => reader.int64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MILSpec.TensorValue.RepeatedBools = class RepeatedBools {
@@ -3235,6 +5427,23 @@ $root.CoreML.Specification.MILSpec.TensorValue.RepeatedBools = class RepeatedBoo
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.TensorValue.RepeatedBools();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "values":
+                    reader.array(message.values, () => reader.bool());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3264,6 +5473,23 @@ $root.CoreML.Specification.MILSpec.TensorValue.RepeatedStrings = class RepeatedS
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.TensorValue.RepeatedStrings();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "values":
+                    reader.array(message.values, () => reader.string());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MILSpec.TensorValue.RepeatedBytes = class RepeatedBytes {
@@ -3282,6 +5508,23 @@ $root.CoreML.Specification.MILSpec.TensorValue.RepeatedBytes = class RepeatedByt
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.TensorValue.RepeatedBytes();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "values":
+                    message.values = reader.bytes();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3313,6 +5556,23 @@ $root.CoreML.Specification.MILSpec.TupleValue = class TupleValue {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.TupleValue();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "values":
+                    message.values.push($root.CoreML.Specification.MILSpec.Value.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MILSpec.ListValue = class ListValue {
@@ -3332,6 +5592,23 @@ $root.CoreML.Specification.MILSpec.ListValue = class ListValue {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.ListValue();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "values":
+                    message.values.push($root.CoreML.Specification.MILSpec.Value.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3361,6 +5638,23 @@ $root.CoreML.Specification.MILSpec.DictionaryValue = class DictionaryValue {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.DictionaryValue();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "values":
+                    message.values.push($root.CoreML.Specification.MILSpec.DictionaryValue.KeyValuePair.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MILSpec.DictionaryValue.KeyValuePair = class KeyValuePair {
@@ -3382,6 +5676,26 @@ $root.CoreML.Specification.MILSpec.DictionaryValue.KeyValuePair = class KeyValue
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MILSpec.DictionaryValue.KeyValuePair();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "key":
+                    message.key = $root.CoreML.Specification.MILSpec.Value.decodeText(reader);
+                    break;
+                case "value":
+                    message.value = $root.CoreML.Specification.MILSpec.Value.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3437,6 +5751,35 @@ $root.CoreML.Specification.NeuralNetwork = class NeuralNetwork {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.NeuralNetwork();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "layers":
+                    message.layers.push($root.CoreML.Specification.NeuralNetworkLayer.decodeText(reader));
+                    break;
+                case "preprocessing":
+                    message.preprocessing.push($root.CoreML.Specification.NeuralNetworkPreprocessing.decodeText(reader));
+                    break;
+                case "arrayInputShapeMapping":
+                    message.arrayInputShapeMapping = reader.enum($root.CoreML.Specification.NeuralNetworkMultiArrayShapeMapping);
+                    break;
+                case "imageInputShapeMapping":
+                    message.imageInputShapeMapping = reader.enum($root.CoreML.Specification.NeuralNetworkImageShapeMapping);
+                    break;
+                case "updateParams":
+                    message.updateParams = $root.CoreML.Specification.NetworkUpdateParameters.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.NeuralNetwork.prototype.arrayInputShapeMapping = 0;
@@ -3476,6 +5819,35 @@ $root.CoreML.Specification.NeuralNetworkImageScaler = class NeuralNetworkImageSc
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.NeuralNetworkImageScaler();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "channelScale":
+                    message.channelScale = reader.float();
+                    break;
+                case "blueBias":
+                    message.blueBias = reader.float();
+                    break;
+                case "greenBias":
+                    message.greenBias = reader.float();
+                    break;
+                case "redBias":
+                    message.redBias = reader.float();
+                    break;
+                case "grayBias":
+                    message.grayBias = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.NeuralNetworkImageScaler.prototype.channelScale = 0;
@@ -3501,6 +5873,23 @@ $root.CoreML.Specification.NeuralNetworkMeanImage = class NeuralNetworkMeanImage
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.NeuralNetworkMeanImage();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "meanImage":
+                    reader.array(message.meanImage, () => reader.float());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3540,6 +5929,29 @@ $root.CoreML.Specification.NeuralNetworkPreprocessing = class NeuralNetworkPrepr
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.NeuralNetworkPreprocessing();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "featureName":
+                    message.featureName = reader.string();
+                    break;
+                case "scaler":
+                    message.scaler = $root.CoreML.Specification.NeuralNetworkImageScaler.decodeText(reader);
+                    break;
+                case "meanImage":
+                    message.meanImage = $root.CoreML.Specification.NeuralNetworkMeanImage.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.NeuralNetworkPreprocessing.prototype.featureName = "";
@@ -3557,6 +5969,20 @@ $root.CoreML.Specification.ActivationReLU = class ActivationReLU {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ActivationReLU();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3585,6 +6011,23 @@ $root.CoreML.Specification.ActivationLeakyReLU = class ActivationLeakyReLU {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ActivationLeakyReLU();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ActivationLeakyReLU.prototype.alpha = 0;
@@ -3602,6 +6045,20 @@ $root.CoreML.Specification.ActivationTanh = class ActivationTanh {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ActivationTanh();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3633,6 +6090,26 @@ $root.CoreML.Specification.ActivationScaledTanh = class ActivationScaledTanh {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ActivationScaledTanh();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                case "beta":
+                    message.beta = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ActivationScaledTanh.prototype.alpha = 0;
@@ -3651,6 +6128,20 @@ $root.CoreML.Specification.ActivationSigmoid = class ActivationSigmoid {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ActivationSigmoid();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3677,6 +6168,26 @@ $root.CoreML.Specification.ActivationLinear = class ActivationLinear {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ActivationLinear();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                case "beta":
+                    message.beta = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3711,6 +6222,26 @@ $root.CoreML.Specification.ActivationSigmoidHard = class ActivationSigmoidHard {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ActivationSigmoidHard();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                case "beta":
+                    message.beta = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ActivationSigmoidHard.prototype.alpha = 0;
@@ -3732,6 +6263,23 @@ $root.CoreML.Specification.ActivationPReLU = class ActivationPReLU {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ActivationPReLU();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3762,6 +6310,23 @@ $root.CoreML.Specification.ActivationELU = class ActivationELU {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ActivationELU();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ActivationELU.prototype.alpha = 0;
@@ -3782,6 +6347,23 @@ $root.CoreML.Specification.ActivationThresholdedReLU = class ActivationThreshold
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ActivationThresholdedReLU();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3809,6 +6391,20 @@ $root.CoreML.Specification.ActivationSoftsign = class ActivationSoftsign {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ActivationSoftsign();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ActivationSoftplus = class ActivationSoftplus {
@@ -3824,6 +6420,20 @@ $root.CoreML.Specification.ActivationSoftplus = class ActivationSoftplus {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ActivationSoftplus();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3850,6 +6460,26 @@ $root.CoreML.Specification.ActivationParametricSoftplus = class ActivationParame
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ActivationParametricSoftplus();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "beta":
+                    message.beta = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -3922,6 +6552,59 @@ $root.CoreML.Specification.ActivationParams = class ActivationParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ActivationParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "linear":
+                    message.linear = $root.CoreML.Specification.ActivationLinear.decodeText(reader);
+                    break;
+                case "ReLU":
+                    message.ReLU = $root.CoreML.Specification.ActivationReLU.decodeText(reader);
+                    break;
+                case "leakyReLU":
+                    message.leakyReLU = $root.CoreML.Specification.ActivationLeakyReLU.decodeText(reader);
+                    break;
+                case "thresholdedReLU":
+                    message.thresholdedReLU = $root.CoreML.Specification.ActivationThresholdedReLU.decodeText(reader);
+                    break;
+                case "PReLU":
+                    message.PReLU = $root.CoreML.Specification.ActivationPReLU.decodeText(reader);
+                    break;
+                case "tanh":
+                    message.tanh = $root.CoreML.Specification.ActivationTanh.decodeText(reader);
+                    break;
+                case "scaledTanh":
+                    message.scaledTanh = $root.CoreML.Specification.ActivationScaledTanh.decodeText(reader);
+                    break;
+                case "sigmoid":
+                    message.sigmoid = $root.CoreML.Specification.ActivationSigmoid.decodeText(reader);
+                    break;
+                case "sigmoidHard":
+                    message.sigmoidHard = $root.CoreML.Specification.ActivationSigmoidHard.decodeText(reader);
+                    break;
+                case "ELU":
+                    message.ELU = $root.CoreML.Specification.ActivationELU.decodeText(reader);
+                    break;
+                case "softsign":
+                    message.softsign = $root.CoreML.Specification.ActivationSoftsign.decodeText(reader);
+                    break;
+                case "softplus":
+                    message.softplus = $root.CoreML.Specification.ActivationSoftplus.decodeText(reader);
+                    break;
+                case "parametricSoftplus":
+                    message.parametricSoftplus = $root.CoreML.Specification.ActivationParametricSoftplus.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.Tensor = class Tensor {
@@ -3944,6 +6627,26 @@ $root.CoreML.Specification.Tensor = class Tensor {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Tensor();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "rank":
+                    message.rank = reader.uint32();
+                    break;
+                case "dimValue":
+                    reader.array(message.dimValue, () => reader.int64());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -4472,6 +7175,512 @@ $root.CoreML.Specification.NeuralNetworkLayer = class NeuralNetworkLayer {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.NeuralNetworkLayer();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "name":
+                    message.name = reader.string();
+                    break;
+                case "input":
+                    reader.array(message.input, () => reader.string());
+                    break;
+                case "output":
+                    reader.array(message.output, () => reader.string());
+                    break;
+                case "inputTensor":
+                    message.inputTensor.push($root.CoreML.Specification.Tensor.decodeText(reader));
+                    break;
+                case "outputTensor":
+                    message.outputTensor.push($root.CoreML.Specification.Tensor.decodeText(reader));
+                    break;
+                case "isUpdatable":
+                    message.isUpdatable = reader.bool();
+                    break;
+                case "convolution":
+                    message.convolution = $root.CoreML.Specification.ConvolutionLayerParams.decodeText(reader);
+                    break;
+                case "pooling":
+                    message.pooling = $root.CoreML.Specification.PoolingLayerParams.decodeText(reader);
+                    break;
+                case "activation":
+                    message.activation = $root.CoreML.Specification.ActivationParams.decodeText(reader);
+                    break;
+                case "innerProduct":
+                    message.innerProduct = $root.CoreML.Specification.InnerProductLayerParams.decodeText(reader);
+                    break;
+                case "embedding":
+                    message.embedding = $root.CoreML.Specification.EmbeddingLayerParams.decodeText(reader);
+                    break;
+                case "batchnorm":
+                    message.batchnorm = $root.CoreML.Specification.BatchnormLayerParams.decodeText(reader);
+                    break;
+                case "mvn":
+                    message.mvn = $root.CoreML.Specification.MeanVarianceNormalizeLayerParams.decodeText(reader);
+                    break;
+                case "l2normalize":
+                    message.l2normalize = $root.CoreML.Specification.L2NormalizeLayerParams.decodeText(reader);
+                    break;
+                case "softmax":
+                    message.softmax = $root.CoreML.Specification.SoftmaxLayerParams.decodeText(reader);
+                    break;
+                case "lrn":
+                    message.lrn = $root.CoreML.Specification.LRNLayerParams.decodeText(reader);
+                    break;
+                case "crop":
+                    message.crop = $root.CoreML.Specification.CropLayerParams.decodeText(reader);
+                    break;
+                case "padding":
+                    message.padding = $root.CoreML.Specification.PaddingLayerParams.decodeText(reader);
+                    break;
+                case "upsample":
+                    message.upsample = $root.CoreML.Specification.UpsampleLayerParams.decodeText(reader);
+                    break;
+                case "resizeBilinear":
+                    message.resizeBilinear = $root.CoreML.Specification.ResizeBilinearLayerParams.decodeText(reader);
+                    break;
+                case "cropResize":
+                    message.cropResize = $root.CoreML.Specification.CropResizeLayerParams.decodeText(reader);
+                    break;
+                case "unary":
+                    message.unary = $root.CoreML.Specification.UnaryFunctionLayerParams.decodeText(reader);
+                    break;
+                case "add":
+                    message.add = $root.CoreML.Specification.AddLayerParams.decodeText(reader);
+                    break;
+                case "multiply":
+                    message.multiply = $root.CoreML.Specification.MultiplyLayerParams.decodeText(reader);
+                    break;
+                case "average":
+                    message.average = $root.CoreML.Specification.AverageLayerParams.decodeText(reader);
+                    break;
+                case "scale":
+                    message.scale = $root.CoreML.Specification.ScaleLayerParams.decodeText(reader);
+                    break;
+                case "bias":
+                    message.bias = $root.CoreML.Specification.BiasLayerParams.decodeText(reader);
+                    break;
+                case "max":
+                    message.max = $root.CoreML.Specification.MaxLayerParams.decodeText(reader);
+                    break;
+                case "min":
+                    message.min = $root.CoreML.Specification.MinLayerParams.decodeText(reader);
+                    break;
+                case "dot":
+                    message.dot = $root.CoreML.Specification.DotProductLayerParams.decodeText(reader);
+                    break;
+                case "reduce":
+                    message.reduce = $root.CoreML.Specification.ReduceLayerParams.decodeText(reader);
+                    break;
+                case "loadConstant":
+                    message.loadConstant = $root.CoreML.Specification.LoadConstantLayerParams.decodeText(reader);
+                    break;
+                case "reshape":
+                    message.reshape = $root.CoreML.Specification.ReshapeLayerParams.decodeText(reader);
+                    break;
+                case "flatten":
+                    message.flatten = $root.CoreML.Specification.FlattenLayerParams.decodeText(reader);
+                    break;
+                case "permute":
+                    message.permute = $root.CoreML.Specification.PermuteLayerParams.decodeText(reader);
+                    break;
+                case "concat":
+                    message.concat = $root.CoreML.Specification.ConcatLayerParams.decodeText(reader);
+                    break;
+                case "split":
+                    message.split = $root.CoreML.Specification.SplitLayerParams.decodeText(reader);
+                    break;
+                case "sequenceRepeat":
+                    message.sequenceRepeat = $root.CoreML.Specification.SequenceRepeatLayerParams.decodeText(reader);
+                    break;
+                case "reorganizeData":
+                    message.reorganizeData = $root.CoreML.Specification.ReorganizeDataLayerParams.decodeText(reader);
+                    break;
+                case "slice":
+                    message.slice = $root.CoreML.Specification.SliceLayerParams.decodeText(reader);
+                    break;
+                case "simpleRecurrent":
+                    message.simpleRecurrent = $root.CoreML.Specification.SimpleRecurrentLayerParams.decodeText(reader);
+                    break;
+                case "gru":
+                    message.gru = $root.CoreML.Specification.GRULayerParams.decodeText(reader);
+                    break;
+                case "uniDirectionalLSTM":
+                    message.uniDirectionalLSTM = $root.CoreML.Specification.UniDirectionalLSTMLayerParams.decodeText(reader);
+                    break;
+                case "biDirectionalLSTM":
+                    message.biDirectionalLSTM = $root.CoreML.Specification.BiDirectionalLSTMLayerParams.decodeText(reader);
+                    break;
+                case "custom":
+                    message.custom = $root.CoreML.Specification.CustomLayerParams.decodeText(reader);
+                    break;
+                case "copy":
+                    message.copy = $root.CoreML.Specification.CopyLayerParams.decodeText(reader);
+                    break;
+                case "branch":
+                    message.branch = $root.CoreML.Specification.BranchLayerParams.decodeText(reader);
+                    break;
+                case "loop":
+                    message.loop = $root.CoreML.Specification.LoopLayerParams.decodeText(reader);
+                    break;
+                case "loopBreak":
+                    message.loopBreak = $root.CoreML.Specification.LoopBreakLayerParams.decodeText(reader);
+                    break;
+                case "loopContinue":
+                    message.loopContinue = $root.CoreML.Specification.LoopContinueLayerParams.decodeText(reader);
+                    break;
+                case "rangeStatic":
+                    message.rangeStatic = $root.CoreML.Specification.RangeStaticLayerParams.decodeText(reader);
+                    break;
+                case "rangeDynamic":
+                    message.rangeDynamic = $root.CoreML.Specification.RangeDynamicLayerParams.decodeText(reader);
+                    break;
+                case "clip":
+                    message.clip = $root.CoreML.Specification.ClipLayerParams.decodeText(reader);
+                    break;
+                case "ceil":
+                    message.ceil = $root.CoreML.Specification.CeilLayerParams.decodeText(reader);
+                    break;
+                case "floor":
+                    message.floor = $root.CoreML.Specification.FloorLayerParams.decodeText(reader);
+                    break;
+                case "sign":
+                    message.sign = $root.CoreML.Specification.SignLayerParams.decodeText(reader);
+                    break;
+                case "round":
+                    message.round = $root.CoreML.Specification.RoundLayerParams.decodeText(reader);
+                    break;
+                case "exp2":
+                    message.exp2 = $root.CoreML.Specification.Exp2LayerParams.decodeText(reader);
+                    break;
+                case "sin":
+                    message.sin = $root.CoreML.Specification.SinLayerParams.decodeText(reader);
+                    break;
+                case "cos":
+                    message.cos = $root.CoreML.Specification.CosLayerParams.decodeText(reader);
+                    break;
+                case "tan":
+                    message.tan = $root.CoreML.Specification.TanLayerParams.decodeText(reader);
+                    break;
+                case "asin":
+                    message.asin = $root.CoreML.Specification.AsinLayerParams.decodeText(reader);
+                    break;
+                case "acos":
+                    message.acos = $root.CoreML.Specification.AcosLayerParams.decodeText(reader);
+                    break;
+                case "atan":
+                    message.atan = $root.CoreML.Specification.AtanLayerParams.decodeText(reader);
+                    break;
+                case "sinh":
+                    message.sinh = $root.CoreML.Specification.SinhLayerParams.decodeText(reader);
+                    break;
+                case "cosh":
+                    message.cosh = $root.CoreML.Specification.CoshLayerParams.decodeText(reader);
+                    break;
+                case "tanh":
+                    message.tanh = $root.CoreML.Specification.TanhLayerParams.decodeText(reader);
+                    break;
+                case "asinh":
+                    message.asinh = $root.CoreML.Specification.AsinhLayerParams.decodeText(reader);
+                    break;
+                case "acosh":
+                    message.acosh = $root.CoreML.Specification.AcoshLayerParams.decodeText(reader);
+                    break;
+                case "atanh":
+                    message.atanh = $root.CoreML.Specification.AtanhLayerParams.decodeText(reader);
+                    break;
+                case "erf":
+                    message.erf = $root.CoreML.Specification.ErfLayerParams.decodeText(reader);
+                    break;
+                case "gelu":
+                    message.gelu = $root.CoreML.Specification.GeluLayerParams.decodeText(reader);
+                    break;
+                case "equal":
+                    message.equal = $root.CoreML.Specification.EqualLayerParams.decodeText(reader);
+                    break;
+                case "notEqual":
+                    message.notEqual = $root.CoreML.Specification.NotEqualLayerParams.decodeText(reader);
+                    break;
+                case "lessThan":
+                    message.lessThan = $root.CoreML.Specification.LessThanLayerParams.decodeText(reader);
+                    break;
+                case "lessEqual":
+                    message.lessEqual = $root.CoreML.Specification.LessEqualLayerParams.decodeText(reader);
+                    break;
+                case "greaterThan":
+                    message.greaterThan = $root.CoreML.Specification.GreaterThanLayerParams.decodeText(reader);
+                    break;
+                case "greaterEqual":
+                    message.greaterEqual = $root.CoreML.Specification.GreaterEqualLayerParams.decodeText(reader);
+                    break;
+                case "logicalOr":
+                    message.logicalOr = $root.CoreML.Specification.LogicalOrLayerParams.decodeText(reader);
+                    break;
+                case "logicalXor":
+                    message.logicalXor = $root.CoreML.Specification.LogicalXorLayerParams.decodeText(reader);
+                    break;
+                case "logicalNot":
+                    message.logicalNot = $root.CoreML.Specification.LogicalNotLayerParams.decodeText(reader);
+                    break;
+                case "logicalAnd":
+                    message.logicalAnd = $root.CoreML.Specification.LogicalAndLayerParams.decodeText(reader);
+                    break;
+                case "modBroadcastable":
+                    message.modBroadcastable = $root.CoreML.Specification.ModBroadcastableLayerParams.decodeText(reader);
+                    break;
+                case "minBroadcastable":
+                    message.minBroadcastable = $root.CoreML.Specification.MinBroadcastableLayerParams.decodeText(reader);
+                    break;
+                case "maxBroadcastable":
+                    message.maxBroadcastable = $root.CoreML.Specification.MaxBroadcastableLayerParams.decodeText(reader);
+                    break;
+                case "addBroadcastable":
+                    message.addBroadcastable = $root.CoreML.Specification.AddBroadcastableLayerParams.decodeText(reader);
+                    break;
+                case "powBroadcastable":
+                    message.powBroadcastable = $root.CoreML.Specification.PowBroadcastableLayerParams.decodeText(reader);
+                    break;
+                case "divideBroadcastable":
+                    message.divideBroadcastable = $root.CoreML.Specification.DivideBroadcastableLayerParams.decodeText(reader);
+                    break;
+                case "floorDivBroadcastable":
+                    message.floorDivBroadcastable = $root.CoreML.Specification.FloorDivBroadcastableLayerParams.decodeText(reader);
+                    break;
+                case "multiplyBroadcastable":
+                    message.multiplyBroadcastable = $root.CoreML.Specification.MultiplyBroadcastableLayerParams.decodeText(reader);
+                    break;
+                case "subtractBroadcastable":
+                    message.subtractBroadcastable = $root.CoreML.Specification.SubtractBroadcastableLayerParams.decodeText(reader);
+                    break;
+                case "tile":
+                    message.tile = $root.CoreML.Specification.TileLayerParams.decodeText(reader);
+                    break;
+                case "stack":
+                    message.stack = $root.CoreML.Specification.StackLayerParams.decodeText(reader);
+                    break;
+                case "gather":
+                    message.gather = $root.CoreML.Specification.GatherLayerParams.decodeText(reader);
+                    break;
+                case "scatter":
+                    message.scatter = $root.CoreML.Specification.ScatterLayerParams.decodeText(reader);
+                    break;
+                case "gatherND":
+                    message.gatherND = $root.CoreML.Specification.GatherNDLayerParams.decodeText(reader);
+                    break;
+                case "scatterND":
+                    message.scatterND = $root.CoreML.Specification.ScatterNDLayerParams.decodeText(reader);
+                    break;
+                case "softmaxND":
+                    message.softmaxND = $root.CoreML.Specification.SoftmaxNDLayerParams.decodeText(reader);
+                    break;
+                case "gatherAlongAxis":
+                    message.gatherAlongAxis = $root.CoreML.Specification.GatherAlongAxisLayerParams.decodeText(reader);
+                    break;
+                case "scatterAlongAxis":
+                    message.scatterAlongAxis = $root.CoreML.Specification.ScatterAlongAxisLayerParams.decodeText(reader);
+                    break;
+                case "reverse":
+                    message.reverse = $root.CoreML.Specification.ReverseLayerParams.decodeText(reader);
+                    break;
+                case "reverseSeq":
+                    message.reverseSeq = $root.CoreML.Specification.ReverseSeqLayerParams.decodeText(reader);
+                    break;
+                case "splitND":
+                    message.splitND = $root.CoreML.Specification.SplitNDLayerParams.decodeText(reader);
+                    break;
+                case "concatND":
+                    message.concatND = $root.CoreML.Specification.ConcatNDLayerParams.decodeText(reader);
+                    break;
+                case "transpose":
+                    message.transpose = $root.CoreML.Specification.TransposeLayerParams.decodeText(reader);
+                    break;
+                case "sliceStatic":
+                    message.sliceStatic = $root.CoreML.Specification.SliceStaticLayerParams.decodeText(reader);
+                    break;
+                case "sliceDynamic":
+                    message.sliceDynamic = $root.CoreML.Specification.SliceDynamicLayerParams.decodeText(reader);
+                    break;
+                case "slidingWindows":
+                    message.slidingWindows = $root.CoreML.Specification.SlidingWindowsLayerParams.decodeText(reader);
+                    break;
+                case "topK":
+                    message.topK = $root.CoreML.Specification.TopKLayerParams.decodeText(reader);
+                    break;
+                case "argMin":
+                    message.argMin = $root.CoreML.Specification.ArgMinLayerParams.decodeText(reader);
+                    break;
+                case "argMax":
+                    message.argMax = $root.CoreML.Specification.ArgMaxLayerParams.decodeText(reader);
+                    break;
+                case "embeddingND":
+                    message.embeddingND = $root.CoreML.Specification.EmbeddingNDLayerParams.decodeText(reader);
+                    break;
+                case "batchedMatmul":
+                    message.batchedMatmul = $root.CoreML.Specification.BatchedMatMulLayerParams.decodeText(reader);
+                    break;
+                case "getShape":
+                    message.getShape = $root.CoreML.Specification.GetShapeLayerParams.decodeText(reader);
+                    break;
+                case "loadConstantND":
+                    message.loadConstantND = $root.CoreML.Specification.LoadConstantNDLayerParams.decodeText(reader);
+                    break;
+                case "fillLike":
+                    message.fillLike = $root.CoreML.Specification.FillLikeLayerParams.decodeText(reader);
+                    break;
+                case "fillStatic":
+                    message.fillStatic = $root.CoreML.Specification.FillStaticLayerParams.decodeText(reader);
+                    break;
+                case "fillDynamic":
+                    message.fillDynamic = $root.CoreML.Specification.FillDynamicLayerParams.decodeText(reader);
+                    break;
+                case "broadcastToLike":
+                    message.broadcastToLike = $root.CoreML.Specification.BroadcastToLikeLayerParams.decodeText(reader);
+                    break;
+                case "broadcastToStatic":
+                    message.broadcastToStatic = $root.CoreML.Specification.BroadcastToStaticLayerParams.decodeText(reader);
+                    break;
+                case "broadcastToDynamic":
+                    message.broadcastToDynamic = $root.CoreML.Specification.BroadcastToDynamicLayerParams.decodeText(reader);
+                    break;
+                case "squeeze":
+                    message.squeeze = $root.CoreML.Specification.SqueezeLayerParams.decodeText(reader);
+                    break;
+                case "expandDims":
+                    message.expandDims = $root.CoreML.Specification.ExpandDimsLayerParams.decodeText(reader);
+                    break;
+                case "flattenTo2D":
+                    message.flattenTo2D = $root.CoreML.Specification.FlattenTo2DLayerParams.decodeText(reader);
+                    break;
+                case "reshapeLike":
+                    message.reshapeLike = $root.CoreML.Specification.ReshapeLikeLayerParams.decodeText(reader);
+                    break;
+                case "reshapeStatic":
+                    message.reshapeStatic = $root.CoreML.Specification.ReshapeStaticLayerParams.decodeText(reader);
+                    break;
+                case "reshapeDynamic":
+                    message.reshapeDynamic = $root.CoreML.Specification.ReshapeDynamicLayerParams.decodeText(reader);
+                    break;
+                case "rankPreservingReshape":
+                    message.rankPreservingReshape = $root.CoreML.Specification.RankPreservingReshapeLayerParams.decodeText(reader);
+                    break;
+                case "constantPad":
+                    message.constantPad = $root.CoreML.Specification.ConstantPaddingLayerParams.decodeText(reader);
+                    break;
+                case "randomNormalLike":
+                    message.randomNormalLike = $root.CoreML.Specification.RandomNormalLikeLayerParams.decodeText(reader);
+                    break;
+                case "randomNormalStatic":
+                    message.randomNormalStatic = $root.CoreML.Specification.RandomNormalStaticLayerParams.decodeText(reader);
+                    break;
+                case "randomNormalDynamic":
+                    message.randomNormalDynamic = $root.CoreML.Specification.RandomNormalDynamicLayerParams.decodeText(reader);
+                    break;
+                case "randomUniformLike":
+                    message.randomUniformLike = $root.CoreML.Specification.RandomUniformLikeLayerParams.decodeText(reader);
+                    break;
+                case "randomUniformStatic":
+                    message.randomUniformStatic = $root.CoreML.Specification.RandomUniformStaticLayerParams.decodeText(reader);
+                    break;
+                case "randomUniformDynamic":
+                    message.randomUniformDynamic = $root.CoreML.Specification.RandomUniformDynamicLayerParams.decodeText(reader);
+                    break;
+                case "randomBernoulliLike":
+                    message.randomBernoulliLike = $root.CoreML.Specification.RandomBernoulliLikeLayerParams.decodeText(reader);
+                    break;
+                case "randomBernoulliStatic":
+                    message.randomBernoulliStatic = $root.CoreML.Specification.RandomBernoulliStaticLayerParams.decodeText(reader);
+                    break;
+                case "randomBernoulliDynamic":
+                    message.randomBernoulliDynamic = $root.CoreML.Specification.RandomBernoulliDynamicLayerParams.decodeText(reader);
+                    break;
+                case "categoricalDistribution":
+                    message.categoricalDistribution = $root.CoreML.Specification.CategoricalDistributionLayerParams.decodeText(reader);
+                    break;
+                case "reduceL1":
+                    message.reduceL1 = $root.CoreML.Specification.ReduceL1LayerParams.decodeText(reader);
+                    break;
+                case "reduceL2":
+                    message.reduceL2 = $root.CoreML.Specification.ReduceL2LayerParams.decodeText(reader);
+                    break;
+                case "reduceMax":
+                    message.reduceMax = $root.CoreML.Specification.ReduceMaxLayerParams.decodeText(reader);
+                    break;
+                case "reduceMin":
+                    message.reduceMin = $root.CoreML.Specification.ReduceMinLayerParams.decodeText(reader);
+                    break;
+                case "reduceSum":
+                    message.reduceSum = $root.CoreML.Specification.ReduceSumLayerParams.decodeText(reader);
+                    break;
+                case "reduceProd":
+                    message.reduceProd = $root.CoreML.Specification.ReduceProdLayerParams.decodeText(reader);
+                    break;
+                case "reduceMean":
+                    message.reduceMean = $root.CoreML.Specification.ReduceMeanLayerParams.decodeText(reader);
+                    break;
+                case "reduceLogSum":
+                    message.reduceLogSum = $root.CoreML.Specification.ReduceLogSumLayerParams.decodeText(reader);
+                    break;
+                case "reduceSumSquare":
+                    message.reduceSumSquare = $root.CoreML.Specification.ReduceSumSquareLayerParams.decodeText(reader);
+                    break;
+                case "reduceLogSumExp":
+                    message.reduceLogSumExp = $root.CoreML.Specification.ReduceLogSumExpLayerParams.decodeText(reader);
+                    break;
+                case "whereNonZero":
+                    message.whereNonZero = $root.CoreML.Specification.WhereNonZeroLayerParams.decodeText(reader);
+                    break;
+                case "matrixBandPart":
+                    message.matrixBandPart = $root.CoreML.Specification.MatrixBandPartLayerParams.decodeText(reader);
+                    break;
+                case "lowerTriangular":
+                    message.lowerTriangular = $root.CoreML.Specification.LowerTriangularLayerParams.decodeText(reader);
+                    break;
+                case "upperTriangular":
+                    message.upperTriangular = $root.CoreML.Specification.UpperTriangularLayerParams.decodeText(reader);
+                    break;
+                case "whereBroadcastable":
+                    message.whereBroadcastable = $root.CoreML.Specification.WhereBroadcastableLayerParams.decodeText(reader);
+                    break;
+                case "layerNormalization":
+                    message.layerNormalization = $root.CoreML.Specification.LayerNormalizationLayerParams.decodeText(reader);
+                    break;
+                case "NonMaximumSuppression":
+                    message.NonMaximumSuppression = $root.CoreML.Specification.NonMaximumSuppressionLayerParams.decodeText(reader);
+                    break;
+                case "oneHot":
+                    message.oneHot = $root.CoreML.Specification.OneHotLayerParams.decodeText(reader);
+                    break;
+                case "cumSum":
+                    message.cumSum = $root.CoreML.Specification.CumSumLayerParams.decodeText(reader);
+                    break;
+                case "clampedReLU":
+                    message.clampedReLU = $root.CoreML.Specification.ClampedReLULayerParams.decodeText(reader);
+                    break;
+                case "argSort":
+                    message.argSort = $root.CoreML.Specification.ArgSortLayerParams.decodeText(reader);
+                    break;
+                case "pooling3d":
+                    message.pooling3d = $root.CoreML.Specification.Pooling3DLayerParams.decodeText(reader);
+                    break;
+                case "globalPooling3d":
+                    message.globalPooling3d = $root.CoreML.Specification.GlobalPooling3DLayerParams.decodeText(reader);
+                    break;
+                case "sliceBySize":
+                    message.sliceBySize = $root.CoreML.Specification.SliceBySizeLayerParams.decodeText(reader);
+                    break;
+                case "convolution3d":
+                    message.convolution3d = $root.CoreML.Specification.Convolution3DLayerParams.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.NeuralNetworkLayer.prototype.name = "";
@@ -4496,6 +7705,26 @@ $root.CoreML.Specification.BranchLayerParams = class BranchLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BranchLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "ifBranch":
+                    message.ifBranch = $root.CoreML.Specification.NeuralNetwork.decodeText(reader);
+                    break;
+                case "elseBranch":
+                    message.elseBranch = $root.CoreML.Specification.NeuralNetwork.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -4536,6 +7765,32 @@ $root.CoreML.Specification.LoopLayerParams = class LoopLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LoopLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "maxLoopIterations":
+                    message.maxLoopIterations = reader.uint64();
+                    break;
+                case "conditionVar":
+                    message.conditionVar = reader.string();
+                    break;
+                case "conditionNetwork":
+                    message.conditionNetwork = $root.CoreML.Specification.NeuralNetwork.decodeText(reader);
+                    break;
+                case "bodyNetwork":
+                    message.bodyNetwork = $root.CoreML.Specification.NeuralNetwork.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.LoopLayerParams.prototype.maxLoopIterations = protobuf.Uint64.create(0);
@@ -4561,6 +7816,20 @@ $root.CoreML.Specification.LoopBreakLayerParams = class LoopBreakLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LoopBreakLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.LoopContinueLayerParams = class LoopContinueLayerParams {
@@ -4576,6 +7845,20 @@ $root.CoreML.Specification.LoopContinueLayerParams = class LoopContinueLayerPara
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LoopContinueLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -4601,6 +7884,20 @@ $root.CoreML.Specification.CopyLayerParams = class CopyLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CopyLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.GreaterThanLayerParams = class GreaterThanLayerParams {
@@ -4619,6 +7916,23 @@ $root.CoreML.Specification.GreaterThanLayerParams = class GreaterThanLayerParams
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.GreaterThanLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -4649,6 +7963,23 @@ $root.CoreML.Specification.GreaterEqualLayerParams = class GreaterEqualLayerPara
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.GreaterEqualLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.GreaterEqualLayerParams.prototype.alpha = 0;
@@ -4669,6 +8000,23 @@ $root.CoreML.Specification.LessThanLayerParams = class LessThanLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LessThanLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -4699,6 +8047,23 @@ $root.CoreML.Specification.LessEqualLayerParams = class LessEqualLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LessEqualLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.LessEqualLayerParams.prototype.alpha = 0;
@@ -4719,6 +8084,23 @@ $root.CoreML.Specification.EqualLayerParams = class EqualLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.EqualLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -4749,6 +8131,23 @@ $root.CoreML.Specification.NotEqualLayerParams = class NotEqualLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.NotEqualLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.NotEqualLayerParams.prototype.alpha = 0;
@@ -4766,6 +8165,20 @@ $root.CoreML.Specification.LogicalAndLayerParams = class LogicalAndLayerParams {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LogicalAndLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -4791,6 +8204,20 @@ $root.CoreML.Specification.LogicalOrLayerParams = class LogicalOrLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LogicalOrLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.LogicalXorLayerParams = class LogicalXorLayerParams {
@@ -4806,6 +8233,20 @@ $root.CoreML.Specification.LogicalXorLayerParams = class LogicalXorLayerParams {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LogicalXorLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -4831,6 +8272,20 @@ $root.CoreML.Specification.LogicalNotLayerParams = class LogicalNotLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LogicalNotLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.BorderAmounts = class BorderAmounts {
@@ -4850,6 +8305,23 @@ $root.CoreML.Specification.BorderAmounts = class BorderAmounts {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BorderAmounts();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "borderAmounts":
+                    message.borderAmounts.push($root.CoreML.Specification.BorderAmounts.EdgeSizes.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -4881,6 +8353,26 @@ $root.CoreML.Specification.BorderAmounts.EdgeSizes = class EdgeSizes {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BorderAmounts.EdgeSizes();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "startEdgeSize":
+                    message.startEdgeSize = reader.uint64();
+                    break;
+                case "endEdgeSize":
+                    message.endEdgeSize = reader.uint64();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.BorderAmounts.EdgeSizes.prototype.startEdgeSize = protobuf.Uint64.create(0);
@@ -4907,6 +8399,23 @@ $root.CoreML.Specification.ValidPadding = class ValidPadding {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ValidPadding();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "paddingAmounts":
+                    message.paddingAmounts = $root.CoreML.Specification.BorderAmounts.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ValidPadding.prototype.paddingAmounts = null;
@@ -4927,6 +8436,23 @@ $root.CoreML.Specification.SamePadding = class SamePadding {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SamePadding();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "asymmetryMode":
+                    message.asymmetryMode = reader.enum($root.CoreML.Specification.SamePadding.SamePaddingMode);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -4962,6 +8488,23 @@ $root.CoreML.Specification.SamplingMode = class SamplingMode {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SamplingMode();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "samplingMethod":
+                    message.samplingMethod = reader.enum($root.CoreML.Specification.SamplingMode.Method);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SamplingMode.prototype.samplingMethod = 0;
@@ -4989,6 +8532,23 @@ $root.CoreML.Specification.BoxCoordinatesMode = class BoxCoordinatesMode {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BoxCoordinatesMode();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "boxMode":
+                    message.boxMode = reader.enum($root.CoreML.Specification.BoxCoordinatesMode.Coordinates);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -5042,6 +8602,38 @@ $root.CoreML.Specification.WeightParams = class WeightParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.WeightParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "floatValue":
+                    reader.array(message.floatValue, () => reader.float());
+                    break;
+                case "float16Value":
+                    message.float16Value = reader.bytes();
+                    break;
+                case "rawValue":
+                    message.rawValue = reader.bytes();
+                    break;
+                case "int8RawValue":
+                    message.int8RawValue = reader.bytes();
+                    break;
+                case "quantization":
+                    message.quantization = $root.CoreML.Specification.QuantizationParams.decodeText(reader);
+                    break;
+                case "isUpdatable":
+                    message.isUpdatable = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.WeightParams.prototype.float16Value = new Uint8Array([]);
@@ -5082,6 +8674,29 @@ $root.CoreML.Specification.QuantizationParams = class QuantizationParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.QuantizationParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "numberOfBits":
+                    message.numberOfBits = reader.uint64();
+                    break;
+                case "linearQuantization":
+                    message.linearQuantization = $root.CoreML.Specification.LinearQuantizationParams.decodeText(reader);
+                    break;
+                case "lookupTableQuantization":
+                    message.lookupTableQuantization = $root.CoreML.Specification.LookUpTableQuantizationParams.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.QuantizationParams.prototype.numberOfBits = protobuf.Uint64.create(0);
@@ -5112,6 +8727,26 @@ $root.CoreML.Specification.LinearQuantizationParams = class LinearQuantizationPa
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LinearQuantizationParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "scale":
+                    reader.array(message.scale, () => reader.float());
+                    break;
+                case "bias":
+                    reader.array(message.bias, () => reader.float());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.LookUpTableQuantizationParams = class LookUpTableQuantizationParams {
@@ -5131,6 +8766,23 @@ $root.CoreML.Specification.LookUpTableQuantizationParams = class LookUpTableQuan
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LookUpTableQuantizationParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "floatValue":
+                    reader.array(message.floatValue, () => reader.float());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -5199,6 +8851,59 @@ $root.CoreML.Specification.ConvolutionLayerParams = class ConvolutionLayerParams
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ConvolutionLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "outputChannels":
+                    message.outputChannels = reader.uint64();
+                    break;
+                case "kernelChannels":
+                    message.kernelChannels = reader.uint64();
+                    break;
+                case "nGroups":
+                    message.nGroups = reader.uint64();
+                    break;
+                case "kernelSize":
+                    reader.array(message.kernelSize, () => reader.uint64());
+                    break;
+                case "stride":
+                    reader.array(message.stride, () => reader.uint64());
+                    break;
+                case "dilationFactor":
+                    reader.array(message.dilationFactor, () => reader.uint64());
+                    break;
+                case "valid":
+                    message.valid = $root.CoreML.Specification.ValidPadding.decodeText(reader);
+                    break;
+                case "same":
+                    message.same = $root.CoreML.Specification.SamePadding.decodeText(reader);
+                    break;
+                case "isDeconvolution":
+                    message.isDeconvolution = reader.bool();
+                    break;
+                case "hasBias":
+                    message.hasBias = reader.bool();
+                    break;
+                case "weights":
+                    message.weights = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "bias":
+                    message.bias = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "outputShape":
+                    reader.array(message.outputShape, () => reader.uint64());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -5305,6 +9010,92 @@ $root.CoreML.Specification.Convolution3DLayerParams = class Convolution3DLayerPa
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Convolution3DLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "outputChannels":
+                    message.outputChannels = reader.int32();
+                    break;
+                case "inputChannels":
+                    message.inputChannels = reader.int32();
+                    break;
+                case "nGroups":
+                    message.nGroups = reader.int32();
+                    break;
+                case "kernelDepth":
+                    message.kernelDepth = reader.int32();
+                    break;
+                case "kernelHeight":
+                    message.kernelHeight = reader.int32();
+                    break;
+                case "kernelWidth":
+                    message.kernelWidth = reader.int32();
+                    break;
+                case "strideDepth":
+                    message.strideDepth = reader.int32();
+                    break;
+                case "strideHeight":
+                    message.strideHeight = reader.int32();
+                    break;
+                case "strideWidth":
+                    message.strideWidth = reader.int32();
+                    break;
+                case "dilationDepth":
+                    message.dilationDepth = reader.int32();
+                    break;
+                case "dilationHeight":
+                    message.dilationHeight = reader.int32();
+                    break;
+                case "dilationWidth":
+                    message.dilationWidth = reader.int32();
+                    break;
+                case "hasBias":
+                    message.hasBias = reader.bool();
+                    break;
+                case "weights":
+                    message.weights = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "bias":
+                    message.bias = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "paddingType":
+                    message.paddingType = reader.enum($root.CoreML.Specification.Convolution3DLayerParams.PaddingType);
+                    break;
+                case "customPaddingFront":
+                    message.customPaddingFront = reader.int32();
+                    break;
+                case "customPaddingBack":
+                    message.customPaddingBack = reader.int32();
+                    break;
+                case "customPaddingTop":
+                    message.customPaddingTop = reader.int32();
+                    break;
+                case "customPaddingBottom":
+                    message.customPaddingBottom = reader.int32();
+                    break;
+                case "customPaddingLeft":
+                    message.customPaddingLeft = reader.int32();
+                    break;
+                case "customPaddingRight":
+                    message.customPaddingRight = reader.int32();
+                    break;
+                case "isDeconvolution":
+                    message.isDeconvolution = reader.bool();
+                    break;
+                case "outputShape":
+                    reader.array(message.outputShape, () => reader.uint64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.Convolution3DLayerParams.prototype.outputChannels = 0;
@@ -5373,6 +9164,38 @@ $root.CoreML.Specification.InnerProductLayerParams = class InnerProductLayerPara
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.InnerProductLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "inputChannels":
+                    message.inputChannels = reader.uint64();
+                    break;
+                case "outputChannels":
+                    message.outputChannels = reader.uint64();
+                    break;
+                case "hasBias":
+                    message.hasBias = reader.bool();
+                    break;
+                case "weights":
+                    message.weights = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "bias":
+                    message.bias = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "int8DynamicQuantize":
+                    message.int8DynamicQuantize = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.InnerProductLayerParams.prototype.inputChannels = protobuf.Uint64.create(0);
@@ -5415,6 +9238,35 @@ $root.CoreML.Specification.EmbeddingLayerParams = class EmbeddingLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.EmbeddingLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "inputDim":
+                    message.inputDim = reader.uint64();
+                    break;
+                case "outputChannels":
+                    message.outputChannels = reader.uint64();
+                    break;
+                case "hasBias":
+                    message.hasBias = reader.bool();
+                    break;
+                case "weights":
+                    message.weights = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "bias":
+                    message.bias = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.EmbeddingLayerParams.prototype.inputDim = protobuf.Uint64.create(0);
@@ -5451,6 +9303,35 @@ $root.CoreML.Specification.EmbeddingNDLayerParams = class EmbeddingNDLayerParams
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.EmbeddingNDLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "vocabSize":
+                    message.vocabSize = reader.uint64();
+                    break;
+                case "embeddingSize":
+                    message.embeddingSize = reader.uint64();
+                    break;
+                case "hasBias":
+                    message.hasBias = reader.bool();
+                    break;
+                case "weights":
+                    message.weights = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "bias":
+                    message.bias = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -5501,6 +9382,44 @@ $root.CoreML.Specification.BatchnormLayerParams = class BatchnormLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BatchnormLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "channels":
+                    message.channels = reader.uint64();
+                    break;
+                case "computeMeanVar":
+                    message.computeMeanVar = reader.bool();
+                    break;
+                case "instanceNormalization":
+                    message.instanceNormalization = reader.bool();
+                    break;
+                case "epsilon":
+                    message.epsilon = reader.float();
+                    break;
+                case "gamma":
+                    message.gamma = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "beta":
+                    message.beta = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "mean":
+                    message.mean = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "variance":
+                    message.variance = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -5566,6 +9485,44 @@ $root.CoreML.Specification.PoolingLayerParams = class PoolingLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.PoolingLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "type":
+                    message.type = reader.enum($root.CoreML.Specification.PoolingLayerParams.PoolingType);
+                    break;
+                case "kernelSize":
+                    reader.array(message.kernelSize, () => reader.uint64());
+                    break;
+                case "stride":
+                    reader.array(message.stride, () => reader.uint64());
+                    break;
+                case "valid":
+                    message.valid = $root.CoreML.Specification.ValidPadding.decodeText(reader);
+                    break;
+                case "same":
+                    message.same = $root.CoreML.Specification.SamePadding.decodeText(reader);
+                    break;
+                case "includeLastPixel":
+                    message.includeLastPixel = $root.CoreML.Specification.PoolingLayerParams.ValidCompletePadding.decodeText(reader);
+                    break;
+                case "avgPoolExcludePadding":
+                    message.avgPoolExcludePadding = reader.bool();
+                    break;
+                case "globalPooling":
+                    message.globalPooling = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.PoolingLayerParams.prototype.type = 0;
@@ -5595,6 +9552,23 @@ $root.CoreML.Specification.PoolingLayerParams.ValidCompletePadding = class Valid
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.PoolingLayerParams.ValidCompletePadding();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "paddingAmounts":
+                    reader.array(message.paddingAmounts, () => reader.uint64());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -5665,6 +9639,65 @@ $root.CoreML.Specification.Pooling3DLayerParams = class Pooling3DLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Pooling3DLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "type":
+                    message.type = reader.enum($root.CoreML.Specification.Pooling3DLayerParams.PoolingType3D);
+                    break;
+                case "kernelDepth":
+                    message.kernelDepth = reader.int32();
+                    break;
+                case "kernelHeight":
+                    message.kernelHeight = reader.int32();
+                    break;
+                case "kernelWidth":
+                    message.kernelWidth = reader.int32();
+                    break;
+                case "strideDepth":
+                    message.strideDepth = reader.int32();
+                    break;
+                case "strideHeight":
+                    message.strideHeight = reader.int32();
+                    break;
+                case "strideWidth":
+                    message.strideWidth = reader.int32();
+                    break;
+                case "paddingType":
+                    message.paddingType = reader.enum($root.CoreML.Specification.Pooling3DLayerParams.Pooling3DPaddingType);
+                    break;
+                case "customPaddingFront":
+                    message.customPaddingFront = reader.int32();
+                    break;
+                case "customPaddingBack":
+                    message.customPaddingBack = reader.int32();
+                    break;
+                case "customPaddingTop":
+                    message.customPaddingTop = reader.int32();
+                    break;
+                case "customPaddingBottom":
+                    message.customPaddingBottom = reader.int32();
+                    break;
+                case "customPaddingLeft":
+                    message.customPaddingLeft = reader.int32();
+                    break;
+                case "customPaddingRight":
+                    message.customPaddingRight = reader.int32();
+                    break;
+                case "countExcludePadding":
+                    message.countExcludePadding = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.Pooling3DLayerParams.prototype.type = 0;
@@ -5715,6 +9748,23 @@ $root.CoreML.Specification.GlobalPooling3DLayerParams = class GlobalPooling3DLay
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.GlobalPooling3DLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "type":
+                    message.type = reader.enum($root.CoreML.Specification.GlobalPooling3DLayerParams.GlobalPoolingType3D);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.GlobalPooling3DLayerParams.prototype.type = 0;
@@ -5759,6 +9809,32 @@ $root.CoreML.Specification.PaddingLayerParams = class PaddingLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.PaddingLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "constant":
+                    message.constant = $root.CoreML.Specification.PaddingLayerParams.PaddingConstant.decodeText(reader);
+                    break;
+                case "reflection":
+                    message.reflection = $root.CoreML.Specification.PaddingLayerParams.PaddingReflection.decodeText(reader);
+                    break;
+                case "replication":
+                    message.replication = $root.CoreML.Specification.PaddingLayerParams.PaddingReplication.decodeText(reader);
+                    break;
+                case "paddingAmounts":
+                    message.paddingAmounts = $root.CoreML.Specification.BorderAmounts.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.PaddingLayerParams.prototype.paddingAmounts = null;
@@ -5779,6 +9855,23 @@ $root.CoreML.Specification.PaddingLayerParams.PaddingConstant = class PaddingCon
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.PaddingLayerParams.PaddingConstant();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "value":
+                    message.value = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -5806,6 +9899,20 @@ $root.CoreML.Specification.PaddingLayerParams.PaddingReflection = class PaddingR
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.PaddingLayerParams.PaddingReflection();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.PaddingLayerParams.PaddingReplication = class PaddingReplication {
@@ -5821,6 +9928,20 @@ $root.CoreML.Specification.PaddingLayerParams.PaddingReplication = class Padding
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.PaddingLayerParams.PaddingReplication();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -5844,6 +9965,23 @@ $root.CoreML.Specification.ConcatLayerParams = class ConcatLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ConcatLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "sequenceConcat":
+                    message.sequenceConcat = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -5883,6 +10021,32 @@ $root.CoreML.Specification.LRNLayerParams = class LRNLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LRNLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                case "beta":
+                    message.beta = reader.float();
+                    break;
+                case "localSize":
+                    message.localSize = reader.uint64();
+                    break;
+                case "k":
+                    message.k = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.LRNLayerParams.prototype.alpha = 0;
@@ -5908,6 +10072,20 @@ $root.CoreML.Specification.SoftmaxLayerParams = class SoftmaxLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SoftmaxLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SplitLayerParams = class SplitLayerParams {
@@ -5926,6 +10104,23 @@ $root.CoreML.Specification.SplitLayerParams = class SplitLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SplitLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "nOutputs":
+                    message.nOutputs = reader.uint64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -5956,6 +10151,23 @@ $root.CoreML.Specification.AddLayerParams = class AddLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.AddLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.AddLayerParams.prototype.alpha = 0;
@@ -5976,6 +10188,23 @@ $root.CoreML.Specification.MultiplyLayerParams = class MultiplyLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MultiplyLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -6013,6 +10242,35 @@ $root.CoreML.Specification.UnaryFunctionLayerParams = class UnaryFunctionLayerPa
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.UnaryFunctionLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "type":
+                    message.type = reader.enum($root.CoreML.Specification.UnaryFunctionLayerParams.Operation);
+                    break;
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                case "epsilon":
+                    message.epsilon = reader.float();
+                    break;
+                case "shift":
+                    message.shift = reader.float();
+                    break;
+                case "scale":
+                    message.scale = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -6069,6 +10327,32 @@ $root.CoreML.Specification.UpsampleLayerParams = class UpsampleLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.UpsampleLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "scalingFactor":
+                    reader.array(message.scalingFactor, () => reader.uint64());
+                    break;
+                case "fractionalScalingFactor":
+                    reader.array(message.fractionalScalingFactor, () => reader.float());
+                    break;
+                case "mode":
+                    message.mode = reader.enum($root.CoreML.Specification.UpsampleLayerParams.InterpolationMode);
+                    break;
+                case "linearUpsampleMode":
+                    message.linearUpsampleMode = reader.enum($root.CoreML.Specification.UpsampleLayerParams.LinearUpsampleMode);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.UpsampleLayerParams.prototype.mode = 0;
@@ -6105,6 +10389,26 @@ $root.CoreML.Specification.ResizeBilinearLayerParams = class ResizeBilinearLayer
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ResizeBilinearLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "targetSize":
+                    reader.array(message.targetSize, () => reader.uint64());
+                    break;
+                case "mode":
+                    message.mode = $root.CoreML.Specification.SamplingMode.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -6148,6 +10452,35 @@ $root.CoreML.Specification.CropResizeLayerParams = class CropResizeLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CropResizeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "targetSize":
+                    reader.array(message.targetSize, () => reader.uint64());
+                    break;
+                case "normalizedCoordinates":
+                    message.normalizedCoordinates = reader.bool();
+                    break;
+                case "mode":
+                    message.mode = $root.CoreML.Specification.SamplingMode.decodeText(reader);
+                    break;
+                case "boxIndicesMode":
+                    message.boxIndicesMode = $root.CoreML.Specification.BoxCoordinatesMode.decodeText(reader);
+                    break;
+                case "spatialScale":
+                    message.spatialScale = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.CropResizeLayerParams.prototype.normalizedCoordinates = false;
@@ -6175,6 +10508,26 @@ $root.CoreML.Specification.BiasLayerParams = class BiasLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BiasLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "shape":
+                    reader.array(message.shape, () => reader.uint64());
+                    break;
+                case "bias":
+                    message.bias = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -6219,6 +10572,35 @@ $root.CoreML.Specification.ScaleLayerParams = class ScaleLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ScaleLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "shapeScale":
+                    reader.array(message.shapeScale, () => reader.uint64());
+                    break;
+                case "scale":
+                    message.scale = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "hasBias":
+                    message.hasBias = reader.bool();
+                    break;
+                case "shapeBias":
+                    reader.array(message.shapeBias, () => reader.uint64());
+                    break;
+                case "bias":
+                    message.bias = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ScaleLayerParams.prototype.scale = null;
@@ -6250,6 +10632,26 @@ $root.CoreML.Specification.LoadConstantLayerParams = class LoadConstantLayerPara
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LoadConstantLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "shape":
+                    reader.array(message.shape, () => reader.uint64());
+                    break;
+                case "data":
+                    message.data = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.LoadConstantLayerParams.prototype.data = null;
@@ -6275,6 +10677,23 @@ $root.CoreML.Specification.L2NormalizeLayerParams = class L2NormalizeLayerParams
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.L2NormalizeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "epsilon":
+                    message.epsilon = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.L2NormalizeLayerParams.prototype.epsilon = 0;
@@ -6295,6 +10714,23 @@ $root.CoreML.Specification.FlattenLayerParams = class FlattenLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.FlattenLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "mode":
+                    message.mode = reader.enum($root.CoreML.Specification.FlattenLayerParams.FlattenOrder);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -6334,6 +10770,26 @@ $root.CoreML.Specification.ReshapeLayerParams = class ReshapeLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReshapeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "targetShape":
+                    reader.array(message.targetShape, () => reader.int64());
+                    break;
+                case "mode":
+                    message.mode = reader.enum($root.CoreML.Specification.ReshapeLayerParams.ReshapeOrder);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ReshapeLayerParams.prototype.mode = 0;
@@ -6365,6 +10821,23 @@ $root.CoreML.Specification.PermuteLayerParams = class PermuteLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.PermuteLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    reader.array(message.axis, () => reader.uint64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ReorganizeDataLayerParams = class ReorganizeDataLayerParams {
@@ -6386,6 +10859,26 @@ $root.CoreML.Specification.ReorganizeDataLayerParams = class ReorganizeDataLayer
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReorganizeDataLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "mode":
+                    message.mode = reader.enum($root.CoreML.Specification.ReorganizeDataLayerParams.ReorganizationType);
+                    break;
+                case "blockSize":
+                    message.blockSize = reader.uint64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -6432,6 +10925,32 @@ $root.CoreML.Specification.SliceLayerParams = class SliceLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SliceLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "startIndex":
+                    message.startIndex = reader.int64();
+                    break;
+                case "endIndex":
+                    message.endIndex = reader.int64();
+                    break;
+                case "stride":
+                    message.stride = reader.uint64();
+                    break;
+                case "axis":
+                    message.axis = reader.enum($root.CoreML.Specification.SliceLayerParams.SliceAxis);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SliceLayerParams.prototype.startIndex = protobuf.Int64.create(0);
@@ -6467,6 +10986,29 @@ $root.CoreML.Specification.ReduceLayerParams = class ReduceLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReduceLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "mode":
+                    message.mode = reader.enum($root.CoreML.Specification.ReduceLayerParams.ReduceOperation);
+                    break;
+                case "epsilon":
+                    message.epsilon = reader.float();
+                    break;
+                case "axis":
+                    message.axis = reader.enum($root.CoreML.Specification.ReduceLayerParams.ReduceAxis);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -6524,6 +11066,26 @@ $root.CoreML.Specification.CropLayerParams = class CropLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CropLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "cropAmounts":
+                    message.cropAmounts = $root.CoreML.Specification.BorderAmounts.decodeText(reader);
+                    break;
+                case "offset":
+                    reader.array(message.offset, () => reader.uint64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.CropLayerParams.prototype.cropAmounts = null;
@@ -6541,6 +11103,20 @@ $root.CoreML.Specification.AverageLayerParams = class AverageLayerParams {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.AverageLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -6566,6 +11142,20 @@ $root.CoreML.Specification.MaxLayerParams = class MaxLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MaxLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MinLayerParams = class MinLayerParams {
@@ -6581,6 +11171,20 @@ $root.CoreML.Specification.MinLayerParams = class MinLayerParams {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MinLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -6604,6 +11208,23 @@ $root.CoreML.Specification.DotProductLayerParams = class DotProductLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.DotProductLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "cosineSimilarity":
+                    message.cosineSimilarity = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -6640,6 +11261,29 @@ $root.CoreML.Specification.MeanVarianceNormalizeLayerParams = class MeanVariance
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MeanVarianceNormalizeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "acrossChannels":
+                    message.acrossChannels = reader.bool();
+                    break;
+                case "normalizeVariance":
+                    message.normalizeVariance = reader.bool();
+                    break;
+                case "epsilon":
+                    message.epsilon = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MeanVarianceNormalizeLayerParams.prototype.acrossChannels = false;
@@ -6662,6 +11306,23 @@ $root.CoreML.Specification.SequenceRepeatLayerParams = class SequenceRepeatLayer
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SequenceRepeatLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "nRepetitions":
+                    message.nRepetitions = reader.uint64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -6711,6 +11372,47 @@ $root.CoreML.Specification.SimpleRecurrentLayerParams = class SimpleRecurrentLay
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SimpleRecurrentLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "inputVectorSize":
+                    message.inputVectorSize = reader.uint64();
+                    break;
+                case "outputVectorSize":
+                    message.outputVectorSize = reader.uint64();
+                    break;
+                case "activation":
+                    message.activation = $root.CoreML.Specification.ActivationParams.decodeText(reader);
+                    break;
+                case "sequenceOutput":
+                    message.sequenceOutput = reader.bool();
+                    break;
+                case "hasBiasVector":
+                    message.hasBiasVector = reader.bool();
+                    break;
+                case "weightMatrix":
+                    message.weightMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "recursionMatrix":
+                    message.recursionMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "biasVector":
+                    message.biasVector = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "reverseInput":
+                    message.reverseInput = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -6792,6 +11494,65 @@ $root.CoreML.Specification.GRULayerParams = class GRULayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.GRULayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "inputVectorSize":
+                    message.inputVectorSize = reader.uint64();
+                    break;
+                case "outputVectorSize":
+                    message.outputVectorSize = reader.uint64();
+                    break;
+                case "activations":
+                    message.activations.push($root.CoreML.Specification.ActivationParams.decodeText(reader));
+                    break;
+                case "sequenceOutput":
+                    message.sequenceOutput = reader.bool();
+                    break;
+                case "hasBiasVectors":
+                    message.hasBiasVectors = reader.bool();
+                    break;
+                case "updateGateWeightMatrix":
+                    message.updateGateWeightMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "resetGateWeightMatrix":
+                    message.resetGateWeightMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "outputGateWeightMatrix":
+                    message.outputGateWeightMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "updateGateRecursionMatrix":
+                    message.updateGateRecursionMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "resetGateRecursionMatrix":
+                    message.resetGateRecursionMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "outputGateRecursionMatrix":
+                    message.outputGateRecursionMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "updateGateBiasVector":
+                    message.updateGateBiasVector = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "resetGateBiasVector":
+                    message.resetGateBiasVector = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "outputGateBiasVector":
+                    message.outputGateBiasVector = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "reverseInput":
+                    message.reverseInput = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.GRULayerParams.prototype.inputVectorSize = protobuf.Uint64.create(0);
@@ -6840,6 +11601,38 @@ $root.CoreML.Specification.LSTMParams = class LSTMParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LSTMParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "sequenceOutput":
+                    message.sequenceOutput = reader.bool();
+                    break;
+                case "hasBiasVectors":
+                    message.hasBiasVectors = reader.bool();
+                    break;
+                case "forgetBias":
+                    message.forgetBias = reader.bool();
+                    break;
+                case "hasPeepholeVectors":
+                    message.hasPeepholeVectors = reader.bool();
+                    break;
+                case "coupledInputAndForgetGate":
+                    message.coupledInputAndForgetGate = reader.bool();
+                    break;
+                case "cellClipThreshold":
+                    message.cellClipThreshold = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -6917,6 +11710,65 @@ $root.CoreML.Specification.LSTMWeightParams = class LSTMWeightParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LSTMWeightParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "inputGateWeightMatrix":
+                    message.inputGateWeightMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "forgetGateWeightMatrix":
+                    message.forgetGateWeightMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "blockInputWeightMatrix":
+                    message.blockInputWeightMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "outputGateWeightMatrix":
+                    message.outputGateWeightMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "inputGateRecursionMatrix":
+                    message.inputGateRecursionMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "forgetGateRecursionMatrix":
+                    message.forgetGateRecursionMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "blockInputRecursionMatrix":
+                    message.blockInputRecursionMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "outputGateRecursionMatrix":
+                    message.outputGateRecursionMatrix = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "inputGateBiasVector":
+                    message.inputGateBiasVector = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "forgetGateBiasVector":
+                    message.forgetGateBiasVector = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "blockInputBiasVector":
+                    message.blockInputBiasVector = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "outputGateBiasVector":
+                    message.outputGateBiasVector = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "inputGatePeepholeVector":
+                    message.inputGatePeepholeVector = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "forgetGatePeepholeVector":
+                    message.forgetGatePeepholeVector = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "outputGatePeepholeVector":
+                    message.outputGatePeepholeVector = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.LSTMWeightParams.prototype.inputGateWeightMatrix = null;
@@ -6972,6 +11824,38 @@ $root.CoreML.Specification.UniDirectionalLSTMLayerParams = class UniDirectionalL
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.UniDirectionalLSTMLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "inputVectorSize":
+                    message.inputVectorSize = reader.uint64();
+                    break;
+                case "outputVectorSize":
+                    message.outputVectorSize = reader.uint64();
+                    break;
+                case "activations":
+                    message.activations.push($root.CoreML.Specification.ActivationParams.decodeText(reader));
+                    break;
+                case "params":
+                    message.params = $root.CoreML.Specification.LSTMParams.decodeText(reader);
+                    break;
+                case "weightParams":
+                    message.weightParams = $root.CoreML.Specification.LSTMWeightParams.decodeText(reader);
+                    break;
+                case "reverseInput":
+                    message.reverseInput = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.UniDirectionalLSTMLayerParams.prototype.inputVectorSize = protobuf.Uint64.create(0);
@@ -7019,6 +11903,38 @@ $root.CoreML.Specification.BiDirectionalLSTMLayerParams = class BiDirectionalLST
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BiDirectionalLSTMLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "inputVectorSize":
+                    message.inputVectorSize = reader.uint64();
+                    break;
+                case "outputVectorSize":
+                    message.outputVectorSize = reader.uint64();
+                    break;
+                case "activationsForwardLSTM":
+                    message.activationsForwardLSTM.push($root.CoreML.Specification.ActivationParams.decodeText(reader));
+                    break;
+                case "activationsBackwardLSTM":
+                    message.activationsBackwardLSTM.push($root.CoreML.Specification.ActivationParams.decodeText(reader));
+                    break;
+                case "params":
+                    message.params = $root.CoreML.Specification.LSTMParams.decodeText(reader);
+                    break;
+                case "weightParams":
+                    message.weightParams.push($root.CoreML.Specification.LSTMWeightParams.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.BiDirectionalLSTMLayerParams.prototype.inputVectorSize = protobuf.Uint64.create(0);
@@ -7052,6 +11968,32 @@ $root.CoreML.Specification.CustomLayerParams = class CustomLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CustomLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "className":
+                    message.className = reader.string();
+                    break;
+                case "weights":
+                    message.weights.push($root.CoreML.Specification.WeightParams.decodeText(reader));
+                    break;
+                case "parameters":
+                    reader.entry(message.parameters, () => reader.string(), () => $root.CoreML.Specification.CustomLayerParams.CustomLayerParamValue.decodeText(reader));
+                    break;
+                case "description":
+                    message.description = reader.string();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7100,6 +12042,35 @@ $root.CoreML.Specification.CustomLayerParams.CustomLayerParamValue = class Custo
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CustomLayerParams.CustomLayerParamValue();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "doubleValue":
+                    message.doubleValue = reader.double();
+                    break;
+                case "stringValue":
+                    message.stringValue = reader.string();
+                    break;
+                case "intValue":
+                    message.intValue = reader.int32();
+                    break;
+                case "longValue":
+                    message.longValue = reader.int64();
+                    break;
+                case "boolValue":
+                    message.boolValue = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.TransposeLayerParams = class TransposeLayerParams {
@@ -7119,6 +12090,23 @@ $root.CoreML.Specification.TransposeLayerParams = class TransposeLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.TransposeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axes":
+                    reader.array(message.axes, () => reader.uint64());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7168,6 +12156,44 @@ $root.CoreML.Specification.BatchedMatMulLayerParams = class BatchedMatMulLayerPa
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BatchedMatMulLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "transposeA":
+                    message.transposeA = reader.bool();
+                    break;
+                case "transposeB":
+                    message.transposeB = reader.bool();
+                    break;
+                case "weightMatrixFirstDimension":
+                    message.weightMatrixFirstDimension = reader.uint64();
+                    break;
+                case "weightMatrixSecondDimension":
+                    message.weightMatrixSecondDimension = reader.uint64();
+                    break;
+                case "hasBias":
+                    message.hasBias = reader.bool();
+                    break;
+                case "weights":
+                    message.weights = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "bias":
+                    message.bias = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "int8DynamicQuantize":
+                    message.int8DynamicQuantize = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.BatchedMatMulLayerParams.prototype.transposeA = false;
@@ -7203,6 +12229,26 @@ $root.CoreML.Specification.ConcatNDLayerParams = class ConcatNDLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ConcatNDLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                case "interleave":
+                    message.interleave = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ConcatNDLayerParams.prototype.axis = protobuf.Int64.create(0);
@@ -7224,6 +12270,23 @@ $root.CoreML.Specification.SoftmaxNDLayerParams = class SoftmaxNDLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SoftmaxNDLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7255,6 +12318,23 @@ $root.CoreML.Specification.ReverseLayerParams = class ReverseLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReverseLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "reverseDim":
+                    reader.array(message.reverseDim, () => reader.bool());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ReverseSeqLayerParams = class ReverseSeqLayerParams {
@@ -7276,6 +12356,26 @@ $root.CoreML.Specification.ReverseSeqLayerParams = class ReverseSeqLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReverseSeqLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "batchAxis":
+                    message.batchAxis = reader.int64();
+                    break;
+                case "sequenceAxis":
+                    message.sequenceAxis = reader.int64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7311,6 +12411,26 @@ $root.CoreML.Specification.LoadConstantNDLayerParams = class LoadConstantNDLayer
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LoadConstantNDLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "shape":
+                    reader.array(message.shape, () => reader.uint64());
+                    break;
+                case "data":
+                    message.data = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.LoadConstantNDLayerParams.prototype.data = null;
@@ -7331,6 +12451,23 @@ $root.CoreML.Specification.FillLikeLayerParams = class FillLikeLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.FillLikeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "value":
+                    message.value = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7365,6 +12502,26 @@ $root.CoreML.Specification.FillStaticLayerParams = class FillStaticLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.FillStaticLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "value":
+                    message.value = reader.float();
+                    break;
+                case "targetShape":
+                    reader.array(message.targetShape, () => reader.uint64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.FillStaticLayerParams.prototype.value = 0;
@@ -7385,6 +12542,23 @@ $root.CoreML.Specification.FillDynamicLayerParams = class FillDynamicLayerParams
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.FillDynamicLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "value":
+                    message.value = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7412,6 +12586,20 @@ $root.CoreML.Specification.WhereBroadcastableLayerParams = class WhereBroadcasta
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.WhereBroadcastableLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SinLayerParams = class SinLayerParams {
@@ -7427,6 +12615,20 @@ $root.CoreML.Specification.SinLayerParams = class SinLayerParams {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SinLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7452,6 +12654,20 @@ $root.CoreML.Specification.CosLayerParams = class CosLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CosLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.TanLayerParams = class TanLayerParams {
@@ -7467,6 +12683,20 @@ $root.CoreML.Specification.TanLayerParams = class TanLayerParams {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.TanLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7492,6 +12722,20 @@ $root.CoreML.Specification.AsinLayerParams = class AsinLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.AsinLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.AcosLayerParams = class AcosLayerParams {
@@ -7507,6 +12751,20 @@ $root.CoreML.Specification.AcosLayerParams = class AcosLayerParams {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.AcosLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7532,6 +12790,20 @@ $root.CoreML.Specification.AtanLayerParams = class AtanLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.AtanLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SinhLayerParams = class SinhLayerParams {
@@ -7547,6 +12819,20 @@ $root.CoreML.Specification.SinhLayerParams = class SinhLayerParams {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SinhLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7572,6 +12858,20 @@ $root.CoreML.Specification.CoshLayerParams = class CoshLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CoshLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.TanhLayerParams = class TanhLayerParams {
@@ -7587,6 +12887,20 @@ $root.CoreML.Specification.TanhLayerParams = class TanhLayerParams {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.TanhLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7612,6 +12926,20 @@ $root.CoreML.Specification.AsinhLayerParams = class AsinhLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.AsinhLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.AcoshLayerParams = class AcoshLayerParams {
@@ -7627,6 +12955,20 @@ $root.CoreML.Specification.AcoshLayerParams = class AcoshLayerParams {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.AcoshLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7652,6 +12994,20 @@ $root.CoreML.Specification.AtanhLayerParams = class AtanhLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.AtanhLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.PowBroadcastableLayerParams = class PowBroadcastableLayerParams {
@@ -7667,6 +13023,20 @@ $root.CoreML.Specification.PowBroadcastableLayerParams = class PowBroadcastableL
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.PowBroadcastableLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7692,6 +13062,20 @@ $root.CoreML.Specification.Exp2LayerParams = class Exp2LayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Exp2LayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.WhereNonZeroLayerParams = class WhereNonZeroLayerParams {
@@ -7707,6 +13091,20 @@ $root.CoreML.Specification.WhereNonZeroLayerParams = class WhereNonZeroLayerPara
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.WhereNonZeroLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7738,6 +13136,26 @@ $root.CoreML.Specification.MatrixBandPartLayerParams = class MatrixBandPartLayer
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MatrixBandPartLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "numLower":
+                    message.numLower = reader.int64();
+                    break;
+                case "numUpper":
+                    message.numUpper = reader.int64();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MatrixBandPartLayerParams.prototype.numLower = protobuf.Int64.create(0);
@@ -7759,6 +13177,23 @@ $root.CoreML.Specification.UpperTriangularLayerParams = class UpperTriangularLay
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.UpperTriangularLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "k":
+                    message.k = reader.int64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7789,6 +13224,23 @@ $root.CoreML.Specification.LowerTriangularLayerParams = class LowerTriangularLay
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LowerTriangularLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "k":
+                    message.k = reader.int64();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.LowerTriangularLayerParams.prototype.k = protobuf.Int64.create(0);
@@ -7806,6 +13258,20 @@ $root.CoreML.Specification.BroadcastToLikeLayerParams = class BroadcastToLikeLay
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BroadcastToLikeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7835,6 +13301,23 @@ $root.CoreML.Specification.BroadcastToStaticLayerParams = class BroadcastToStati
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BroadcastToStaticLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "targetShape":
+                    reader.array(message.targetShape, () => reader.uint64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.BroadcastToDynamicLayerParams = class BroadcastToDynamicLayerParams {
@@ -7850,6 +13333,20 @@ $root.CoreML.Specification.BroadcastToDynamicLayerParams = class BroadcastToDyna
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.BroadcastToDynamicLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7875,6 +13372,20 @@ $root.CoreML.Specification.AddBroadcastableLayerParams = class AddBroadcastableL
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.AddBroadcastableLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.MaxBroadcastableLayerParams = class MaxBroadcastableLayerParams {
@@ -7890,6 +13401,20 @@ $root.CoreML.Specification.MaxBroadcastableLayerParams = class MaxBroadcastableL
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MaxBroadcastableLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7915,6 +13440,20 @@ $root.CoreML.Specification.MinBroadcastableLayerParams = class MinBroadcastableL
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MinBroadcastableLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ModBroadcastableLayerParams = class ModBroadcastableLayerParams {
@@ -7930,6 +13469,20 @@ $root.CoreML.Specification.ModBroadcastableLayerParams = class ModBroadcastableL
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ModBroadcastableLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7955,6 +13508,20 @@ $root.CoreML.Specification.FloorDivBroadcastableLayerParams = class FloorDivBroa
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.FloorDivBroadcastableLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SubtractBroadcastableLayerParams = class SubtractBroadcastableLayerParams {
@@ -7970,6 +13537,20 @@ $root.CoreML.Specification.SubtractBroadcastableLayerParams = class SubtractBroa
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SubtractBroadcastableLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -7995,6 +13576,20 @@ $root.CoreML.Specification.MultiplyBroadcastableLayerParams = class MultiplyBroa
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MultiplyBroadcastableLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.DivideBroadcastableLayerParams = class DivideBroadcastableLayerParams {
@@ -8010,6 +13605,20 @@ $root.CoreML.Specification.DivideBroadcastableLayerParams = class DivideBroadcas
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.DivideBroadcastableLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -8033,6 +13642,23 @@ $root.CoreML.Specification.GatherLayerParams = class GatherLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.GatherLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -8076,6 +13702,26 @@ $root.CoreML.Specification.ScatterLayerParams = class ScatterLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ScatterLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                case "mode":
+                    message.mode = reader.enum($root.CoreML.Specification.ScatterMode);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ScatterLayerParams.prototype.axis = protobuf.Int64.create(0);
@@ -8094,6 +13740,20 @@ $root.CoreML.Specification.GatherNDLayerParams = class GatherNDLayerParams {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.GatherNDLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -8122,6 +13782,23 @@ $root.CoreML.Specification.ScatterNDLayerParams = class ScatterNDLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ScatterNDLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "mode":
+                    message.mode = reader.enum($root.CoreML.Specification.ScatterMode);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ScatterNDLayerParams.prototype.mode = 0;
@@ -8142,6 +13819,23 @@ $root.CoreML.Specification.GatherAlongAxisLayerParams = class GatherAlongAxisLay
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.GatherAlongAxisLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -8175,6 +13869,26 @@ $root.CoreML.Specification.ScatterAlongAxisLayerParams = class ScatterAlongAxisL
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ScatterAlongAxisLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                case "mode":
+                    message.mode = reader.enum($root.CoreML.Specification.ScatterMode);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ScatterAlongAxisLayerParams.prototype.axis = protobuf.Int64.create(0);
@@ -8201,6 +13915,23 @@ $root.CoreML.Specification.StackLayerParams = class StackLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.StackLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.StackLayerParams.prototype.axis = protobuf.Int64.create(0);
@@ -8222,6 +13953,23 @@ $root.CoreML.Specification.RankPreservingReshapeLayerParams = class RankPreservi
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.RankPreservingReshapeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "targetShape":
+                    reader.array(message.targetShape, () => reader.int64());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -8257,6 +14005,29 @@ $root.CoreML.Specification.ConstantPaddingLayerParams = class ConstantPaddingLay
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ConstantPaddingLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "value":
+                    message.value = reader.float();
+                    break;
+                case "padAmounts":
+                    reader.array(message.padAmounts, () => reader.uint64());
+                    break;
+                case "padToGivenOutputSizeMode":
+                    message.padToGivenOutputSizeMode = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ConstantPaddingLayerParams.prototype.value = 0;
@@ -8284,6 +14055,29 @@ $root.CoreML.Specification.RandomNormalLikeLayerParams = class RandomNormalLikeL
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.RandomNormalLikeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "seed":
+                    message.seed = reader.int64();
+                    break;
+                case "mean":
+                    message.mean = reader.float();
+                    break;
+                case "stdDev":
+                    message.stdDev = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -8326,6 +14120,32 @@ $root.CoreML.Specification.RandomNormalStaticLayerParams = class RandomNormalSta
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.RandomNormalStaticLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "seed":
+                    message.seed = reader.int64();
+                    break;
+                case "mean":
+                    message.mean = reader.float();
+                    break;
+                case "stdDev":
+                    message.stdDev = reader.float();
+                    break;
+                case "outputShape":
+                    reader.array(message.outputShape, () => reader.uint64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.RandomNormalStaticLayerParams.prototype.seed = protobuf.Int64.create(0);
@@ -8359,6 +14179,29 @@ $root.CoreML.Specification.RandomNormalDynamicLayerParams = class RandomNormalDy
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.RandomNormalDynamicLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "seed":
+                    message.seed = reader.int64();
+                    break;
+                case "mean":
+                    message.mean = reader.float();
+                    break;
+                case "stdDev":
+                    message.stdDev = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.RandomNormalDynamicLayerParams.prototype.seed = protobuf.Int64.create(0);
@@ -8387,6 +14230,29 @@ $root.CoreML.Specification.RandomUniformLikeLayerParams = class RandomUniformLik
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.RandomUniformLikeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "seed":
+                    message.seed = reader.int64();
+                    break;
+                case "minVal":
+                    message.minVal = reader.float();
+                    break;
+                case "maxVal":
+                    message.maxVal = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -8429,6 +14295,32 @@ $root.CoreML.Specification.RandomUniformStaticLayerParams = class RandomUniformS
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.RandomUniformStaticLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "seed":
+                    message.seed = reader.int64();
+                    break;
+                case "minVal":
+                    message.minVal = reader.float();
+                    break;
+                case "maxVal":
+                    message.maxVal = reader.float();
+                    break;
+                case "outputShape":
+                    reader.array(message.outputShape, () => reader.uint64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.RandomUniformStaticLayerParams.prototype.seed = protobuf.Int64.create(0);
@@ -8462,6 +14354,29 @@ $root.CoreML.Specification.RandomUniformDynamicLayerParams = class RandomUniform
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.RandomUniformDynamicLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "seed":
+                    message.seed = reader.int64();
+                    break;
+                case "minVal":
+                    message.minVal = reader.float();
+                    break;
+                case "maxVal":
+                    message.maxVal = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.RandomUniformDynamicLayerParams.prototype.seed = protobuf.Int64.create(0);
@@ -8487,6 +14402,26 @@ $root.CoreML.Specification.RandomBernoulliLikeLayerParams = class RandomBernoull
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.RandomBernoulliLikeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "seed":
+                    message.seed = reader.int64();
+                    break;
+                case "prob":
+                    message.prob = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -8525,6 +14460,29 @@ $root.CoreML.Specification.RandomBernoulliStaticLayerParams = class RandomBernou
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.RandomBernoulliStaticLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "seed":
+                    message.seed = reader.int64();
+                    break;
+                case "prob":
+                    message.prob = reader.float();
+                    break;
+                case "outputShape":
+                    reader.array(message.outputShape, () => reader.uint64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.RandomBernoulliStaticLayerParams.prototype.seed = protobuf.Int64.create(0);
@@ -8549,6 +14507,26 @@ $root.CoreML.Specification.RandomBernoulliDynamicLayerParams = class RandomBerno
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.RandomBernoulliDynamicLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "seed":
+                    message.seed = reader.int64();
+                    break;
+                case "prob":
+                    message.prob = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -8592,6 +14570,35 @@ $root.CoreML.Specification.CategoricalDistributionLayerParams = class Categorica
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CategoricalDistributionLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "seed":
+                    message.seed = reader.int64();
+                    break;
+                case "numSamples":
+                    message.numSamples = reader.int64();
+                    break;
+                case "isLogits":
+                    message.isLogits = reader.bool();
+                    break;
+                case "eps":
+                    message.eps = reader.float();
+                    break;
+                case "temperature":
+                    message.temperature = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.CategoricalDistributionLayerParams.prototype.seed = protobuf.Int64.create(0);
@@ -8623,6 +14630,29 @@ $root.CoreML.Specification.ReduceL1LayerParams = class ReduceL1LayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReduceL1LayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axes":
+                    reader.array(message.axes, () => reader.int64());
+                    break;
+                case "keepDims":
+                    message.keepDims = reader.bool();
+                    break;
+                case "reduceAll":
+                    message.reduceAll = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -8661,6 +14691,29 @@ $root.CoreML.Specification.ReduceL2LayerParams = class ReduceL2LayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReduceL2LayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axes":
+                    reader.array(message.axes, () => reader.int64());
+                    break;
+                case "keepDims":
+                    message.keepDims = reader.bool();
+                    break;
+                case "reduceAll":
+                    message.reduceAll = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ReduceL2LayerParams.prototype.keepDims = false;
@@ -8689,6 +14742,29 @@ $root.CoreML.Specification.ReduceMaxLayerParams = class ReduceMaxLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReduceMaxLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axes":
+                    reader.array(message.axes, () => reader.int64());
+                    break;
+                case "keepDims":
+                    message.keepDims = reader.bool();
+                    break;
+                case "reduceAll":
+                    message.reduceAll = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -8727,6 +14803,29 @@ $root.CoreML.Specification.ReduceMinLayerParams = class ReduceMinLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReduceMinLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axes":
+                    reader.array(message.axes, () => reader.int64());
+                    break;
+                case "keepDims":
+                    message.keepDims = reader.bool();
+                    break;
+                case "reduceAll":
+                    message.reduceAll = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ReduceMinLayerParams.prototype.keepDims = false;
@@ -8755,6 +14854,29 @@ $root.CoreML.Specification.ReduceSumLayerParams = class ReduceSumLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReduceSumLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axes":
+                    reader.array(message.axes, () => reader.int64());
+                    break;
+                case "keepDims":
+                    message.keepDims = reader.bool();
+                    break;
+                case "reduceAll":
+                    message.reduceAll = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -8793,6 +14915,29 @@ $root.CoreML.Specification.ReduceProdLayerParams = class ReduceProdLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReduceProdLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axes":
+                    reader.array(message.axes, () => reader.int64());
+                    break;
+                case "keepDims":
+                    message.keepDims = reader.bool();
+                    break;
+                case "reduceAll":
+                    message.reduceAll = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ReduceProdLayerParams.prototype.keepDims = false;
@@ -8821,6 +14966,29 @@ $root.CoreML.Specification.ReduceMeanLayerParams = class ReduceMeanLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReduceMeanLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axes":
+                    reader.array(message.axes, () => reader.int64());
+                    break;
+                case "keepDims":
+                    message.keepDims = reader.bool();
+                    break;
+                case "reduceAll":
+                    message.reduceAll = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -8859,6 +15027,29 @@ $root.CoreML.Specification.ReduceLogSumLayerParams = class ReduceLogSumLayerPara
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReduceLogSumLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axes":
+                    reader.array(message.axes, () => reader.int64());
+                    break;
+                case "keepDims":
+                    message.keepDims = reader.bool();
+                    break;
+                case "reduceAll":
+                    message.reduceAll = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ReduceLogSumLayerParams.prototype.keepDims = false;
@@ -8887,6 +15078,29 @@ $root.CoreML.Specification.ReduceSumSquareLayerParams = class ReduceSumSquareLay
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReduceSumSquareLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axes":
+                    reader.array(message.axes, () => reader.int64());
+                    break;
+                case "keepDims":
+                    message.keepDims = reader.bool();
+                    break;
+                case "reduceAll":
+                    message.reduceAll = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -8925,6 +15139,29 @@ $root.CoreML.Specification.ReduceLogSumExpLayerParams = class ReduceLogSumExpLay
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReduceLogSumExpLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axes":
+                    reader.array(message.axes, () => reader.int64());
+                    break;
+                case "keepDims":
+                    message.keepDims = reader.bool();
+                    break;
+                case "reduceAll":
+                    message.reduceAll = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ReduceLogSumExpLayerParams.prototype.keepDims = false;
@@ -8952,6 +15189,23 @@ $root.CoreML.Specification.ExpandDimsLayerParams = class ExpandDimsLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ExpandDimsLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axes":
+                    reader.array(message.axes, () => reader.int64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.FlattenTo2DLayerParams = class FlattenTo2DLayerParams {
@@ -8970,6 +15224,23 @@ $root.CoreML.Specification.FlattenTo2DLayerParams = class FlattenTo2DLayerParams
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.FlattenTo2DLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9001,6 +15272,23 @@ $root.CoreML.Specification.ReshapeStaticLayerParams = class ReshapeStaticLayerPa
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReshapeStaticLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "targetShape":
+                    reader.array(message.targetShape, () => reader.int64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ReshapeLikeLayerParams = class ReshapeLikeLayerParams {
@@ -9021,6 +15309,20 @@ $root.CoreML.Specification.ReshapeLikeLayerParams = class ReshapeLikeLayerParams
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReshapeLikeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ReshapeDynamicLayerParams = class ReshapeDynamicLayerParams {
@@ -9036,6 +15338,20 @@ $root.CoreML.Specification.ReshapeDynamicLayerParams = class ReshapeDynamicLayer
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ReshapeDynamicLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9063,6 +15379,26 @@ $root.CoreML.Specification.SqueezeLayerParams = class SqueezeLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SqueezeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axes":
+                    reader.array(message.axes, () => reader.int64());
+                    break;
+                case "squeezeAll":
+                    message.squeezeAll = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9099,6 +15435,29 @@ $root.CoreML.Specification.TopKLayerParams = class TopKLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.TopKLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                case "K":
+                    message.K = reader.uint64();
+                    break;
+                case "useBottomK":
+                    message.useBottomK = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.TopKLayerParams.prototype.axis = protobuf.Int64.create(0);
@@ -9129,6 +15488,26 @@ $root.CoreML.Specification.ArgMaxLayerParams = class ArgMaxLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ArgMaxLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                case "removeDim":
+                    message.removeDim = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ArgMaxLayerParams.prototype.axis = protobuf.Int64.create(0);
@@ -9153,6 +15532,26 @@ $root.CoreML.Specification.ArgMinLayerParams = class ArgMinLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ArgMinLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                case "removeDim":
+                    message.removeDim = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9191,6 +15590,29 @@ $root.CoreML.Specification.SplitNDLayerParams = class SplitNDLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SplitNDLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                case "numSplits":
+                    message.numSplits = reader.uint64();
+                    break;
+                case "splitSizes":
+                    reader.array(message.splitSizes, () => reader.uint64());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SplitNDLayerParams.prototype.axis = protobuf.Int64.create(0);
@@ -9209,6 +15631,20 @@ $root.CoreML.Specification.CeilLayerParams = class CeilLayerParams {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CeilLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9234,6 +15670,20 @@ $root.CoreML.Specification.RoundLayerParams = class RoundLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.RoundLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.FloorLayerParams = class FloorLayerParams {
@@ -9254,6 +15704,20 @@ $root.CoreML.Specification.FloorLayerParams = class FloorLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.FloorLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SignLayerParams = class SignLayerParams {
@@ -9269,6 +15733,20 @@ $root.CoreML.Specification.SignLayerParams = class SignLayerParams {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SignLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9295,6 +15773,26 @@ $root.CoreML.Specification.ClipLayerParams = class ClipLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ClipLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "minVal":
+                    message.minVal = reader.float();
+                    break;
+                case "maxVal":
+                    message.maxVal = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9347,6 +15845,38 @@ $root.CoreML.Specification.SliceStaticLayerParams = class SliceStaticLayerParams
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SliceStaticLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "beginIds":
+                    reader.array(message.beginIds, () => reader.int64());
+                    break;
+                case "beginMasks":
+                    reader.array(message.beginMasks, () => reader.bool());
+                    break;
+                case "endIds":
+                    reader.array(message.endIds, () => reader.int64());
+                    break;
+                case "endMasks":
+                    reader.array(message.endMasks, () => reader.bool());
+                    break;
+                case "strides":
+                    reader.array(message.strides, () => reader.int64());
+                    break;
+                case "squeezeMasks":
+                    reader.array(message.squeezeMasks, () => reader.bool());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SliceDynamicLayerParams = class SliceDynamicLayerParams {
@@ -9387,6 +15917,35 @@ $root.CoreML.Specification.SliceDynamicLayerParams = class SliceDynamicLayerPara
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SliceDynamicLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "beginMasks":
+                    reader.array(message.beginMasks, () => reader.bool());
+                    break;
+                case "endIds":
+                    reader.array(message.endIds, () => reader.int64());
+                    break;
+                case "endMasks":
+                    reader.array(message.endMasks, () => reader.bool());
+                    break;
+                case "strides":
+                    reader.array(message.strides, () => reader.int64());
+                    break;
+                case "squeezeMasks":
+                    reader.array(message.squeezeMasks, () => reader.bool());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.TileLayerParams = class TileLayerParams {
@@ -9406,6 +15965,23 @@ $root.CoreML.Specification.TileLayerParams = class TileLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.TileLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "reps":
+                    reader.array(message.reps, () => reader.uint64());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9431,6 +16007,20 @@ $root.CoreML.Specification.GetShapeLayerParams = class GetShapeLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.GetShapeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ErfLayerParams = class ErfLayerParams {
@@ -9446,6 +16036,20 @@ $root.CoreML.Specification.ErfLayerParams = class ErfLayerParams {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ErfLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9469,6 +16073,23 @@ $root.CoreML.Specification.GeluLayerParams = class GeluLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.GeluLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "mode":
+                    message.mode = reader.enum($root.CoreML.Specification.GeluLayerParams.GeluMode);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9511,6 +16132,29 @@ $root.CoreML.Specification.RangeStaticLayerParams = class RangeStaticLayerParams
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.RangeStaticLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "endValue":
+                    message.endValue = reader.float();
+                    break;
+                case "startValue":
+                    message.startValue = reader.float();
+                    break;
+                case "stepSizeValue":
+                    message.stepSizeValue = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.RangeStaticLayerParams.prototype.endValue = 0;
@@ -9536,6 +16180,26 @@ $root.CoreML.Specification.RangeDynamicLayerParams = class RangeDynamicLayerPara
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.RangeDynamicLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "startValue":
+                    message.startValue = reader.float();
+                    break;
+                case "stepSizeValue":
+                    message.stepSizeValue = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9568,6 +16232,29 @@ $root.CoreML.Specification.SlidingWindowsLayerParams = class SlidingWindowsLayer
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SlidingWindowsLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                case "windowSize":
+                    message.windowSize = reader.uint64();
+                    break;
+                case "step":
+                    message.step = reader.uint64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9610,6 +16297,32 @@ $root.CoreML.Specification.LayerNormalizationLayerParams = class LayerNormalizat
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LayerNormalizationLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "normalizedShape":
+                    reader.array(message.normalizedShape, () => reader.int64());
+                    break;
+                case "eps":
+                    message.eps = reader.float();
+                    break;
+                case "gamma":
+                    message.gamma = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                case "beta":
+                    message.beta = $root.CoreML.Specification.WeightParams.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.LayerNormalizationLayerParams.prototype.eps = 0;
@@ -9646,6 +16359,32 @@ $root.CoreML.Specification.NonMaximumSuppressionLayerParams = class NonMaximumSu
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.NonMaximumSuppressionLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "iouThreshold":
+                    message.iouThreshold = reader.float();
+                    break;
+                case "scoreThreshold":
+                    message.scoreThreshold = reader.float();
+                    break;
+                case "maxBoxes":
+                    message.maxBoxes = reader.uint64();
+                    break;
+                case "perClassSuppression":
+                    message.perClassSuppression = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.NonMaximumSuppressionLayerParams.prototype.iouThreshold = 0;
@@ -9672,6 +16411,26 @@ $root.CoreML.Specification.ClampedReLULayerParams = class ClampedReLULayerParams
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ClampedReLULayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    message.alpha = reader.float();
+                    break;
+                case "beta":
+                    message.beta = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9706,6 +16465,26 @@ $root.CoreML.Specification.ArgSortLayerParams = class ArgSortLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ArgSortLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                case "descending":
+                    message.descending = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ArgSortLayerParams.prototype.axis = protobuf.Int64.create(0);
@@ -9730,6 +16509,26 @@ $root.CoreML.Specification.SliceBySizeLayerParams = class SliceBySizeLayerParams
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SliceBySizeLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "size":
+                    message.size = reader.int64();
+                    break;
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9789,6 +16588,44 @@ $root.CoreML.Specification.NeuralNetworkClassifier = class NeuralNetworkClassifi
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.NeuralNetworkClassifier();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "layers":
+                    message.layers.push($root.CoreML.Specification.NeuralNetworkLayer.decodeText(reader));
+                    break;
+                case "preprocessing":
+                    message.preprocessing.push($root.CoreML.Specification.NeuralNetworkPreprocessing.decodeText(reader));
+                    break;
+                case "arrayInputShapeMapping":
+                    message.arrayInputShapeMapping = reader.enum($root.CoreML.Specification.NeuralNetworkMultiArrayShapeMapping);
+                    break;
+                case "imageInputShapeMapping":
+                    message.imageInputShapeMapping = reader.enum($root.CoreML.Specification.NeuralNetworkImageShapeMapping);
+                    break;
+                case "updateParams":
+                    message.updateParams = $root.CoreML.Specification.NetworkUpdateParameters.decodeText(reader);
+                    break;
+                case "stringClassLabels":
+                    message.stringClassLabels = $root.CoreML.Specification.StringVector.decodeText(reader);
+                    break;
+                case "int64ClassLabels":
+                    message.int64ClassLabels = $root.CoreML.Specification.Int64Vector.decodeText(reader);
+                    break;
+                case "labelProbabilityLayerName":
+                    message.labelProbabilityLayerName = reader.string();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.NeuralNetworkClassifier.prototype.arrayInputShapeMapping = 0;
@@ -9826,6 +16663,32 @@ $root.CoreML.Specification.OneHotLayerParams = class OneHotLayerParams {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.OneHotLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "oneHotVectorSize":
+                    message.oneHotVectorSize = reader.uint64();
+                    break;
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                case "onValue":
+                    message.onValue = reader.float();
+                    break;
+                case "offValue":
+                    message.offValue = reader.float();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.OneHotLayerParams.prototype.oneHotVectorSize = protobuf.Uint64.create(0);
@@ -9855,6 +16718,29 @@ $root.CoreML.Specification.CumSumLayerParams = class CumSumLayerParams {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CumSumLayerParams();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "axis":
+                    message.axis = reader.int64();
+                    break;
+                case "excludeFinalSum":
+                    message.excludeFinalSum = reader.bool();
+                    break;
+                case "reverse":
+                    message.reverse = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9901,6 +16787,35 @@ $root.CoreML.Specification.NeuralNetworkRegressor = class NeuralNetworkRegressor
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.NeuralNetworkRegressor();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "layers":
+                    message.layers.push($root.CoreML.Specification.NeuralNetworkLayer.decodeText(reader));
+                    break;
+                case "preprocessing":
+                    message.preprocessing.push($root.CoreML.Specification.NeuralNetworkPreprocessing.decodeText(reader));
+                    break;
+                case "arrayInputShapeMapping":
+                    message.arrayInputShapeMapping = reader.enum($root.CoreML.Specification.NeuralNetworkMultiArrayShapeMapping);
+                    break;
+                case "imageInputShapeMapping":
+                    message.imageInputShapeMapping = reader.enum($root.CoreML.Specification.NeuralNetworkImageShapeMapping);
+                    break;
+                case "updateParams":
+                    message.updateParams = $root.CoreML.Specification.NetworkUpdateParameters.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.NeuralNetworkRegressor.prototype.arrayInputShapeMapping = 0;
@@ -9936,6 +16851,35 @@ $root.CoreML.Specification.NetworkUpdateParameters = class NetworkUpdateParamete
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.NetworkUpdateParameters();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "lossLayers":
+                    message.lossLayers.push($root.CoreML.Specification.LossLayer.decodeText(reader));
+                    break;
+                case "optimizer":
+                    message.optimizer = $root.CoreML.Specification.Optimizer.decodeText(reader);
+                    break;
+                case "epochs":
+                    message.epochs = $root.CoreML.Specification.Int64Parameter.decodeText(reader);
+                    break;
+                case "shuffle":
+                    message.shuffle = $root.CoreML.Specification.BoolParameter.decodeText(reader);
+                    break;
+                case "seed":
+                    message.seed = $root.CoreML.Specification.Int64Parameter.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -9980,6 +16924,29 @@ $root.CoreML.Specification.LossLayer = class LossLayer {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LossLayer();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "name":
+                    message.name = reader.string();
+                    break;
+                case "categoricalCrossEntropyLossLayer":
+                    message.categoricalCrossEntropyLossLayer = $root.CoreML.Specification.CategoricalCrossEntropyLossLayer.decodeText(reader);
+                    break;
+                case "meanSquaredErrorLossLayer":
+                    message.meanSquaredErrorLossLayer = $root.CoreML.Specification.MeanSquaredErrorLossLayer.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.LossLayer.prototype.name = "";
@@ -10003,6 +16970,26 @@ $root.CoreML.Specification.CategoricalCrossEntropyLossLayer = class CategoricalC
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.CategoricalCrossEntropyLossLayer();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "input":
+                    message.input = reader.string();
+                    break;
+                case "target":
+                    message.target = reader.string();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -10032,6 +17019,26 @@ $root.CoreML.Specification.MeanSquaredErrorLossLayer = class MeanSquaredErrorLos
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.MeanSquaredErrorLossLayer();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "input":
+                    message.input = reader.string();
+                    break;
+                case "target":
+                    message.target = reader.string();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -10071,6 +17078,26 @@ $root.CoreML.Specification.Optimizer = class Optimizer {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Optimizer();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "sgdOptimizer":
+                    message.sgdOptimizer = $root.CoreML.Specification.SGDOptimizer.decodeText(reader);
+                    break;
+                case "adamOptimizer":
+                    message.adamOptimizer = $root.CoreML.Specification.AdamOptimizer.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SGDOptimizer = class SGDOptimizer {
@@ -10095,6 +17122,29 @@ $root.CoreML.Specification.SGDOptimizer = class SGDOptimizer {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SGDOptimizer();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "learningRate":
+                    message.learningRate = $root.CoreML.Specification.DoubleParameter.decodeText(reader);
+                    break;
+                case "miniBatchSize":
+                    message.miniBatchSize = $root.CoreML.Specification.Int64Parameter.decodeText(reader);
+                    break;
+                case "momentum":
+                    message.momentum = $root.CoreML.Specification.DoubleParameter.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -10139,6 +17189,35 @@ $root.CoreML.Specification.AdamOptimizer = class AdamOptimizer {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.AdamOptimizer();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "learningRate":
+                    message.learningRate = $root.CoreML.Specification.DoubleParameter.decodeText(reader);
+                    break;
+                case "miniBatchSize":
+                    message.miniBatchSize = $root.CoreML.Specification.Int64Parameter.decodeText(reader);
+                    break;
+                case "beta1":
+                    message.beta1 = $root.CoreML.Specification.DoubleParameter.decodeText(reader);
+                    break;
+                case "beta2":
+                    message.beta2 = $root.CoreML.Specification.DoubleParameter.decodeText(reader);
+                    break;
+                case "eps":
+                    message.eps = $root.CoreML.Specification.DoubleParameter.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.AdamOptimizer.prototype.learningRate = null;
@@ -10163,6 +17242,23 @@ $root.CoreML.Specification.Normalizer = class Normalizer {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Normalizer();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "normType":
+                    message.normType = reader.enum($root.CoreML.Specification.Normalizer.NormType);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -10213,6 +17309,32 @@ $root.CoreML.Specification.OneHotEncoder = class OneHotEncoder {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.OneHotEncoder();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "stringCategories":
+                    message.stringCategories = $root.CoreML.Specification.StringVector.decodeText(reader);
+                    break;
+                case "int64Categories":
+                    message.int64Categories = $root.CoreML.Specification.Int64Vector.decodeText(reader);
+                    break;
+                case "outputSparse":
+                    message.outputSparse = reader.bool();
+                    break;
+                case "handleUnknown":
+                    message.handleUnknown = reader.enum($root.CoreML.Specification.OneHotEncoder.HandleUnknown);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.OneHotEncoder.prototype.outputSparse = false;
@@ -10244,6 +17366,26 @@ $root.CoreML.Specification.Scaler = class Scaler {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Scaler();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "shiftValue":
+                    reader.array(message.shiftValue, () => reader.double());
+                    break;
+                case "scaleValue":
+                    reader.array(message.scaleValue, () => reader.double());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -10312,6 +17454,53 @@ $root.CoreML.Specification.NonMaximumSuppression = class NonMaximumSuppression {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.NonMaximumSuppression();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "pickTop":
+                    message.pickTop = $root.CoreML.Specification.NonMaximumSuppression.PickTop.decodeText(reader);
+                    break;
+                case "stringClassLabels":
+                    message.stringClassLabels = $root.CoreML.Specification.StringVector.decodeText(reader);
+                    break;
+                case "int64ClassLabels":
+                    message.int64ClassLabels = $root.CoreML.Specification.Int64Vector.decodeText(reader);
+                    break;
+                case "iouThreshold":
+                    message.iouThreshold = reader.double();
+                    break;
+                case "confidenceThreshold":
+                    message.confidenceThreshold = reader.double();
+                    break;
+                case "confidenceInputFeatureName":
+                    message.confidenceInputFeatureName = reader.string();
+                    break;
+                case "coordinatesInputFeatureName":
+                    message.coordinatesInputFeatureName = reader.string();
+                    break;
+                case "iouThresholdInputFeatureName":
+                    message.iouThresholdInputFeatureName = reader.string();
+                    break;
+                case "confidenceThresholdInputFeatureName":
+                    message.confidenceThresholdInputFeatureName = reader.string();
+                    break;
+                case "confidenceOutputFeatureName":
+                    message.confidenceOutputFeatureName = reader.string();
+                    break;
+                case "coordinatesOutputFeatureName":
+                    message.coordinatesOutputFeatureName = reader.string();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.NonMaximumSuppression.prototype.iouThreshold = 0;
@@ -10344,6 +17533,23 @@ $root.CoreML.Specification.NonMaximumSuppression.PickTop = class PickTop {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.NonMaximumSuppression.PickTop();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "perClass":
+                    message.perClass = reader.bool();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.NonMaximumSuppression.PickTop.prototype.perClass = false;
@@ -10361,6 +17567,20 @@ $root.CoreML.Specification.LinearKernel = class LinearKernel {
             switch (tag >>> 3) {
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LinearKernel();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -10384,6 +17604,23 @@ $root.CoreML.Specification.RBFKernel = class RBFKernel {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.RBFKernel();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "gamma":
+                    message.gamma = reader.double();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -10420,6 +17657,29 @@ $root.CoreML.Specification.PolyKernel = class PolyKernel {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.PolyKernel();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "degree":
+                    message.degree = reader.int32();
+                    break;
+                case "c":
+                    message.c = reader.double();
+                    break;
+                case "gamma":
+                    message.gamma = reader.double();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.PolyKernel.prototype.degree = 0;
@@ -10445,6 +17705,26 @@ $root.CoreML.Specification.SigmoidKernel = class SigmoidKernel {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SigmoidKernel();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "gamma":
+                    message.gamma = reader.double();
+                    break;
+                case "c":
+                    message.c = reader.double();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -10490,6 +17770,32 @@ $root.CoreML.Specification.Kernel = class Kernel {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Kernel();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "linearKernel":
+                    message.linearKernel = $root.CoreML.Specification.LinearKernel.decodeText(reader);
+                    break;
+                case "rbfKernel":
+                    message.rbfKernel = $root.CoreML.Specification.RBFKernel.decodeText(reader);
+                    break;
+                case "polyKernel":
+                    message.polyKernel = $root.CoreML.Specification.PolyKernel.decodeText(reader);
+                    break;
+                case "sigmoidKernel":
+                    message.sigmoidKernel = $root.CoreML.Specification.SigmoidKernel.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SparseNode = class SparseNode {
@@ -10511,6 +17817,26 @@ $root.CoreML.Specification.SparseNode = class SparseNode {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SparseNode();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "index":
+                    message.index = reader.int32();
+                    break;
+                case "value":
+                    message.value = reader.double();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -10543,6 +17869,23 @@ $root.CoreML.Specification.SparseVector = class SparseVector {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SparseVector();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "nodes":
+                    message.nodes.push($root.CoreML.Specification.SparseNode.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SparseSupportVectors = class SparseSupportVectors {
@@ -10562,6 +17905,23 @@ $root.CoreML.Specification.SparseSupportVectors = class SparseSupportVectors {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SparseSupportVectors();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "vectors":
+                    message.vectors.push($root.CoreML.Specification.SparseVector.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -10591,6 +17951,23 @@ $root.CoreML.Specification.DenseVector = class DenseVector {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.DenseVector();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "values":
+                    reader.array(message.values, () => reader.double());
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.DenseSupportVectors = class DenseSupportVectors {
@@ -10615,6 +17992,23 @@ $root.CoreML.Specification.DenseSupportVectors = class DenseSupportVectors {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.DenseSupportVectors();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "vectors":
+                    message.vectors.push($root.CoreML.Specification.DenseVector.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.Coefficients = class Coefficients {
@@ -10634,6 +18028,23 @@ $root.CoreML.Specification.Coefficients = class Coefficients {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.Coefficients();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "alpha":
+                    reader.array(message.alpha, () => reader.double());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -10674,6 +18085,35 @@ $root.CoreML.Specification.SupportVectorRegressor = class SupportVectorRegressor
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SupportVectorRegressor();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "kernel":
+                    message.kernel = $root.CoreML.Specification.Kernel.decodeText(reader);
+                    break;
+                case "sparseSupportVectors":
+                    message.sparseSupportVectors = $root.CoreML.Specification.SparseSupportVectors.decodeText(reader);
+                    break;
+                case "denseSupportVectors":
+                    message.denseSupportVectors = $root.CoreML.Specification.DenseSupportVectors.decodeText(reader);
+                    break;
+                case "coefficients":
+                    message.coefficients = $root.CoreML.Specification.Coefficients.decodeText(reader);
+                    break;
+                case "rho":
+                    message.rho = reader.double();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -10748,6 +18188,50 @@ $root.CoreML.Specification.SupportVectorClassifier = class SupportVectorClassifi
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.SupportVectorClassifier();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "kernel":
+                    message.kernel = $root.CoreML.Specification.Kernel.decodeText(reader);
+                    break;
+                case "numberOfSupportVectorsPerClass":
+                    reader.array(message.numberOfSupportVectorsPerClass, () => reader.int32());
+                    break;
+                case "sparseSupportVectors":
+                    message.sparseSupportVectors = $root.CoreML.Specification.SparseSupportVectors.decodeText(reader);
+                    break;
+                case "denseSupportVectors":
+                    message.denseSupportVectors = $root.CoreML.Specification.DenseSupportVectors.decodeText(reader);
+                    break;
+                case "coefficients":
+                    message.coefficients.push($root.CoreML.Specification.Coefficients.decodeText(reader));
+                    break;
+                case "rho":
+                    reader.array(message.rho, () => reader.double());
+                    break;
+                case "probA":
+                    reader.array(message.probA, () => reader.double());
+                    break;
+                case "probB":
+                    reader.array(message.probB, () => reader.double());
+                    break;
+                case "stringClassLabels":
+                    message.stringClassLabels = $root.CoreML.Specification.StringVector.decodeText(reader);
+                    break;
+                case "int64ClassLabels":
+                    message.int64ClassLabels = $root.CoreML.Specification.Int64Vector.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.SupportVectorClassifier.prototype.kernel = null;
@@ -10783,6 +18267,29 @@ $root.CoreML.Specification.TreeEnsembleParameters = class TreeEnsembleParameters
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.TreeEnsembleParameters();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "nodes":
+                    message.nodes.push($root.CoreML.Specification.TreeEnsembleParameters.TreeNode.decodeText(reader));
+                    break;
+                case "numPredictionDimensions":
+                    message.numPredictionDimensions = reader.uint64();
+                    break;
+                case "basePredictionValue":
+                    reader.array(message.basePredictionValue, () => reader.double());
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -10841,6 +18348,50 @@ $root.CoreML.Specification.TreeEnsembleParameters.TreeNode = class TreeNode {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.TreeEnsembleParameters.TreeNode();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "treeId":
+                    message.treeId = reader.uint64();
+                    break;
+                case "nodeId":
+                    message.nodeId = reader.uint64();
+                    break;
+                case "nodeBehavior":
+                    message.nodeBehavior = reader.enum($root.CoreML.Specification.TreeEnsembleParameters.TreeNode.TreeNodeBehavior);
+                    break;
+                case "branchFeatureIndex":
+                    message.branchFeatureIndex = reader.uint64();
+                    break;
+                case "branchFeatureValue":
+                    message.branchFeatureValue = reader.double();
+                    break;
+                case "trueChildNodeId":
+                    message.trueChildNodeId = reader.uint64();
+                    break;
+                case "falseChildNodeId":
+                    message.falseChildNodeId = reader.uint64();
+                    break;
+                case "missingValueTracksTrueChild":
+                    message.missingValueTracksTrueChild = reader.bool();
+                    break;
+                case "evaluationInfo":
+                    message.evaluationInfo.push($root.CoreML.Specification.TreeEnsembleParameters.TreeNode.EvaluationInfo.decodeText(reader));
+                    break;
+                case "relativeHitRate":
+                    message.relativeHitRate = reader.double();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.TreeEnsembleParameters.TreeNode.prototype.treeId = protobuf.Uint64.create(0);
@@ -10887,6 +18438,26 @@ $root.CoreML.Specification.TreeEnsembleParameters.TreeNode.EvaluationInfo = clas
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.TreeEnsembleParameters.TreeNode.EvaluationInfo();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "evaluationIndex":
+                    message.evaluationIndex = reader.uint64();
+                    break;
+                case "evaluationValue":
+                    message.evaluationValue = reader.double();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.TreeEnsembleParameters.TreeNode.EvaluationInfo.prototype.evaluationIndex = protobuf.Uint64.create(0);
@@ -10927,6 +18498,32 @@ $root.CoreML.Specification.TreeEnsembleClassifier = class TreeEnsembleClassifier
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.TreeEnsembleClassifier();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "treeEnsemble":
+                    message.treeEnsemble = $root.CoreML.Specification.TreeEnsembleParameters.decodeText(reader);
+                    break;
+                case "postEvaluationTransform":
+                    message.postEvaluationTransform = reader.enum($root.CoreML.Specification.TreeEnsemblePostEvaluationTransform);
+                    break;
+                case "stringClassLabels":
+                    message.stringClassLabels = $root.CoreML.Specification.StringVector.decodeText(reader);
+                    break;
+                case "int64ClassLabels":
+                    message.int64ClassLabels = $root.CoreML.Specification.Int64Vector.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.TreeEnsembleClassifier.prototype.treeEnsemble = null;
@@ -10951,6 +18548,26 @@ $root.CoreML.Specification.TreeEnsembleRegressor = class TreeEnsembleRegressor {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.TreeEnsembleRegressor();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "treeEnsemble":
+                    message.treeEnsemble = $root.CoreML.Specification.TreeEnsembleParameters.decodeText(reader);
+                    break;
+                case "postEvaluationTransform":
+                    message.postEvaluationTransform = reader.enum($root.CoreML.Specification.TreeEnsemblePostEvaluationTransform);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -11007,6 +18624,47 @@ $root.CoreML.Specification.ItemSimilarityRecommender = class ItemSimilarityRecom
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ItemSimilarityRecommender();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "itemItemSimilarities":
+                    message.itemItemSimilarities.push($root.CoreML.Specification.ItemSimilarityRecommender.SimilarItems.decodeText(reader));
+                    break;
+                case "itemStringIds":
+                    message.itemStringIds = $root.CoreML.Specification.StringVector.decodeText(reader);
+                    break;
+                case "itemInt64Ids":
+                    message.itemInt64Ids = $root.CoreML.Specification.Int64Vector.decodeText(reader);
+                    break;
+                case "itemInputFeatureName":
+                    message.itemInputFeatureName = reader.string();
+                    break;
+                case "numRecommendationsInputFeatureName":
+                    message.numRecommendationsInputFeatureName = reader.string();
+                    break;
+                case "itemRestrictionInputFeatureName":
+                    message.itemRestrictionInputFeatureName = reader.string();
+                    break;
+                case "itemExclusionInputFeatureName":
+                    message.itemExclusionInputFeatureName = reader.string();
+                    break;
+                case "recommendedItemListOutputFeatureName":
+                    message.recommendedItemListOutputFeatureName = reader.string();
+                    break;
+                case "recommendedItemScoreOutputFeatureName":
+                    message.recommendedItemScoreOutputFeatureName = reader.string();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ItemSimilarityRecommender.prototype.itemStringIds = null;
@@ -11037,6 +18695,26 @@ $root.CoreML.Specification.ItemSimilarityRecommender.ConnectedItem = class Conne
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ItemSimilarityRecommender.ConnectedItem();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "itemId":
+                    message.itemId = reader.uint64();
+                    break;
+                case "similarityScore":
+                    message.similarityScore = reader.double();
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -11075,6 +18753,29 @@ $root.CoreML.Specification.ItemSimilarityRecommender.SimilarItems = class Simila
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ItemSimilarityRecommender.SimilarItems();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "itemId":
+                    message.itemId = reader.uint64();
+                    break;
+                case "similarItemList":
+                    message.similarItemList.push($root.CoreML.Specification.ItemSimilarityRecommender.ConnectedItem.decodeText(reader));
+                    break;
+                case "itemScoreAdjustment":
+                    message.itemScoreAdjustment = reader.double();
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.ItemSimilarityRecommender.SimilarItems.prototype.itemId = protobuf.Uint64.create(0);
@@ -11106,6 +18807,23 @@ $root.CoreML.Specification.LinkedModel = class LinkedModel {
         }
         return message;
     }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LinkedModel();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "linkedModelFile":
+                    message.linkedModelFile = $root.CoreML.Specification.LinkedModelFile.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
+                    break;
+            }
+        }
+        return message;
+    }
 };
 
 $root.CoreML.Specification.LinkedModelFile = class LinkedModelFile {
@@ -11127,6 +18845,26 @@ $root.CoreML.Specification.LinkedModelFile = class LinkedModelFile {
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.LinkedModelFile();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "linkedModelFileName":
+                    message.linkedModelFileName = $root.CoreML.Specification.StringParameter.decodeText(reader);
+                    break;
+                case "linkedModelSearchPath":
+                    message.linkedModelSearchPath = $root.CoreML.Specification.StringParameter.decodeText(reader);
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }
@@ -11154,6 +18892,23 @@ $root.CoreML.Specification.ClassConfidenceThresholding = class ClassConfidenceTh
                     break;
                 default:
                     reader.skipType(tag & 7);
+                    break;
+            }
+        }
+        return message;
+    }
+
+    static decodeText(reader) {
+        const message = new $root.CoreML.Specification.ClassConfidenceThresholding();
+        reader.start();
+        while (!reader.end()) {
+            const tag = reader.tag();
+            switch (tag) {
+                case "precisionRecallCurves":
+                    message.precisionRecallCurves.push($root.CoreML.Specification.PrecisionRecallCurve.decodeText(reader));
+                    break;
+                default:
+                    reader.field(tag, message);
                     break;
             }
         }

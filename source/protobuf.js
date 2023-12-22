@@ -1,7 +1,8 @@
 
-var protobuf = {};
-var base = require('./base');
-var text = require('./text');
+import * as base from './base.js';
+import * as text from './text.js';
+
+const protobuf = {};
 
 protobuf.get = (name) => {
     protobuf._roots = protobuf._roots || new Map();
@@ -105,11 +106,11 @@ protobuf.BinaryReader = class {
                                 } else if (!type) {
                                     tags[field] = inner;
                                 } else {
-                                    for (const pair of Object.entries(inner)) {
-                                        if (type[pair[0]] === 2 && pair[1] !== 2) {
+                                    for (const [key, value] of Object.entries(inner)) {
+                                        if (type[key] === 2 && value !== 2) {
                                             continue;
                                         }
-                                        type[pair[0]] = pair[1];
+                                        type[key] = value;
                                     }
                                 }
                                 continue;
@@ -155,11 +156,11 @@ protobuf.BinaryReader = class {
                                 } else if (!type) {
                                     tags[field] = inner;
                                 } else {
-                                    for (const pair of Object.entries(inner)) {
-                                        if (type[pair[0]] === 2 && pair[1] !== 2) {
+                                    for (const [name, value] of Object.entries(inner)) {
+                                        if (type[name] === 2 && value !== 2) {
                                             continue;
                                         }
-                                        type[pair[0]] = pair[1];
+                                        type[name] = value;
                                     }
                                 }
                                 continue;
@@ -794,11 +795,11 @@ protobuf.TextReader = class {
         if (token.length < 2) {
             throw new protobuf.Error('String is too short' + this.location());
         }
-        const quote = token[0];
+        const quote = token.substring(0, 1);
         if (quote !== "'" && quote !== '"') {
             throw new protobuf.Error('String is not in quotes' + this.location());
         }
-        if (quote !== token[token.length - 1]) {
+        if (quote !== token.substring(token.length - 1)) {
             throw new protobuf.Error('String quotes do not match' + this.location());
         }
         const value = token.substring(1, token.length - 1);
@@ -1324,11 +1325,8 @@ protobuf.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.BinaryReader = protobuf.BinaryReader;
-    module.exports.TextReader = protobuf.TextReader;
-    module.exports.Error = protobuf.Error;
-    module.exports.Int64 = protobuf.Int64;
-    module.exports.Uint64 = protobuf.Uint64;
-    module.exports.get = protobuf.get;
-}
+export const BinaryReader = protobuf.BinaryReader;
+export const TextReader = protobuf.TextReader;
+export const Int64 = protobuf.Int64;
+export const Uint64 = protobuf.Uint64;
+export const get = protobuf.get;

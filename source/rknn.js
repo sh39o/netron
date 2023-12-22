@@ -1,9 +1,10 @@
 
-var rknn = {};
-var openvx = {};
-var base = require('./base');
-var flatbuffers = require('./flatbuffers');
-var json = require('./json');
+import * as base from './base.js';
+import * as flatbuffers from './flatbuffers.js';
+import * as json from './json.js';
+
+const rknn = {};
+const openvx = {};
 
 rknn.ModelFactory = class {
 
@@ -337,12 +338,10 @@ rknn.Node = class {
                     i += count;
                 }
                 if (node.nn) {
-                    const nn = node.nn;
-                    for (const key of Object.keys(nn)) {
-                        const params = nn[key];
-                        for (const name of Object.keys(params)) {
-                            const value = params[name];
-                            this._attributes.push(new rknn.Attribute(name, value));
+                    for (const params of Object.values(node.nn)) {
+                        for (const [name, value] of Object.entries(params)) {
+                            const attribute = new rknn.Attribute(name, value);
+                            this._attributes.push(attribute);
                         }
                     }
                 }
@@ -511,7 +510,7 @@ rknn.Container = class extends Map {
                 default:
                     break;
             }
-            const obj = context.open('json');
+            const obj = context.peek('json');
             if (obj && obj.version && Array.isArray(obj.nodes) && obj.network_platform) {
                 const entries = new Map();
                 entries.set('json', stream);
@@ -547,9 +546,10 @@ rknn.Container = class extends Map {
                             break;
                         case 0x0002:
                         case 0x1002:
-                        case 0x1003:
                         case 0x0003:
+                        case 0x1003:
                         case 0x0004:
+                        case 0x1004:
                         case 0x0005:
                         case 0x0006:
                             if (data_size > 0) {
@@ -678,6 +678,4 @@ rknn.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = rknn.ModelFactory;
-}
+export const ModelFactory = rknn.ModelFactory;

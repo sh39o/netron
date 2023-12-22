@@ -124,6 +124,10 @@
       {
         "name": "use_causal_mask",
         "description": "Boolean. Set to `True` for decoder self-attention. Adds\n        a mask such that position `i` cannot attend to positions `j > i`.\n        This prevents the flow of information from the future towards the\n        past. Defaults to `False`.\n\nOutput:\n    Attention outputs of shape `(batch_size, Tq, dim)`.\n    (Optional) Attention scores after masking and softmax with shape\n        `(batch_size, Tq, Tv)`."
+      },
+      {
+        "name": "seed",
+        "description": "A Python integer to use as random seed incase of `dropout`."
       }
     ]
   },
@@ -632,7 +636,7 @@
       },
       {
         "default": "valid",
-        "description": "string, `\"valid\"`, `\"same\"` or `\"causal\"`(case-insensitive).\n        `\"valid\"` means no padding. `\"same\"` results in padding evenly to\n        the left/right or up/down of the input such that output has the same\n        height/width dimension as the input. `\"causal\"` results in causal\n        (dilated) convolutions, e.g. `output[t]` does not depend on\n        `input[t+1:]`. Useful when modeling temporal data where the model\n        should not violate the temporal order.\n        See [WaveNet: A Generative Model for Raw Audio, section2.1](\n        https://arxiv.org/abs/1609.03499).",
+        "description": "string, `\"valid\"`, `\"same\"` or `\"causal\"`(case-insensitive).\n        `\"valid\"` means no padding. `\"same\"` results in padding evenly to\n        the left/right or up/down of the input. When `padding=\"same\"` and\n        `strides=1`, the output has the same size as the input.\n        `\"causal\"` results in causal(dilated) convolutions, e.g. `output[t]`\n        does not depend on`input[t+1:]`. Useful when modeling temporal data\n        where the model should not violate the temporal order.\n        See [WaveNet: A Generative Model for Raw Audio, section2.1](\n        https://arxiv.org/abs/1609.03499).",
         "name": "padding"
       },
       {
@@ -756,7 +760,7 @@
       },
       {
         "default": "valid",
-        "description": "string, either `\"valid\"` or `\"same\"` (case-insensitive).\n        `\"valid\"` means no padding. `\"same\"` results in padding evenly to\n        the left/right or up/down of the input such that output has the same\n        height/width dimension as the input.",
+        "description": "string, either `\"valid\"` or `\"same\"` (case-insensitive).\n        `\"valid\"` means no padding. `\"same\"` results in padding evenly to\n        the left/right or up/down of the input. When `padding=\"same\"` and\n        `strides=1`, the output has the same size as the input.",
         "name": "padding"
       },
       {
@@ -768,7 +772,7 @@
       },
       {
         "default": "channels_last",
-        "description": "string, either `\"channels_last\"` or `\"channels_first\"`.\n        The ordering of the dimensions in the inputs. `\"channels_last\"`\n        corresponds to inputs with shape\n        `(batch_size, channels, height, width)`\n        while `\"channels_first\"` corresponds to inputs with shape\n        `(batch_size, channels, height, width)`. It defaults to the\n        `image_data_format` value found in your Keras config file at\n        `~/.keras/keras.json`. If you never set it, then it will be\n        `\"channels_last\"`.",
+        "description": "string, either `\"channels_last\"` or `\"channels_first\"`.\n        The ordering of the dimensions in the inputs. `\"channels_last\"`\n        corresponds to inputs with shape\n        `(batch_size, height, width, channels)`\n        while `\"channels_first\"` corresponds to inputs with shape\n        `(batch_size, channels, height, width)`. It defaults to the\n        `image_data_format` value found in your Keras config file at\n        `~/.keras/keras.json`. If you never set it, then it will be\n        `\"channels_last\"`.",
         "name": "data_format"
       },
       {
@@ -891,12 +895,12 @@
         "name": "strides"
       },
       {
-        "description": "string, either `\"valid\"` or `\"same\"` (case-insensitive).\n        `\"valid\"` means no padding. `\"same\"` results in padding evenly to\n        the left/right or up/down of the input such that output has the same\n        height/width dimension as the input.",
+        "description": "string, either `\"valid\"` or `\"same\"` (case-insensitive).\n        `\"valid\"` means no padding. `\"same\"` results in padding evenly to\n        the left/right or up/down of the input. When `padding=\"same\"` and\n        `strides=1`, the output has the same size as the input.",
         "name": "padding"
       },
       {
         "default": "channels_last",
-        "description": "string, either `\"channels_last\"` or `\"channels_first\"`.\n        The ordering of the dimensions in the inputs. `\"channels_last\"`\n        corresponds to inputs with shape\n        `(batch_size, channels, height, width)`\n        while `\"channels_first\"` corresponds to inputs with shape\n        `(batch_size, channels, height, width)`. It defaults to the\n        `image_data_format` value found in your Keras config file at\n        `~/.keras/keras.json`. If you never set it, then it will be\n        `\"channels_last\"`.",
+        "description": "string, either `\"channels_last\"` or `\"channels_first\"`.\n        The ordering of the dimensions in the inputs. `\"channels_last\"`\n        corresponds to inputs with shape\n        `(batch_size, height, width, channels)`\n        while `\"channels_first\"` corresponds to inputs with shape\n        `(batch_size, channels, height, width)`. It defaults to the\n        `image_data_format` value found in your Keras config file at\n        `~/.keras/keras.json`. If you never set it, then it will be\n        `\"channels_last\"`.",
         "name": "data_format"
       },
       {
@@ -1015,11 +1019,11 @@
         "name": "strides"
       },
       {
-        "description": "string, either `\"valid\"` or `\"same\"` (case-insensitive).\n        `\"valid\"` means no padding. `\"same\"` results in padding evenly to\n        the left/right or up/down of the input such that output has the same\n        height/width dimension as the input.",
+        "description": "string, either `\"valid\"` or `\"same\"` (case-insensitive).\n        `\"valid\"` means no padding. `\"same\"` results in padding evenly to\n        the left/right or up/down of the input. When `padding=\"same\"` and\n        `strides=1`, the output has the same size as the input.",
         "name": "padding"
       },
       {
-        "description": "string, either `\"channels_last\"` or `\"channels_first\"`.\n        The ordering of the dimensions in the inputs. `\"channels_last\"`\n        corresponds to inputs with shape\n        `(batch_size, spatial_dim1, spatial_dim2, spatial_dim3, channels)`\n        while `\"channels_first\"` corresponds to inputs with shape\n        `(batch_size, spatial_dim1, spatial_dim2, spatial_dim3, channels)`.\n        It defaults to the `image_data_format` value found in your Keras\n        config file at `~/.keras/keras.json`. If you never set it, then it\n        will be `\"channels_last\"`.",
+        "description": "string, either `\"channels_last\"` or `\"channels_first\"`.\n        The ordering of the dimensions in the inputs. `\"channels_last\"`\n        corresponds to inputs with shape\n        `(batch_size, spatial_dim1, spatial_dim2, spatial_dim3, channels)`\n        while `\"channels_first\"` corresponds to inputs with shape\n        `(batch_size, channels, spatial_dim1, spatial_dim2, spatial_dim3)`.\n        It defaults to the `image_data_format` value found in your Keras\n        config file at `~/.keras/keras.json`. If you never set it, then it\n        will be `\"channels_last\"`.",
         "name": "data_format"
       },
       {
@@ -1263,7 +1267,7 @@
       },
       {
         "default": "valid",
-        "description": "string, either `\"valid\"` or `\"same\"` (case-insensitive).\n        `\"valid\"` means no padding. `\"same\"` results in padding evenly to\n        the left/right or up/down of the input such that output has the same\n        height/width dimension as the input.",
+        "description": "string, either `\"valid\"` or `\"same\"` (case-insensitive).\n        `\"valid\"` means no padding. `\"same\"` results in padding evenly to\n        the left/right or up/down of the input. When `padding=\"same\"` and\n        `strides=1`, the output has the same size as the input.",
         "name": "padding"
       },
       {
@@ -1274,7 +1278,7 @@
       },
       {
         "default": "channels_last",
-        "description": "string, either `\"channels_last\"` or `\"channels_first\"`.\n        The ordering of the dimensions in the inputs. `\"channels_last\"`\n        corresponds to inputs with shape\n        `(batch_size, channels, height, width)`\n        while `\"channels_first\"` corresponds to inputs with shape\n        `(batch_size, channels, height, width)`. It defaults to the\n        `image_data_format` value found in your Keras config file at\n        `~/.keras/keras.json`. If you never set it, then it will be\n        `\"channels_last\"`.",
+        "description": "string, either `\"channels_last\"` or `\"channels_first\"`.\n        The ordering of the dimensions in the inputs. `\"channels_last\"`\n        corresponds to inputs with shape\n        `(batch_size, height, width, channels)`\n        while `\"channels_first\"` corresponds to inputs with shape\n        `(batch_size, channels, height, width)`. It defaults to the\n        `image_data_format` value found in your Keras config file at\n        `~/.keras/keras.json`. If you never set it, then it will be\n        `\"channels_last\"`.",
         "name": "data_format"
       },
       {
@@ -3606,7 +3610,7 @@
         "name": "strides"
       },
       {
-        "description": "string, either `\"valid\"` or `\"same\"` (case-insensitive).\n        `\"valid\"` means no padding. `\"same\"` results in padding evenly to\n        the left/right or up/down of the input such that output has the same\n        height/width dimension as the input.",
+        "description": "string, either `\"valid\"` or `\"same\"` (case-insensitive).\n        `\"valid\"` means no padding. `\"same\"` results in padding evenly to\n        the left/right or up/down of the input. When `padding=\"same\"` and\n        `strides=1`, the output has the same size as the input.",
         "name": "padding"
       },
       {
@@ -3705,7 +3709,7 @@
       },
       {
         "default": "valid",
-        "description": "string, either `\"valid\"` or `\"same\"` (case-insensitive).\n        `\"valid\"` means no padding. `\"same\"` results in padding evenly to\n        the left/right or up/down of the input such that output has the same\n        height/width dimension as the input.",
+        "description": "string, either `\"valid\"` or `\"same\"` (case-insensitive).\n        `\"valid\"` means no padding. `\"same\"` results in padding evenly to\n        the left/right or up/down of the input. When `padding=\"same\"` and\n        `strides=1`, the output has the same size as the input.",
         "name": "padding"
       },
       {
@@ -3716,7 +3720,7 @@
       },
       {
         "default": "channels_last",
-        "description": "string, either `\"channels_last\"` or `\"channels_first\"`.\n        The ordering of the dimensions in the inputs. `\"channels_last\"`\n        corresponds to inputs with shape `(batch, steps, features)`\n        while `\"channels_first\"` corresponds to inputs with shape\n        `(batch, features, steps)`. It defaults to the `image_data_format`\n        value found in your Keras config file at `~/.keras/keras.json`.\n        If you never set it, then it will be `\"channels_last\"`.",
+        "description": "string, either `\"channels_last\"` or `\"channels_first\"`.\n        The ordering of the dimensions in the inputs. `\"channels_last\"`\n        corresponds to inputs with shape `(batch, height, width, channels)`\n        while `\"channels_first\"` corresponds to inputs with shape\n        `(batch, channels, height, width)`. It defaults to the\n        `image_data_format` value found in your Keras config file\n        at `~/.keras/keras.json`.\n        If you never set it, then it will be `\"channels_last\"`.",
         "name": "data_format"
       },
       {
@@ -4587,6 +4591,10 @@
       {
         "name": "use_causal_mask",
         "description": "Boolean. Set to `True` for decoder self-attention. Adds\n        a mask such that position `i` cannot attend to positions `j > i`.\n        This prevents the flow of information from the future towards the\n        past. Defaults to `False`.\n\nOutput:\n    Attention outputs of shape `(batch_size, Tq, dim)`.\n    (Optional) Attention scores after masking and softmax with shape\n        `(batch_size, Tq, Tv)`."
+      },
+      {
+        "name": "seed",
+        "description": "A Python integer to use as random seed incase of `dropout`."
       }
     ]
   },

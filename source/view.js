@@ -1,11 +1,17 @@
-var view =  {};var base = require('./base');var zip = require('./zip');var tar = require('./tar');
-var json = require('./json');
-var xml = require('./xml');
-var protobuf = require('./protobuf');
-var flatbuffers = require('./flatbuffers');
-var hdf5 = require('./hdf5');
-var python = require('./python');
-var grapher = require('./grapher');
+
+import * as base from './base.js';
+import * as zip from './zip.js';
+import * as tar from './tar.js';
+import * as json from './json.js';
+import * as xml from './xml.js';
+import * as protobuf from './protobuf.js';
+import * as flatbuffers from './flatbuffers.js';
+import * as hdf5 from './hdf5.js';
+import * as python from './python.js';
+import * as grapher from './grapher.js';
+
+const view =  {};
+const markdown = {};
 
 view.View = class {
 
@@ -29,11 +35,11 @@ view.View = class {
 
     async start() {
         try {
+            await zip.Archive.import();
             await this._host.view(this);
             const options = this._host.get('options') || {};
-            for (const entry of Object.entries(options)) {
-                const name = entry[0];
-                this._options[name] = entry[1];
+            for (const [name, value] of Object.entries(options)) {
+                this._options[name] = value;
             }
             this._element('sidebar-button').addEventListener('click', () => {
                 this.showModelProperties();
@@ -304,10 +310,9 @@ view.View = class {
                 throw new view.Error("Unsupported toogle '" + name + "'.");
         }
         const options = {};
-        for (const entry of Object.entries(this._options)) {
-            const name = entry[0];
-            if (this._defaultOptions[name] !== entry[1]) {
-                options[name] = entry[1];
+        for (const [name, value] of Object.entries(this._options)) {
+            if (this._defaultOptions[name] !== value) {
+                options[name] = value;
             }
         }
         if (Object.entries(options).length == 0) {
@@ -751,7 +756,6 @@ view.View = class {
 
     async renderGraph(model, graph, options) {
         this._graph = null;
-
         const canvas = this._element('canvas');
         while (canvas.lastChild) {
             canvas.removeChild(canvas.lastChild);
@@ -760,14 +764,12 @@ view.View = class {
             return;
         }
         this._zoom = 1;
-
         const groups = graph.groups;
         const nodes = graph.nodes;
         this._host.event('graph_view', {
             graph_node_count: nodes.length,
             graph_skip: 0
         });
-
         const layout = {};
         layout.nodesep = 20;
         layout.ranksep = 20;
@@ -779,10 +781,8 @@ view.View = class {
         if (nodes.length > 3000) {
             layout.ranker = 'longest-path';
         }
-
         const viewGraph = new view.Graph(this, model, options, groups, layout);
         viewGraph.add(graph);
-
         // Workaround for Safari background drag/zoom issue:
         // https://stackoverflow.com/questions/40887193/d3-js-zoom-is-not-working-with-mousewheel-in-safari
         const background = this._host.document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -790,16 +790,14 @@ view.View = class {
         background.setAttribute('fill', 'none');
         background.setAttribute('pointer-events', 'all');
         canvas.appendChild(background);
-
         const origin = this._host.document.createElementNS('http://www.w3.org/2000/svg', 'g');
         origin.setAttribute('id', 'origin');
         canvas.appendChild(origin);
-
         viewGraph.build(this._host.document, origin);
         await this._timeout(20);
+        viewGraph.measure();
         viewGraph.layout();
         viewGraph.update();
-
         const elements = Array.from(canvas.getElementsByClassName('graph-input') || []);
         if (elements.length === 0) {
             const nodeElements = Array.from(canvas.getElementsByClassName('graph-node') || []);
@@ -821,10 +819,8 @@ view.View = class {
         canvas.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
         canvas.setAttribute('width', width);
         canvas.setAttribute('height', height);
-
         this._zoom = 1;
         this._updateZoom(this._zoom);
-
         const container = this._element('graph');
         if (elements && elements.length > 0) {
             // Center view based on input elements
@@ -836,8 +832,8 @@ view.View = class {
                 xs.push(rect.left + (rect.width / 2));
                 ys.push(rect.top + (rect.height / 2));
             }
-            let x = xs[0];
-            const y = ys[0];
+            let [x] = xs;
+            const [y] = ys;
             if (ys.every((y) => y === ys[0])) {
                 x = xs.reduce((a, b) => a + b, 0) / xs.length;
             }
@@ -988,9 +984,6 @@ view.View = class {
                 const nodeSidebar = new view.NodeSidebar(this._host, node, this._sidebar);
                 nodeSidebar.on('show-documentation', (/* sender, e */) => {
                     this.showDefinition(node.type);
-                });
-                nodeSidebar.on('show-graph', (sender, graph) => {
-                    this.pushGraph(graph);
                 });
                 nodeSidebar.on('export-tensor', (sender, tensor) => {
                     const defaultPath = tensor.name ? tensor.name.split('/').join('_').split(':').join('_').split('.').join('_') : 'tensor';
@@ -1309,7 +1302,7 @@ view.Menu = class {
     }
 
     unregister(action) {
-        this._accelerators = new Map(Array.from(this._accelerators.entries()).filter((entry) => entry[1] !== action));
+        this._accelerators = new Map(Array.from(this._accelerators.entries()).filter(([, value]) => value !== action));
     }
 
     _execute(action) {
@@ -1622,7 +1615,13 @@ view.Graph = class extends grapher.Graph {
         this._selection = new Set();
     }
 
-    createNode(node) {
+    createNode(node, type) {
+        if (type) {
+            const value = new view.Node(this, { type: type });
+            value.name = (this._nodeKey++).toString();
+            this._table.set(type, value);
+            return value;
+        }
         const value = new view.Node(this, node);
         value.name = (this._nodeKey++).toString();
         this._table.set(node, value);
@@ -1861,25 +1860,29 @@ view.Node = class extends grapher.Node {
         const content = options.names && (node.name || node.location) ? (node.name || node.location) : type.name.split('.').pop();
         const tooltip = options.names && (node.name || node.location) ? type.name : (node.name || node.location);
         const title = header.add(null, styles, content, tooltip);
-        title.on('click', () => this.context.activate(node));
-        if (node.type.nodes && node.type.nodes.length > 0) {
+        title.on('click', () => {
+            this.context.activate(node);
+        });
+        if (Array.isArray(node.type.nodes) && node.type.nodes.length > 0) {
             const definition = header.add(null, styles, '\u0192', 'Show Function Definition');
             definition.on('click', () => this.context.view.pushGraph(node.type));
         }
-        if (node.nodes) {
+        if (Array.isArray(node.nodes)) {
             // this._expand = header.add(null, styles, '+', null);
             // this._expand.on('click', () => this.toggle());
         }
         const initializers = [];
         let hiddenInitializers = false;
         if (options.weights) {
-            for (const input of node.inputs) {
-                if (input.visible !== false && input.value.length === 1 && input.value[0].initializer != null) {
-                    initializers.push(input);
-                }
-                if ((input.visible === false || input.value.length > 1) &&
-                    input.value.some((argument) => argument.initializer != null)) {
-                    hiddenInitializers = true;
+            if (Array.isArray(node.inputs)) {
+                for (const input of node.inputs) {
+                    if (input.visible !== false && input.value.length === 1 && input.value[0].initializer != null) {
+                        initializers.push(input);
+                    }
+                    if ((input.visible === false || input.value.length > 1) &&
+                        input.value.some((argument) => argument.initializer != null)) {
+                        hiddenInitializers = true;
+                    }
                 }
             }
         }
@@ -1888,11 +1891,14 @@ view.Node = class extends grapher.Node {
         if (Array.isArray(node.attributes) && node.attributes.length > 0) {
             for (const attribute of node.attributes) {
                 switch (attribute.type) {
-                    /* case 'object':
-                    case 'function': {
+                    case 'graph':
+                    case 'object':
+                    case 'object[]':
+                    case 'function':
+                    case 'function[]': {
                         objects.push(attribute);
                         break;
-                    } */
+                    }
                     default: {
                         if (options.attributes && attribute.visible !== false) {
                             attributes.push(attribute);
@@ -1906,7 +1912,7 @@ view.Node = class extends grapher.Node {
             const list = this.list();
             list.on('click', () => this.context.activate(node));
             for (const argument of initializers) {
-                const value = argument.value[0];
+                const [value] = argument.value;
                 const type = value.type;
                 let shape = '';
                 let separator = '';
@@ -1954,10 +1960,17 @@ view.Node = class extends grapher.Node {
                 }
             }
             for (const attribute of objects) {
+                if (attribute.type === 'graph') {
+                    const node = this.context.createNode(null, attribute.value);
+                    list.add(attribute.name, node, '', '');
+                }
                 if (attribute.type === 'function' || attribute.type === 'object') {
                     const node = this.context.createNode(attribute.value);
-                    const item = list.add(attribute.name, node, '', '');
-                    item.height = 20;
+                    list.add(attribute.name, node, '', '');
+                }
+                if (attribute.type === 'function[]' || attribute.type === 'object[]') {
+                    const nodes = attribute.value.map((value) => this.context.createNode(value));
+                    list.add(attribute.name, nodes, '', '');
                 }
             }
         }
@@ -2392,8 +2405,8 @@ view.NodeSidebar = class extends view.ObjectSidebar {
             }
             default: {
                 value = new view.AttributeView(this._host, attribute);
-                value.on('show-graph', (sender, graph) => {
-                    this.emit('show-graph', graph);
+                value.on('activate', (sender, graph) => {
+                    this.emit('activate', graph);
                 });
                 break;
             }
@@ -2629,9 +2642,9 @@ view.AttributeView = class extends view.Control {
         switch (type) {
             case 'graph': {
                 const line = this.createElement('div', 'sidebar-item-value-line-link');
-                line.innerHTML = value.name;
+                line.innerHTML = value.name || '&nbsp;';
                 line.addEventListener('click', () => {
-                    this.emit('show-graph', value);
+                    this.emit('activate', value);
                 });
                 this._element.appendChild(line);
                 break;
@@ -2640,7 +2653,7 @@ view.AttributeView = class extends view.Control {
                 const line = this.createElement('div', 'sidebar-item-value-line-link');
                 line.innerHTML = value.type.name;
                 line.addEventListener('click', () => {
-                    this.emit('show-graph', value.type);
+                    this.emit('activate', value);
                 });
                 this._element.appendChild(line);
                 break;
@@ -2736,7 +2749,7 @@ view.ValueView = class extends view.Control {
         if (initializer) {
             this._element.classList.add('sidebar-item-value-dark');
         }
-        if (type || initializer || quantization || location || name === undefined) {
+        if (type || initializer || quantization || location || name !== undefined) {
             this._expander = this.createElement('div', 'sidebar-item-value-expander');
             this._expander.innerText = '+';
             this._expander.addEventListener('click', () => {
@@ -2984,7 +2997,7 @@ view.ConnectionSidebar = class extends view.ObjectSidebar {
         this._value = value;
         this._from = from;
         this._to = to;
-        const name = value.name.split('\n')[0];
+        const [name] = value.name.split('\n');
         this.addProperty('name', name);
         if (value.type) {
             const item = new view.ValueView(this._host, value, '');
@@ -3270,6 +3283,11 @@ view.FindSidebar = class extends view.Control {
             this.update(e.target.value);
             this.emit('search-text-changed', e.target.value);
         });
+        this._searchElement.addEventListener('keydown', (e) => {
+            if (e.keyCode === 0x08 && !e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey) {
+                e.stopPropagation();
+            }
+        });
         this._contentElement = this.createElement('ol', 'sidebar-find-content');
         this._contentElement.addEventListener('click', (e) => {
             const identifier = e.target.getAttribute('data');
@@ -3334,55 +3352,52 @@ view.FindSidebar = class extends view.Control {
             const term = unquote[1] || unquote[2];
             terms = [ term ];
             match = (name) => {
-                return term == name;
+                return term === name;
             };
         } else {
             terms = searchText.trim().toLowerCase().split(' ').map((term) => term.trim()).filter((term) => term.length > 0);
             match = (name) => {
-                return terms.every((term) => name.toLowerCase().indexOf(term) !== -1);
+                return terms.every((term) => name && name.toLowerCase().indexOf(term) !== -1);
             };
         }
         const edges = new Set();
-        const arg = (argument) => {
+        const matchValue = (value) => {
             if (terms.length === 0) {
                 return true;
             }
-            let match = false;
-            for (const term of terms) {
-                if (argument.name && argument.name.toLowerCase().indexOf(term) !== -1) {
-                    match = true;
-                    break;
-                }
-                if (argument.type) {
-                    if (argument.type.dataType && term === argument.type.dataType.toLowerCase()) {
-                        match = true;
-                        break;
+            if (value.name && match(value.name.split('\n').shift())) {
+                return true;
+            }
+            if (value.location && match(value.location)) {
+                return true;
+            }
+            if (value.type) {
+                for (const term of terms) {
+                    if (value.type.dataType && term === value.type.dataType.toLowerCase()) {
+                        return true;
                     }
-                    if (argument.type.shape) {
-                        if (term === argument.type.shape.toString().toLowerCase()) {
-                            match = true;
-                            break;
+                    if (value.type.shape) {
+                        if (term === value.type.shape.toString().toLowerCase()) {
+                            return true;
                         }
-                        if (argument.type.shape && Array.isArray(argument.type.shape.dimensions)) {
-                            const dimensions = argument.type.shape.dimensions.map((dimension) => dimension ? dimension.toString().toLowerCase() : '');
+                        if (value.type.shape && Array.isArray(value.type.shape.dimensions)) {
+                            const dimensions = value.type.shape.dimensions.map((dimension) => dimension ? dimension.toString().toLowerCase() : '');
                             if (term === dimensions.join(',')) {
-                                match = true;
-                                break;
+                                return true;
                             }
                             if (dimensions.some((dimension) => term === dimension)) {
-                                match = true;
-                                break;
+                                return true;
                             }
                         }
                     }
                 }
             }
-            return match;
+            return false;
         };
-        const edge = (argument) => {
-            if (argument.name && !edges.has(argument.name) && arg(argument)) {
-                add(argument, '\u2192 ' + argument.name.split('\n').shift()); // split custom argument id
-                edges.add(argument.name);
+        const edge = (value) => {
+            if (value.name && !edges.has(value.name) && matchValue(value)) {
+                add(value, '\u2192 ' + value.name.split('\n').shift()); // split custom argument id
+                edges.add(value.name);
             }
         };
         for (const input of this._graph.inputs) {
@@ -3403,11 +3418,12 @@ view.FindSidebar = class extends view.Control {
             }
             const name = node.name;
             const type = node.type.name;
-            if ((name && match(name)) || (type && match(type))) {
+            const location = node.location;
+            if ((name && match(name)) || (type && match(type)) || (location && match(location))) {
                 add(node, '\u25A2 ' + (name || '[' + type + ']'));
             }
             for (const value of initializers) {
-                if (value.name && !edges.has(value.name) && arg(value)) {
+                if (value.name && !edges.has(value.name) && matchValue(value)) {
                     add(node, '\u25A0 ' + value.name.split('\n').shift()); // split custom argument id
                 }
             }
@@ -4154,9 +4170,9 @@ view.Formatter = class {
         if (value && (value instanceof base.Int64 || value instanceof base.Uint64)) {
             return value.toString();
         }
-        if (value && (value instanceof Float32Array || value instanceof Float64Array || 
-            value instanceof Int8Array || value instanceof Uint8Array || 
-            value instanceof Int16Array || value instanceof Uint16Array || 
+        if (value && (value instanceof Float32Array || value instanceof Float64Array ||
+            value instanceof Int8Array || value instanceof Uint8Array ||
+            value instanceof Int16Array || value instanceof Uint16Array ||
             value instanceof Int32Array || value instanceof Uint32Array)) {
             let valueStr = '';
             if (value.length > 64) {
@@ -4257,15 +4273,11 @@ view.Formatter = class {
         }
         this._values.add(value);
         let list = null;
-        const entries = Object.entries(value).filter((entry) => !entry[0].startsWith('__') && !entry[0].endsWith('__'));
+        const entries = Object.entries(value).filter(([name]) => !name.startsWith('__') && !name.endsWith('__'));
         if (entries.length == 1) {
             list = [ this._format(entries[0][1], null, true) ];
         } else {
-            list = new Array(entries.length);
-            for (let i = 0; i < entries.length; i++) {
-                const entry = entries[i];
-                list[i] = entry[0] + ': ' + this._format(entry[1], null, true);
-            }
+            list = entries.map(([name, value]) => name + ': ' + this._format(value, null, true));
         }
         let objectType = value.__type__;
         if (!objectType && value.constructor.name && value.constructor.name !== 'Object') {
@@ -4284,8 +4296,6 @@ view.Formatter = class {
         }
     }
 };
-
-const markdown = {};
 
 markdown.Generator = class {
 
@@ -4379,7 +4389,7 @@ markdown.Generator = class {
                 let content = match[3] || '';
                 const matchIndent = match[0].match(/^(\s+)(?:```)/);
                 if (matchIndent !== null) {
-                    const indent = matchIndent[1];
+                    const [, indent] = matchIndent;
                     content = content.split('\n').map((node) => {
                         const match = node.match(/^\s+/);
                         return (match !== null && match[0].length >= indent.length) ? node.slice(indent.length) : node;
@@ -4433,12 +4443,12 @@ markdown.Generator = class {
             }
             match = this._listRegExp.exec(source);
             if (match) {
-                let raw = match[0];
-                const bull = match[2];
+                const [value, , bull] = match;
                 const ordered = bull.length > 1;
                 const parent = bull[bull.length - 1] === ')';
+                let raw = value;
                 const list = { type: 'list', raw: raw, ordered: ordered, start: ordered ? +bull.slice(0, -1) : '', loose: false, items: [] };
-                const itemMatch = match[0].match(this._itemRegExp);
+                const itemMatch = value.match(this._itemRegExp);
                 let next = false;
                 const length = itemMatch.length;
                 for (let i = 0; i < length; i++) {
@@ -4451,7 +4461,7 @@ markdown.Generator = class {
                         item = item.replace(new RegExp('^ {1,' + space + '}', 'gm'), '');
                     }
                     if (i !== length - 1) {
-                        const bullet = this._bulletRegExp.exec(itemMatch[i + 1])[0];
+                        const [bullet] = this._bulletRegExp.exec(itemMatch[i + 1]);
                         if (ordered ? bullet.length === 1 || (!parent && bullet[bullet.length - 1] === ')') : (bullet.length > 1)) {
                             const addBack = itemMatch.slice(i + 1).join('\n');
                             list.raw = list.raw.substring(0, list.raw.length - addBack.length);
@@ -4604,7 +4614,7 @@ markdown.Generator = class {
             match = this._linkRegExp.exec(source);
             if (match) {
                 let index = -1;
-                const ref = match[2];
+                const [, , ref] = match;
                 if (ref.indexOf(')') !== -1) {
                     let level = 0;
                     for (let i = 0; i < ref.length; i++) {
@@ -4717,8 +4727,8 @@ markdown.Generator = class {
             }
             match = this._delRegExp.exec(source);
             if (match) {
-                source = source.substring(match[0].length);
-                const text = match[1];
+                const [value, text] = match;
+                source = source.substring(value.length);
                 tokens.push({ type: 'del', text: text, tokens: this._tokenizeInline(text, links, inLink, inRawBlock, '') });
                 continue;
             }
@@ -4734,16 +4744,17 @@ markdown.Generator = class {
                 match = this._urlRegExp.exec(source);
                 if (match) {
                     const email = match[2] === '@';
+                    let [value] = match;
                     if (!email) {
                         let prevCapZero;
                         do {
-                            prevCapZero = match[0];
-                            match[0] = this._backpedalRegExp.exec(match[0])[0];
-                        } while (prevCapZero !== match[0]);
+                            prevCapZero = value;
+                            [value] = this._backpedalRegExp.exec(value);
+                        } while (prevCapZero !== value);
                     }
-                    const text = this._escape(match[0]);
+                    const text = this._escape(value);
                     const href = email ? ('mailto:' + text) : (match[1] === 'www.' ? 'http://' + text : text);
-                    source = source.substring(match[0].length);
+                    source = source.substring(value.length);
                     tokens.push({ type: 'link', text: text, href: href, tokens: [ { type: 'text', text: text } ] });
                     continue;
                 }
@@ -4811,7 +4822,7 @@ markdown.Generator = class {
                 }
                 case 'code': {
                     const code = token.text;
-                    const language = (token.language || '').match(/\S*/)[0];
+                    const [language] = (token.language || '').match(/\S*/);
                     html += '<pre><code' + (language ? ' class="' + 'language-' + this._encode(language) + '"' : '') + '>' + (token.escaped ? code : this._encode(code)) + '</code></pre>\n';
                     continue;
                 }
@@ -4990,67 +5001,34 @@ markdown.Generator = class {
     }
 };
 
-view.ModelContext = class {
+view.Context = class {
 
-    constructor(context) {
+    constructor(context, identifier, stream) {
         this._context = context;
         this._tags = new Map();
         this._content = new Map();
-        let stream = context.stream;
-        const entries = context.entries;
-        if (!stream && entries && entries.size > 0) {
-            this._entries = entries;
-            this._format = '';
-        } else {
-            this._entries = new Map();
-            const entry = context instanceof view.EntryContext;
-            try {
-                const archive = zip.Archive.open(stream, 'gzip');
-                if (archive) {
-                    this._entries = archive.entries;
-                    this._format = 'gzip';
-                    if (this._entries.size === 1) {
-                        stream = this._entries.values().next().value;
-                    }
-                }
-            } catch (error) {
-                if (!entry) {
-                    throw error;
-                }
-            }
-            try {
-                const formats = new Map([ [ 'zip', zip ], [ 'tar', tar ] ]);
-                for (const pair of formats) {
-                    const format = pair[0];
-                    const module = pair[1];
-                    const archive = module.Archive.open(stream);
-                    if (archive) {
-                        this._entries = archive.entries;
-                        this._format = format;
-                        break;
-                    }
-                }
-            } catch (error) {
-                if (!entry) {
-                    throw error;
-                }
-            }
-        }
+        this._identifier = identifier || context.identifier;
+        this._stream = stream || context.stream;
     }
 
     get identifier() {
-        return this._context.identifier;
+        return this._identifier;
     }
 
     get stream() {
-        return this._context.stream;
+        return this._stream;
     }
 
-    request(file, encoding, base) {
-        return this._context.request(file, encoding, base);
+    async request(file) {
+        return this._context.request(file, 'utf-8', null);
     }
 
-    require(id) {
+    async fetch(file) {
+        const stream = await this._context.request(file, null);
+        return new view.Context(this, file, stream, new Map());
+    }
+
+    async require(id) {
         return this._context.require(id);
     }
 
@@ -5061,14 +5039,7 @@ view.ModelContext = class {
         this._context.exception(error, fatal);
     }
 
-    entries(format) {
-        if (format !== undefined && format !== this._format) {
-            return new Map();
-        }
-        return this._entries;
-    }
-
-    open(type) {
+    peek(type) {
         if (!this._content.has(type)) {
             this._content.set(type, undefined);
             const stream = this.stream;
@@ -5080,9 +5051,9 @@ view.ModelContext = class {
                 const buffer = stream.peek(Math.min(stream.length, 16));
                 const skip =
                     match(buffer, [ 0x80, undefined, 0x8a, 0x0a, 0x6c, 0xfc, 0x9c, 0x46, 0xf9, 0x20, 0x6a, 0xa8, 0x50, 0x19 ]) || // PyTorch
-                    match(buffer, [ 0x50, 0x4B, 0x03, 0x04 ]) || // Zip
-                    type !== 'hdf5' && match(buffer, [ 0x89, 0x48, 0x44, 0x46, 0x0D, 0x0A, 0x1A, 0x0A ]) || // \x89HDF\r\n\x1A\n
-                    Array.from(this._tags).some((entry) => entry[0] !== 'flatbuffers' && entry[1].size > 0) ||
+                    (type !== 'npz' && type !== 'zip' && match(buffer, [ 0x50, 0x4B, 0x03, 0x04 ])) || // Zip
+                    (type !== 'hdf5' && match(buffer, [ 0x89, 0x48, 0x44, 0x46, 0x0D, 0x0A, 0x1A, 0x0A ])) || // \x89HDF\r\n\x1A\n
+                    Array.from(this._tags).some(([key, value]) => key !== 'flatbuffers' && value.size > 0) ||
                     Array.from(this._content.values()).some((obj) => obj !== undefined);
                 if (!skip) {
                     switch (type) {
@@ -5105,9 +5076,9 @@ view.ModelContext = class {
                         }
                         case 'json.gz': {
                             try {
-                                const archive = zip.Archive.open(stream, 'gzip');
-                                if (archive && archive.entries.size === 1) {
-                                    const stream = archive.entries.values().next().value;
+                                const entries = this.peek('gzip');
+                                if (entries && entries.size === 1) {
+                                    const stream = entries.values().next().value;
                                     const reader = json.TextReader.open(stream);
                                     if (reader) {
                                         const obj = reader.read();
@@ -5151,9 +5122,7 @@ view.ModelContext = class {
                                     if (Array.isArray(saved_id) && saved_id.length > 3) {
                                         switch (saved_id[0]) {
                                             case 'storage': {
-                                                const storage_type = saved_id[1];
-                                                const key = saved_id[2];
-                                                const size = saved_id[4];
+                                                const [, storage_type, key, , size] = saved_id;
                                                 if (!storages.has(key)) {
                                                     const storage = new storage_type(size);
                                                     storages.set(key, storage);
@@ -5194,6 +5163,67 @@ view.ModelContext = class {
                             }
                             break;
                         }
+                        case 'zip':
+                        case 'tar':
+                        case 'gzip': {
+                            this._content.set('zip', undefined);
+                            this._content.set('tar', undefined);
+                            this._content.set('gzip', undefined);
+                            let stream = this._stream;
+                            try {
+                                const archive = zip.Archive.open(this._stream, 'gzip');
+                                if (archive) {
+                                    const entries = archive.entries;
+                                    this._content.set('gzip', entries);
+                                    if (entries.size === 1) {
+                                        stream = entries.values().next().value;
+                                    }
+                                }
+                            } catch (error) {
+                                this._content.set('gzip', error);
+                            }
+                            let skipTar = false;
+                            try {
+                                const archive = zip.Archive.open(stream, 'zip');
+                                if (archive) {
+                                    this._content.set('zip', archive.entries);
+                                    skipTar = true;
+                                }
+                            } catch (error) {
+                                this._content.set('zip', error);
+                            }
+                            if (!skipTar) {
+                                try {
+                                    const archive = tar.Archive.open(stream);
+                                    if (archive) {
+                                        this._content.set('tar', archive.entries);
+                                    }
+                                } catch (error) {
+                                    this._content.set('tar', error);
+                                }
+                            }
+                            break;
+                        }
+                        case 'npz': {
+                            try {
+                                const content = new Map();
+                                const entries = this.peek('zip');
+                                if (entries instanceof Map && entries.size > 0 &&
+                                    Array.from(entries.keys()).every((name) => name.endsWith('.npy'))) {
+                                    const execution = new python.Execution();
+                                    for (const [name, stream] of entries) {
+                                        const buffer = stream.peek();
+                                        const bytes = execution.invoke('io.BytesIO', [ buffer ]);
+                                        const array = execution.invoke('numpy.load', [ bytes ]);
+                                        content.set(name, array);
+                                    }
+                                    this._content.set(type, content);
+                                }
+                            } catch (error) {
+                                // continue regardless of error
+                            }
+                            break;
+                        }
                         default: {
                             throw new view.Error("Unsupported open format type '" + type + "'.");
                         }
@@ -5205,6 +5235,26 @@ view.ModelContext = class {
             }
         }
         return this._content.get(type);
+    }
+
+    read(type) {
+        if (!this._content.has(type)) {
+            switch (type) {
+                case 'json': {
+                    const reader = json.TextReader.open(this._stream);
+                    if (reader) {
+                        const obj = reader.read();
+                        this._content.set('json', obj);
+                        return obj;
+                    }
+                    throw new view.Error('Invalid JSON content.');
+                }
+                default: {
+                    break;
+                }
+            }
+        }
+        return this.peek(type);
     }
 
     tags(type) {
@@ -5221,7 +5271,7 @@ view.ModelContext = class {
                 ];
                 const skip =
                     signatures.some((signature) => signature.length <= stream.length && stream.peek(signature.length).every((value, index) => signature[index] === undefined || signature[index] === value)) ||
-                    (Array.from(this._tags).some((pair) => pair[0] !== 'flatbuffers' && pair[1].size > 0) && type !== 'pb+') ||
+                    (Array.from(this._tags).some(([key, value]) => key !== 'flatbuffers' && value.size > 0) && type !== 'pb+') ||
                     Array.from(this._content.values()).some((obj) => obj !== undefined) ||
                     (stream.length < 0x7ffff000 && json.TextReader.open(stream));
                 if (!skip && stream.length < 0x7ffff000) {
@@ -5289,27 +5339,9 @@ view.ModelContext = class {
 
 view.EntryContext = class {
 
-    constructor(host, entries, rootFolder, identifier, stream) {
+    constructor(host, entries) {
         this._host = host;
-        this._entries = new Map();
-        if (entries) {
-            for (const entry of entries) {
-                if (entry[0].startsWith(rootFolder)) {
-                    const name = entry[0].substring(rootFolder.length);
-                    this._entries.set(name, entry[1]);
-                }
-            }
-        }
-        this._identifier = identifier.substring(rootFolder.length);
-        this._stream = stream;
-    }
-
-    get identifier() {
-        return this._identifier;
-    }
-
-    get stream() {
-        return this._stream;
+        this._entries = entries;
     }
 
     async request(file, encoding, base) {
@@ -5329,7 +5361,7 @@ view.EntryContext = class {
         return this._host.request(file, encoding, base);
     }
 
-    require(id) {
+    async require(id) {
         return this._host.require(id);
     }
 
@@ -5356,15 +5388,12 @@ view.ModelFactoryService = class {
         this.register('./pytorch', [ '.pt', '.pth', '.ptl', '.pt1', '.pyt', '.pyth', '.pkl', '.pickle', '.h5', '.t7', '.model', '.dms', '.tar', '.ckpt', '.chkpt', '.tckpt', '.bin', '.pb', '.zip', '.nn', '.torchmodel', '.torchscript', '.pytorch', '.ot', '.params', '.trt', '.ff', '.ptmf', '.jit', '.pte' ], [ '.model' ]);
         this.register('./onnx', [ '.onnx', '.onn', '.pb', '.onnxtxt', '.pbtxt', '.prototxt', '.txt', '.model', '.pt', '.pth', '.pkl', '.ort', '.ort.onnx', 'onnxmodel', 'ngf', 'json' ]);
         this.register('./mxnet', [ '.json', '.params' ], [ '.mar']);
-        this.register('./coreml', [ '.mlmodel', '.bin', 'manifest.json', 'metadata.json', 'featuredescriptions.json', '.pb' ], [ '.mlpackage' ]);
+        this.register('./coreml', [ '.mlmodel', '.bin', 'manifest.json', 'metadata.json', 'featuredescriptions.json', '.pb', '.pbtxt' ], [ '.mlpackage' ]);
         this.register('./caffe', [ '.caffemodel', '.pbtxt', '.prototxt', '.pt', '.txt' ]);
         this.register('./caffe2', [ '.pb', '.pbtxt', '.prototxt' ]);
         this.register('./torch', [ '.t7', '.net' ]);
         this.register('./tflite', [ '.tflite', '.lite', '.tfl', '.bin', '.pb', '.tmfile', '.h5', '.model', '.json', '.txt', '.dat' ]);
-        this.register('./circle', [ '.circle' ]);
         this.register('./tf', [ '.pb', '.meta', '.pbtxt', '.prototxt', '.txt', '.pt', '.json', '.index', '.ckpt', '.graphdef', '.pbmm', /.data-[0-9][0-9][0-9][0-9][0-9]-of-[0-9][0-9][0-9][0-9][0-9]$/, /^events.out.tfevents./ ], [ '.zip' ]);
-        this.register('./mediapipe', [ '.pbtxt' ]);
-        this.register('./uff', [ '.uff', '.pb', '.pbtxt', '.uff.txt', '.trt', '.engine' ]);
         this.register('./tensorrt', [ '.trt', '.trtmodel', '.engine', '.model', '.txt', '.uff', '.pb', '.tmfile', '.onnx', '.pth', '.dnn', '.plan', '.pt', '.dat' ]);
         this.register('./keras', [ '.h5', '.hd5', '.hdf5', '.keras', '.json', '.cfg', '.model', '.pb', '.pth', '.weights', '.pkl', '.lite', '.tflite', '.ckpt', '.pb', 'model.weights.npz' ], [ '.zip' ]);
         this.register('./numpy', [ '.npz', '.npy', '.pkl', '.pickle', '.model', '.model2', '.mge', '.joblib' ]);
@@ -5374,10 +5403,11 @@ view.ModelFactoryService = class {
         this.register('./megengine', [ '.tm', '.mge' ]);
         this.register('./pickle', [ '.pkl', '.pickle', '.joblib', '.model', '.meta', '.pb', '.pt', '.h5', '.pkl.z', '.joblib.z', '.pdstates', '.mge' ]);
         this.register('./cntk', [ '.model', '.cntk', '.cmf', '.dnn' ]);
+        this.register('./uff', [ '.uff', '.pb', '.pbtxt', '.uff.txt', '.trt', '.engine' ]);
         this.register('./paddle', [ '.pdmodel', '.pdiparams', '.pdparams', '.pdopt', '.paddle', '__model__', '.__model__', '.pbtxt', '.txt', '.tar', '.tar.gz', '.nb' ]);
         this.register('./bigdl', [ '.model', '.bigdl' ]);
         this.register('./darknet', [ '.cfg', '.model', '.txt', '.weights' ]);
-        this.register('./weka', [ '.model' ]);
+        this.register('./mediapipe', [ '.pbtxt' ]);
         this.register('./rknn', [ '.rknn', '.nb', '.onnx', '.json' ]);
         this.register('./dlc', [ '.dlc', 'model', '.params' ]);
         this.register('./armnn', [ '.armnn', '.json' ]);
@@ -5387,6 +5417,7 @@ view.ModelFactoryService = class {
         this.register('./tengine', ['.tmfile']);
         this.register('./mslite', [ '.ms']);
         this.register('./barracuda', [ '.nn' ]);
+        this.register('./circle', [ '.circle' ]);
         this.register('./dnn', [ '.dnn' ]);
         this.register('./xmodel', [ '.xmodel' ]);
         this.register('./kmodel', [ '.kmodel' ]);
@@ -5401,14 +5432,15 @@ view.ModelFactoryService = class {
         this.register('./nnabla', [ '.nntxt' ], [ '.nnp' ]);
         this.register('./hickle', [ '.h5', '.hkl' ]);
         this.register('./nnef', [ '.nnef', '.dat' ]);
-        this.register('./cambricon', [ '.cambricon' ]);
         this.register('./onednn', [ '.json']);
         this.register('./mlir', [ '.mlir']);
         this.register('./sentencepiece', [ '.model' ]);
-        this.register('./hailo', [ '.hn', '.har' ]);
+        this.register('./hailo', [ '.hn', '.har', '.metadata.json' ]);
         this.register('./nnc', [ '.nnc' ]);
-        this.register('./safetensors', [ '.safetensors' ]);
+        this.register('./safetensors', [ '.safetensors', '.json' ]);
         this.register('./modular', [ '.maxviz' ]);
+        this.register('./cambricon', [ '.cambricon' ]);
+        this.register('./weka', [ '.model' ]);
     }
 
     register(id, factories, containers) {
@@ -5424,18 +5456,33 @@ view.ModelFactoryService = class {
     async open(context) {
         try {
             await this._openSignature(context);
-            const modelContext = new view.ModelContext(context);
-            const model = await this._openContext(modelContext);
+            const content = new view.Context(context);
+            const model = await this._openContext(content);
             if (!model) {
-                const entries = modelContext.entries();
-                if (!entries || entries.size === 0) {
-                    this._unsupported(modelContext);
+                const check = (obj) => {
+                    if (obj instanceof Error) {
+                        throw obj;
+                    }
+                    return obj instanceof Map && obj.size > 0;
+                };
+                let entries = context.entries;
+                if (!check(entries)) {
+                    entries = content.peek('zip');
+                    if (!check(entries)) {
+                        entries = content.peek('tar');
+                        if (!check(entries)) {
+                            entries = content.peek('gzip');
+                        }
+                    }
                 }
-                const context = await this._openEntries(entries);
-                if (!context) {
-                    this._unsupported(modelContext);
+                if (!check(entries)) {
+                    this._unsupported(content);
                 }
-                return this._openContext(context);
+                const entryContext = await this._openEntries(entries);
+                if (!entryContext) {
+                    this._unsupported(content);
+                }
+                return this._openContext(entryContext);
             }
             return model;
         } catch (error) {
@@ -5458,7 +5505,9 @@ view.ModelFactoryService = class {
         for (const callback of callbacks) {
             let archive = null;
             try {
+                /* eslint-disable no-await-in-loop */
                 archive = callback(stream);
+                /* eslint-enable no-await-in-loop */
             } catch (error) {
                 // continue regardless of error
             }
@@ -5467,7 +5516,7 @@ view.ModelFactoryService = class {
             }
         }
         const json = () => {
-            const obj = context.open('json');
+            const obj = context.peek('json');
             if (obj) {
                 const formats = [
                     { name: 'Netron metadata', tags: [ '[].name', '[].schema' ] },
@@ -5535,9 +5584,9 @@ view.ModelFactoryService = class {
                     }
                 }
                 const entries = [];
-                entries.push(...Array.from(tags).filter((pair) => pair[0].toString().indexOf('.') === -1));
-                entries.push(...Array.from(tags).filter((pair) => pair[0].toString().indexOf('.') !== -1));
-                const content = entries.map((pair) => pair[1] === true ? pair[0] : pair[0] + ':' + JSON.stringify(pair[1])).join(',');
+                entries.push(...Array.from(tags).filter(([key]) => key.toString().indexOf('.') === -1));
+                entries.push(...Array.from(tags).filter(([key]) => key.toString().indexOf('.') !== -1));
+                const content = entries.map(([key, value]) => value === true ? key : key + ':' + JSON.stringify(value)).join(',');
                 throw new view.Error("Unsupported Protocol Buffers text content '" + (content.length > 64 ? content.substring(0, 100) + '...' : content) + "' for extension '." + extension + "'.");
             }
         };
@@ -5551,9 +5600,7 @@ view.ModelFactoryService = class {
                     { name: 'pblczero.Net data', tags: [[1,5],[2,2],[3,[[1,0],[2,0],[3,0]],[10,[[1,[]],[2,[]],[3,[]],[4,[]],[5,[]],[6,[]]]],[11,[]]]] } // https://github.com/LeelaChessZero/lczero-common/blob/master/proto/net.proto
                 ];
                 const match = (tags, schema) => {
-                    for (const pair of schema) {
-                        const key = pair[0];
-                        const inner = pair[1];
+                    for (const [key, inner] of schema) {
                         const value = tags[key];
                         if (value === undefined) {
                             continue;
@@ -5583,9 +5630,7 @@ view.ModelFactoryService = class {
                     }
                 }
                 const format = (tags) => {
-                    const content = Object.entries(tags).map((pair) => {
-                        const key = pair[0];
-                        const value = pair[1];
+                    const content = Object.entries(tags).map(([key, value]) => {
                         return key.toString() + ':' + (Object(value) === value ? '{' + format(value) + '}' : value.toString());
                     });
                     return content.join(',');
@@ -5627,7 +5672,7 @@ view.ModelFactoryService = class {
             }
         };
         const hdf5 = () => {
-            const obj = context.open('hdf5');
+            const obj = context.peek('hdf5');
             if (obj instanceof Error) {
                 throw obj;
             }
@@ -5657,27 +5702,36 @@ view.ModelFactoryService = class {
         let success = false;
         const next = async () => {
             if (modules.length > 0) {
+                let module = null;
                 try {
                     const id = modules.shift();
-                    const module = await this._host.require(id);
+                    module = await this._host.require(id);
                     if (!module.ModelFactory) {
                         throw new view.Error("Failed to load module '" + id + "'.");
                     }
-                    const modelFactory = new module.ModelFactory();
-                    const target = modelFactory.match(context);
-                    if (target) {
-                        success = true;
-                        const model = await modelFactory.open(context, target);
-                        if (!model.identifier) {
-                            model.identifier = context.identifier;
-                        }
-                        return model;
-                    }
                 } catch (error) {
-                    if (context.stream && context.stream.position !== 0) {
-                        context.stream.seek(0);
-                    }
+                    success = true;
+                    modules.splice(0, modules.length);
                     errors.push(error);
+                }
+                if (module) {
+                    try {
+                        const modelFactory = new module.ModelFactory();
+                        const target = modelFactory.match(context);
+                        if (target) {
+                            success = true;
+                            const model = await modelFactory.open(context, target);
+                            if (!model.identifier) {
+                                model.identifier = context.identifier;
+                            }
+                            return model;
+                        }
+                    } catch (error) {
+                        if (context.stream && context.stream.position !== 0) {
+                            context.stream.seek(0);
+                        }
+                        errors.push(error);
+                    }
                 }
                 return await next();
             }
@@ -5702,8 +5756,8 @@ view.ModelFactoryService = class {
                 const folder = rotate(map).filter(equals).map(at(0)).join('/');
                 return folder.length === 0 ? folder : folder + '/';
             };
-            const list = Array.from(entries).map((entry) => {
-                return { name: entry[0], stream: entry[1] };
+            const list = Array.from(entries).map(([name, stream]) => {
+                return { name: name, stream: stream };
             });
             const files = list.filter((entry) => {
                 if (entry.name.endsWith('/')) {
@@ -5718,118 +5772,120 @@ view.ModelFactoryService = class {
                 return true;
             });
             const folder = rootFolder(files.map((entry) => entry.name));
-            const filter = async (queue) => {
+            const filter = async (queue, entries) => {
+                entries = new Map(Array.from(entries)
+                    .filter(([path]) => path.startsWith(folder))
+                    .map(([path, stream]) => [ path.substring(folder.length), stream ]));
+                const entryContext = new view.EntryContext(this._host, entries);
                 let matches = [];
-                const nextEntry = async () => {
-                    if (queue.length > 0) {
-                        const entry = queue.shift();
-                        const context = new view.ModelContext(new view.EntryContext(this._host, entries, folder, entry.name, entry.stream));
-                        const modules = this._filter(context);
-                        const nextModule = async () => {
-                            if (modules.length > 0) {
-                                const id = modules.shift();
-                                const module = await this._host.require(id);
-                                if (!module.ModelFactory) {
-                                    throw new view.ArchiveError("Failed to load module '" + id + "'.", null);
-                                }
-                                const modelFactory = new module.ModelFactory();
-                                if (modelFactory.match(context)) {
-                                    matches.push(context);
-                                    modules.splice(0, modules.length);
-                                }
-                                return await nextModule();
-                            }
-                            return await nextEntry();
-                        };
-                        return await nextModule();
+                for (const entry of queue) {
+                    const identifier = entry.name.substring(folder.length);
+                    const context = new view.Context(entryContext, identifier, entry.stream);
+                    const modules = this._filter(context);
+                    for (const id of modules) {
+                        /* eslint-disable no-await-in-loop */
+                        const module = await this._host.require(id);
+                        /* eslint-enable no-await-in-loop */
+                        if (!module.ModelFactory) {
+                            throw new view.ArchiveError("Failed to load module '" + id + "'.", null);
+                        }
+                        const modelFactory = new module.ModelFactory();
+                        if (modelFactory.match(context)) {
+                            matches.push(context);
+                            break;
+                        }
                     }
-                    if (matches.length === 0) {
-                        return null;
-                    }
-                    // MXNet
-                    if (matches.length === 2 &&
-                        matches.some((context) => context.identifier.toLowerCase().endsWith('.params')) &&
-                        matches.some((context) => context.identifier.toLowerCase().endsWith('-symbol.json'))) {
-                        matches = matches.filter((context) => context.identifier.toLowerCase().endsWith('.params'));
-                    }
-                    // TensorFlow.js
-                    if (matches.length > 0 &&
-                        matches.some((context) => context.identifier.toLowerCase().endsWith('.bin')) &&
-                        matches.some((context) => context.identifier.toLowerCase().endsWith('.json'))) {
-                        matches = matches.filter((context) => context.identifier.toLowerCase().endsWith('.json'));
-                    }
-                    // ncnn
-                    if (matches.length > 0 &&
-                        matches.some((context) => context.identifier.toLowerCase().endsWith('.bin')) &&
-                        matches.some((context) => context.identifier.toLowerCase().endsWith('.param'))) {
-                        matches = matches.filter((context) => context.identifier.toLowerCase().endsWith('.param'));
-                    }
-                    // ncnn
-                    if (matches.length > 0 &&
-                        matches.some((context) => context.identifier.toLowerCase().endsWith('.bin')) &&
-                        matches.some((context) => context.identifier.toLowerCase().endsWith('.param.bin'))) {
-                        matches = matches.filter((context) => context.identifier.toLowerCase().endsWith('.param.bin'));
-                    }
-                    // NNEF
-                    if (matches.length > 0 &&
-                        matches.some((context) => context.identifier.toLowerCase().endsWith('.nnef')) &&
-                        matches.some((context) => context.identifier.toLowerCase().endsWith('.dat'))) {
-                        matches = matches.filter((context) => context.identifier.toLowerCase().endsWith('.nnef'));
-                    }
-                    // Paddle
-                    if (matches.length > 0 &&
-                        matches.some((context) => context.identifier.toLowerCase().endsWith('.pdmodel')) &&
-                        (matches.some((context) => context.identifier.toLowerCase().endsWith('.pdparams')) ||
-                            matches.some((context) => context.identifier.toLowerCase().endsWith('.pdopt')) ||
-                            matches.some((context) => context.identifier.toLowerCase().endsWith('.pdiparams')))) {
-                        matches = matches.filter((context) => context.identifier.toLowerCase().endsWith('.pdmodel'));
-                    }
-                    // Paddle Lite
-                    if (matches.length > 0 &&
-                        matches.some((context) => context.identifier.toLowerCase().split('/').pop() === '__model__.nb') &&
-                        matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'param.nb')) {
-                        matches = matches.filter((context) => context.identifier.toLowerCase().split('/').pop() == '__model__.nb');
-                    }
-                    // TensorFlow Bundle
-                    if (matches.length > 1 &&
-                        matches.some((context) => context.identifier.toLowerCase().endsWith('.data-00000-of-00001'))) {
-                        matches = matches.filter((context) => !context.identifier.toLowerCase().endsWith('.data-00000-of-00001'));
-                    }
-                    // TensorFlow SavedModel
-                    if (matches.length === 2 &&
-                        matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'keras_metadata.pb')) {
-                        matches = matches.filter((context) => context.identifier.toLowerCase().split('/').pop() !== 'keras_metadata.pb');
-                    }
-                    // Keras
-                    if (matches.length === 3 &&
-                        matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'model.weights.h5' || context.identifier.toLowerCase().split('/').pop() === 'model.weights.npz') &&
-                        matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'config.json') &&
-                        matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'metadata.json')) {
-                        matches = matches.filter((context) => context.identifier.toLowerCase().split('/').pop() == 'model.weights.h5' || context.identifier.toLowerCase().split('/').pop() === 'model.weights.npz');
-                    }
-                    if (matches.length === 2 &&
-                        matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'model.weights.h5' || context.identifier.toLowerCase().split('/').pop() === 'model.weights.npz') &&
-                        matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'config.json')) {
-                        matches = matches.filter((context) => context.identifier.toLowerCase().split('/').pop() == 'model.weights.h5' || context.identifier.toLowerCase().split('/').pop() === 'model.weights.npz');
-                    }
-                    if ((matches.length === 2) &&
-                        matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'config.json') &&
-                        matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'metadata.json')) {
-                        matches = matches.filter((context) => context.identifier.toLowerCase().split('/').pop() == 'config.json');
-                    }
-                    if (matches.length > 1) {
-                        throw new view.ArchiveError('Archive contains multiple model files.');
-                    }
-                    const match = matches.shift();
-                    return match;
-                };
-                return await nextEntry();
+                }
+                if (matches.length === 0) {
+                    return null;
+                }
+                // MXNet
+                if (matches.length === 2 &&
+                    matches.some((context) => context.identifier.toLowerCase().endsWith('.params')) &&
+                    matches.some((context) => context.identifier.toLowerCase().endsWith('-symbol.json'))) {
+                    matches = matches.filter((context) => context.identifier.toLowerCase().endsWith('.params'));
+                }
+                // TensorFlow.js
+                if (matches.length > 0 &&
+                    matches.some((context) => context.identifier.toLowerCase().endsWith('.bin')) &&
+                    matches.some((context) => context.identifier.toLowerCase().endsWith('.json'))) {
+                    matches = matches.filter((context) => context.identifier.toLowerCase().endsWith('.json'));
+                }
+                // ncnn
+                if (matches.length > 0 &&
+                    matches.some((context) => context.identifier.toLowerCase().endsWith('.bin')) &&
+                    matches.some((context) => context.identifier.toLowerCase().endsWith('.param'))) {
+                    matches = matches.filter((context) => context.identifier.toLowerCase().endsWith('.param'));
+                }
+                // ncnn
+                if (matches.length > 0 &&
+                    matches.some((context) => context.identifier.toLowerCase().endsWith('.bin')) &&
+                    matches.some((context) => context.identifier.toLowerCase().endsWith('.param.bin'))) {
+                    matches = matches.filter((context) => context.identifier.toLowerCase().endsWith('.param.bin'));
+                }
+                // NNEF
+                if (matches.length > 0 &&
+                    matches.some((context) => context.identifier.toLowerCase().endsWith('.nnef')) &&
+                    matches.some((context) => context.identifier.toLowerCase().endsWith('.dat'))) {
+                    matches = matches.filter((context) => context.identifier.toLowerCase().endsWith('.nnef'));
+                }
+                // Paddle
+                if (matches.length > 0 &&
+                    matches.some((context) => context.identifier.toLowerCase().endsWith('.pdmodel')) &&
+                    (matches.some((context) => context.identifier.toLowerCase().endsWith('.pdparams')) ||
+                        matches.some((context) => context.identifier.toLowerCase().endsWith('.pdopt')) ||
+                        matches.some((context) => context.identifier.toLowerCase().endsWith('.pdiparams')))) {
+                    matches = matches.filter((context) => context.identifier.toLowerCase().endsWith('.pdmodel'));
+                }
+                // Paddle Lite
+                if (matches.length > 0 &&
+                    matches.some((context) => context.identifier.toLowerCase().split('/').pop() === '__model__.nb') &&
+                    matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'param.nb')) {
+                    matches = matches.filter((context) => context.identifier.toLowerCase().split('/').pop() == '__model__.nb');
+                }
+                // TensorFlow Bundle
+                if (matches.length > 1 &&
+                    matches.some((context) => context.identifier.toLowerCase().endsWith('.data-00000-of-00001'))) {
+                    matches = matches.filter((context) => !context.identifier.toLowerCase().endsWith('.data-00000-of-00001'));
+                }
+                // TensorFlow SavedModel
+                if (matches.length === 2 &&
+                    matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'keras_metadata.pb')) {
+                    matches = matches.filter((context) => context.identifier.toLowerCase().split('/').pop() !== 'keras_metadata.pb');
+                }
+                // Keras
+                if (matches.length === 3 &&
+                    matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'model.weights.h5' || context.identifier.toLowerCase().split('/').pop() === 'model.weights.npz') &&
+                    matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'config.json') &&
+                    matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'metadata.json')) {
+                    matches = matches.filter((context) => context.identifier.toLowerCase().split('/').pop() == 'model.weights.h5' || context.identifier.toLowerCase().split('/').pop() === 'model.weights.npz');
+                }
+                if (matches.length === 2 &&
+                    matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'model.weights.h5' || context.identifier.toLowerCase().split('/').pop() === 'model.weights.npz') &&
+                    matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'config.json')) {
+                    matches = matches.filter((context) => context.identifier.toLowerCase().split('/').pop() == 'model.weights.h5' || context.identifier.toLowerCase().split('/').pop() === 'model.weights.npz');
+                }
+                if (matches.length === 2 &&
+                    matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'config.json') &&
+                    matches.some((context) => context.identifier.toLowerCase().split('/').pop() === 'metadata.json')) {
+                    matches = matches.filter((context) => context.identifier.toLowerCase().split('/').pop() == 'config.json');
+                }
+                // Hailo
+                if (matches.length >= 2 &&
+                    matches.some((context) => context.identifier.toLowerCase().endsWith('.metadata.json'))) {
+                    matches = matches.filter((context) => context.identifier.toLowerCase().endsWith('.metadata.json'));
+                }
+                if (matches.length > 1) {
+                    throw new view.ArchiveError('Archive contains multiple model files.');
+                }
+                const match = matches.shift();
+                return match;
             };
             const queue = files.slice(0).filter((entry) => entry.name.substring(folder.length).indexOf('/') < 0);
-            const context = await filter(queue);
+            const context = await filter(queue, entries);
             if (!context) {
                 const queue = files.slice(0).filter((entry) => entry.name.substring(folder.length).indexOf('/') >= 0);
-                return await filter(queue);
+                return await filter(queue, entries);
             }
             return context;
         } catch (error) {
@@ -5924,30 +5980,29 @@ view.Metadata = class {
 
     static async open(context, name) {
         view.Metadata._metadata = view.Metadata._metadata || new Map();
-        if (view.Metadata._metadata.has(name)) {
-            return view.Metadata._metadata.get(name);
+        const metadata = view.Metadata._metadata;
+        if (!metadata.has(name)) {
+            try {
+                const content = await context.request(name);
+                const types = JSON.parse(content);
+                metadata.set(name, new view.Metadata(types));
+            } catch (error) {
+                metadata.set(name, new view.Metadata(null));
+            }
         }
-        try {
-            const json = await context.request(name, 'utf-8', null);
-            const data = JSON.parse(json);
-            const library = new view.Metadata(data);
-            view.Metadata._metadata.set(name, library);
-            return library;
-        } catch (error) {
-            const library = new view.Metadata(null);
-            view.Metadata._metadata.set(name, library);
-            return library;
-        }
+        return metadata.get(name);
     }
 
-    constructor(data) {
+    constructor(types) {
         this._types = new Map();
         this._attributes = new Map();
         this._inputs = new Map();
-        for (const entry of data || []) {
-            this._types.set(entry.name, entry);
-            if (entry.identifier !== undefined) {
-                this._types.set(entry.identifier, entry);
+        if (Array.isArray(types)) {
+            for (const type of types) {
+                this._types.set(type.name, type);
+                if (type.identifier !== undefined) {
+                    this._types.set(type.identifier, type);
+                }
             }
         }
     }
@@ -5996,10 +6051,12 @@ view.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.View = view.View;
-    module.exports.ModelFactoryService = view.ModelFactoryService;
-    module.exports.Documentation = view.Documentation;
-    module.exports.Formatter = view.Formatter;
-    module.exports.Tensor = view.Tensor;
+if (typeof window !== 'undefined' && window.exports) {
+    window.exports.view = view;
 }
+
+export const View = view.View;
+export const ModelFactoryService = view.ModelFactoryService;
+export const Documentation = view.Documentation;
+export const Formatter = view.Formatter;
+export const Tensor = view.Tensor;

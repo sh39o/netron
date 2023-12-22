@@ -1,8 +1,9 @@
 
-var circle = {};
-var flatbuffers = require('./flatbuffers');
-var flexbuffers = require('./flexbuffers');
-var zip = require('./zip');
+import * as flatbuffers from '../source/flatbuffers.js';
+import * as flexbuffers from '../source/flexbuffers.js';
+import * as zip from '../source/zip.js';
+
+const circle = {};
 
 circle.ModelFactory = class {
 
@@ -11,7 +12,7 @@ circle.ModelFactory = class {
         if (tags.get('file_identifier') === 'CIR0') {
             return 'circle.flatbuffers';
         }
-        const obj = context.open('json');
+        const obj = context.peek('json');
         if (obj && obj.subgraphs && obj.operator_codes) {
             return 'circle.flatbuffers.json';
         }
@@ -26,7 +27,7 @@ circle.ModelFactory = class {
         switch (target) {
             case 'circle.flatbuffers.json': {
                 try {
-                    const obj = context.open('json');
+                    const obj = context.peek('json');
                     const reader = new flatbuffers.TextReader(obj);
                     model = circle.schema.Model.createText(reader);
                 } catch (error) {
@@ -47,8 +48,8 @@ circle.ModelFactory = class {
                 try {
                     const archive = zip.Archive.open(stream);
                     if (archive) {
-                        for (const entry of archive.entries) {
-                            attachments.set(entry[0], entry[1]);
+                        for (const [name, value] of archive.entries) {
+                            attachments.set(name, value);
                         }
                     }
                 } catch (error) {
@@ -334,9 +335,7 @@ circle.Node = class {
                                 this._attributes.push(attribute);
                                 decoded = true;
                             } else if (custom_options) {
-                                for (const pair of Object.entries(custom_options)) {
-                                    const key = pair[0];
-                                    const value = pair[1];
+                                for (const [key, value] of Object.entries(custom_options)) {
                                     const schema = metadata.attribute(type.name, key);
                                     const attribute = new circle.Attribute(schema, key, value);
                                     this._attributes.push(attribute);
@@ -355,9 +354,7 @@ circle.Node = class {
             }
             const options = node.builtin_options;
             if (options) {
-                for (const entry of Object.entries(options)) {
-                    const name = entry[0];
-                    const value = entry[1];
+                for (const [name, value] of Object.entries(options)) {
                     if (name === 'fused_activation_function' && value !== 0) {
                         const activationFunctionMap = { 1: 'Relu', 2: 'ReluN1To1', 3: 'Relu6', 4: 'Tanh', 5: 'SignBit' };
                         if (!activationFunctionMap[value]) {
@@ -638,7 +635,7 @@ circle.Utility = class {
 
     static dataType(type) {
         if (!circle.Utility._tensorTypeMap) {
-            circle.Utility._tensorTypeMap = new Map(Object.keys(circle.schema.TensorType).map((key) => [ circle.schema.TensorType[key], key.toLowerCase() ]));
+            circle.Utility._tensorTypeMap = new Map(Object.entries(circle.schema.TensorType).map(([key, value]) => [ value, key.toLowerCase() ]));
             circle.Utility._tensorTypeMap.set(6, 'boolean');
         }
         return circle.Utility._tensorTypeMap.has(type) ? circle.Utility._tensorTypeMap.get(type) : '?';
@@ -649,8 +646,8 @@ circle.Utility = class {
         if (type) {
             circle.Utility._enums = circle.Utility._enums || new Map();
             if (!circle.Utility._enums.has(name)) {
-                const map = new Map(Object.keys(type).map((key) => [ type[key], key ]));
-                circle.Utility._enums.set(name, map);
+                const entries = new Map(Object.entries(type).map(([key, value]) => [ value, key ]));
+                circle.Utility._enums.set(name, entries);
             }
             const map = circle.Utility._enums.get(name);
             if (map.has(value)) {
@@ -669,6 +666,4 @@ circle.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = circle.ModelFactory;
-}
+export const ModelFactory = circle.ModelFactory;

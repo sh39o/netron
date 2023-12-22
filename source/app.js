@@ -1,14 +1,13 @@
 
-const electron = require('electron');
-const updater = require('electron-updater');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const process = require('process');
-const url = require('url');
-const base = require('./base');
+import * as electron from 'electron';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import * as process from 'process';
+import * as url from 'url';
+import * as base from './base.js';
 
-var app = {};
+const app = {};
 
 app.Application = class {
 
@@ -20,9 +19,10 @@ app.Application = class {
         this._package = {};
     }
 
-    start() {
-        const packageFile = path.join(path.dirname(__dirname), 'package.json');
-        const packageContent = fs.readFileSync(packageFile, 'utf-8');
+    async start() {
+        const dirname = path.dirname(url.fileURLToPath(import.meta.url));
+        const packageFile = path.join(path.dirname(dirname), 'package.json');
+        const packageContent =  fs.readFileSync(packageFile, 'utf-8');
         this._package = JSON.parse(packageContent);
 
         electron.app.setAppUserModelId('com.lutzroeder.netron');
@@ -107,7 +107,7 @@ app.Application = class {
         });
 
         this._parseCommandLine(process.argv);
-        this._checkForUpdates();
+        await this._checkForUpdates();
     }
 
     get environment() {
@@ -128,7 +128,8 @@ app.Application = class {
         let open = false;
         if (argv.length > 1) {
             for (const arg of argv.slice(1)) {
-                if (!arg.startsWith('-') && arg !== path.dirname(__dirname)) {
+                const dirname = path.dirname(url.fileURLToPath(import.meta.url));
+                if (!arg.startsWith('-') && arg !== path.dirname(dirname)) {
                     const extension = path.extname(arg).toLowerCase();
                     if (extension !== '' && extension !== '.js' && fs.existsSync(arg)) {
                         const stat = fs.statSync(arg);
@@ -277,11 +278,12 @@ app.Application = class {
         }
     }
 
-    _checkForUpdates() {
+    async _checkForUpdates() {
         if (!electron.app.isPackaged) {
             return;
         }
-        const autoUpdater = updater.autoUpdater;
+        const updater = await import('electron-updater');
+        const autoUpdater = updater.default.autoUpdater;
         if (autoUpdater.app && autoUpdater.app.appUpdateConfigPath && !fs.existsSync(autoUpdater.app.appUpdateConfigPath)) {
             return;
         }
@@ -634,18 +636,19 @@ app.View = class {
         this._path = null;
         this._properties = new Map();
         this._dispatch = [];
+        const dirname = path.dirname(url.fileURLToPath(import.meta.url));
         const size = electron.screen.getPrimaryDisplay().workAreaSize;
         const options = {
             show: false,
             title: electron.app.name,
             backgroundColor: electron.nativeTheme.shouldUseDarkColors ? '#1d1d1d' : '#e6e6e6',
-            icon: electron.nativeImage.createFromPath(path.join(__dirname, 'icon.png')),
+            icon: electron.nativeImage.createFromPath(path.join(dirname, 'icon.png')),
             minWidth: 600,
             minHeight: 600,
             width: size.width > 1024 ? 1024 : size.width,
             height: size.height > 768 ? 768 : size.height,
             webPreferences: {
-                preload: path.join(__dirname, 'electron.js'),
+                preload: path.join(dirname, 'electron.mjs'),
                 nodeIntegration: true
             }
         };
@@ -716,7 +719,8 @@ app.View = class {
     }
 
     _loadURL() {
-        const pathname = path.join(__dirname, 'index.html');
+        const dirname = path.dirname(url.fileURLToPath(import.meta.url));
+        const pathname = path.join(dirname, 'index.html');
         let content = fs.readFileSync(pathname, 'utf-8');
         content = content.replace(/<\s*script[^>]*>[\s\S]*?(<\s*\/script[^>]*>|$)/ig, '');
         const data = 'data:text/html;charset=utf-8,' + encodeURIComponent(content);
@@ -767,9 +771,7 @@ app.View = class {
     }
 
     update(data) {
-        for (const entry of Object.entries(data)) {
-            const name = entry[0];
-            const value = entry[1];
+        for (const [name, value] of Object.entries(data)) {
             switch (name) {
                 case 'path': {
                     if (value) {
@@ -1035,15 +1037,14 @@ app.MenuService = class {
 
     _updateLabel(view) {
         let rebuild = false;
-        for (const entry of this._commandTable.entries()) {
+        for (const [name, command] of this._commandTable.entries()) {
             if (this._menu) {
-                const menuItem = this._menu.getMenuItemById(entry[0]);
-                const command = entry[1];
+                const item = this._menu.getMenuItemById(name);
                 if (command && command.label) {
                     const label = command.label(view);
-                    if (label !== menuItem.label) {
-                        if (this._itemTable.has(entry[0])) {
-                            this._itemTable.get(entry[0]).label = label;
+                    if (label !== item.label) {
+                        if (this._itemTable.has(name)) {
+                            this._itemTable.get(name).label = label;
                             rebuild = true;
                         }
                     }
@@ -1054,17 +1055,24 @@ app.MenuService = class {
     }
 
     _updateEnabled(view) {
-        for (const entry of this._commandTable.entries()) {
+        for (const [name, command] of this._commandTable.entries()) {
             if (this._menu) {
-                const menuItem = this._menu.getMenuItemById(entry[0]);
-                const command = entry[1];
-                if (menuItem && command.enabled) {
-                    menuItem.enabled = command.enabled(view);
+                const item = this._menu.getMenuItemById(name);
+                if (item && command.enabled) {
+                    item.enabled = command.enabled(view);
                 }
             }
         }
     }
 };
 
-global.application = new app.Application();
-global.application.start();
+const main = async () => {
+    global.application = new app.Application();
+    await global.application.start();
+};
+
+main().catch((error) => {
+    /* eslint-disable no-console */
+    console.error(error.message);
+    /* eslint-enable no-console */
+});

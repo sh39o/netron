@@ -1,6 +1,7 @@
 
-var armnn = {};
-var flatbuffers = require('./flatbuffers');
+import * as flatbuffers from './flatbuffers.js';
+
+const armnn = {};
 
 armnn.ModelFactory = class {
 
@@ -9,12 +10,12 @@ armnn.ModelFactory = class {
         const extension = identifier.split('.').pop().toLowerCase();
         const stream = context.stream;
         if (stream && extension === 'armnn') {
-            return 'armnn.flatbuffers';
+            return { name: 'armnn.flatbuffers', value: stream };
         }
         if (extension === 'json') {
-            const obj = context.open('json');
+            const obj = context.peek('json');
             if (obj && obj.layers && obj.inputIds && obj.outputIds) {
-                return 'armnn.flatbuffers.json';
+                return { name: 'armnn.flatbuffers.json', value: obj };
             }
         }
         return undefined;
@@ -24,10 +25,10 @@ armnn.ModelFactory = class {
         await context.require('./armnn-schema');
         armnn.schema = flatbuffers.get('armnn').armnnSerializer;
         let model = null;
-        switch (target) {
+        switch (target.name) {
             case 'armnn.flatbuffers': {
                 try {
-                    const stream = context.stream;
+                    const stream = target.value;
                     const reader = flatbuffers.BinaryReader.open(stream);
                     model = armnn.schema.SerializedGraph.create(reader);
                 } catch (error) {
@@ -38,7 +39,7 @@ armnn.ModelFactory = class {
             }
             case 'armnn.flatbuffers.json': {
                 try {
-                    const obj = context.open('json');
+                    const obj = target.value;
                     const reader = flatbuffers.TextReader.open(obj);
                     model = armnn.schema.SerializedGraph.createText(reader);
                 } catch (error) {
@@ -93,7 +94,9 @@ armnn.Graph = class {
         const layers = graph.layers.filter((layer) => {
             const base = armnn.Node.getBase(layer);
             if (base.layerType == armnn.schema.LayerType.Constant && base.outputSlots.length === 1 && layer.layer.input) {
+                /* eslint-disable prefer-destructuring */
                 const slot = base.outputSlots[0];
+                /* eslint-enable prefer-destructuring */
                 const name = base.index.toString() + ':' + slot.index.toString();
                 if (counts.get(name) === 1) {
                     const tensor = new armnn.Tensor(layer.layer.input, 'Constant');
@@ -172,18 +175,15 @@ armnn.Node = class {
         }
         if (layer.layer) {
             if (layer.layer.descriptor && this.type.attributes) {
-                for (const entry of Object.entries(layer.layer.descriptor)) {
-                    const name = entry[0];
-                    const value = entry[1];
+                for (const [name, value] of Object.entries(layer.layer.descriptor)) {
                     const attribute = new armnn.Attribute(metadata.attribute(type, name), name, value);
                     this.attributes.push(attribute);
                 }
             }
-            for (const entry of Object.entries(layer.layer).filter((entry) => entry[1] instanceof armnn.schema.ConstTensor)) {
-                const name = entry[0];
-                const tensor = entry[1];
+            for (const [name, tensor] of Object.entries(layer.layer).filter(([, value]) => value instanceof armnn.schema.ConstTensor)) {
                 const value = new armnn.Value('', tensor.info, new armnn.Tensor(tensor));
-                this.inputs.push(new armnn.Argument(name, [ value ]));
+                const argument = new armnn.Argument(name, [ value ]);
+                this.inputs.push(argument);
             }
         }
     }
@@ -298,12 +298,12 @@ armnn.Utility = class {
         if (type) {
             armnn.Utility._enums = armnn.Utility._enums || new Map();
             if (!armnn.Utility._enums.has(name)) {
-                const map = new Map(Object.keys(type).map((key) => [ type[key], key ]));
-                armnn.Utility._enums.set(name, map);
+                const entries = new Map(Object.entries(type).map(([key, value]) => [ value, key ]));
+                armnn.Utility._enums.set(name, entries);
             }
-            const map = armnn.Utility._enums.get(name);
-            if (map.has(value)) {
-                return map.get(value);
+            const entries = armnn.Utility._enums.get(name);
+            if (entries.has(value)) {
+                return entries.get(value);
             }
         }
         return value;
@@ -318,6 +318,4 @@ armnn.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = armnn.ModelFactory;
-}
+export const ModelFactory = armnn.ModelFactory;
