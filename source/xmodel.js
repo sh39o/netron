@@ -94,7 +94,9 @@ xmodel.Graph = class {
 
         let subg_name = this.root_subg.subgraph_name;
         if (this.root_subg.subg_child.length > 0) {
-            set_group(this.root_subg, this, subg_name);
+            const subg_map = new Map();
+            this.set_group(this.root_subg, this, subg_name, subg_map);
+            this.build_hierarchy(this.root_subg, subg_map);
         }
     }
 
@@ -105,12 +107,59 @@ xmodel.Graph = class {
     set_group_subgraph(group_name, subgraph) {
         this.groups.set(group_name, subgraph);
     }
+
+    set_group(subg, graph, subg_name, subg_map) {
+        const xmodel_subg = new xmodel.Subgraph(subg);
+        subg_map.set(subg, xmodel_subg);
+        this.set_group_subgraph(subg_name, xmodel_subg);
+        const children = subg.subg_child;
+        if (children.length > 0) {
+            for (const child of children) {
+                const cur_subg_name = subg_name + "/" + child.subgraph_name.replace(/\//g, "_");
+                this.set_group(child, graph, cur_subg_name, subg_map);
+            }
+        } else {
+            let ops = subg.op_name;
+            var cur_subg_name = subg_name;
+            for (const op of ops) {
+                const xmodel_op = this.get_node(op);
+                xmodel_subg.ops.push(xmodel_op);
+                xmodel_op.group = cur_subg_name;
+                const substrings = cur_subg_name.split('/');
+                let cur = "";
+                for (const sub of substrings) {
+                    if (cur === '') {
+                        cur = sub;
+                    } else {
+                        cur += '/' + sub;
+                    }
+                    this.get_node(op).groups.set(cur, graph.groups.get(cur));
+                }
+            }
+        }
+    }
+
+    build_hierarchy(subg, subg_map) {
+        const children = subg.subg_child;
+        const xmodel_subg = subg_map.get(subg);
+        if (children.length > 0) {
+            for (const child of children) {
+                const xmodel_child = subg_map.get(child);
+                xmodel_subg.children.push(xmodel_child);
+                xmodel_child.parent = xmodel_subg;
+                this.build_hierarchy(child, subg_map);
+            }
+        }
+    }
 };
 
 xmodel.Subgraph = class {
     constructor(subgraph) {
         this.name = subgraph.subgraph_name;
         this.attributes = [];
+        this.parent;
+        this.children = [];
+        this.ops = [];
 
         Object.entries(subgraph.subg_attr).forEach(([key, value]) => {
             this.attributes.push(new xmodel.Argument(key, xmodel.Utility.attribute(value)));
@@ -146,35 +195,6 @@ xmodel.Value = class {
         }
     }
 };
-
-function set_group(subg, graph, subg_name) {
-    graph.set_group_subgraph(subg_name, new xmodel.Subgraph(subg));
-    var childs = subg.subg_child;
-    if (childs.length > 0) {
-        for (const child of childs) {
-            var cur_subg_name = subg_name;
-            cur_subg_name += "/" + child.subgraph_name.replace(/\//g, "_");
-            set_group(child, graph, cur_subg_name);
-        }
-    } else {
-        let ops = subg.op_name;
-        var cur_subg_name = subg_name;
-        for (const op of ops) {
-            graph.get_node(op).group = cur_subg_name;
-            const substrings = cur_subg_name.split('/');
-            const result = [];
-            let cur = "";
-            for (const sub of substrings) {
-                if (cur === '') {
-                    cur = sub;
-                } else {
-                    cur += '/' + sub;
-                }
-                graph.get_node(op).groups.set(cur, graph.groups.get(cur));
-            }
-        }
-    }
-}
 
 xmodel.Node = class {
 

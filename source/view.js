@@ -3162,6 +3162,39 @@ view.SubgraphSideBar = class extends view.Control {
 
     _addAttribute(name, attribute) {
         const value = new view.AttributeView(this._host, attribute.value);
+        if (attribute.value.type === 'string[]') {
+            const saveButton = this._host.document.createElement('div');
+            saveButton.className = 'sidebar-item-value-expander';
+            saveButton.innerHTML = '&#x1F4BE;';
+            saveButton.addEventListener('click', () => {
+                const content = attribute.value.value.join('\n');
+                const blob = new Blob([content], { type: 'text/plain' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = this._subgraph.name + "_" + name + ".txt";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+            });
+            value._element.appendChild(saveButton);
+        } else if (attribute.value.type === 'byte[]') {
+            const saveButton = this._host.document.createElement('div');
+            saveButton.className = 'sidebar-item-value-expander';
+            saveButton.innerHTML = '&#x1F4BE;';
+            saveButton.addEventListener('click', () => {
+                const byteData = new Uint8Array(attribute.value.value);
+                const blob = new Blob([byteData], { type: 'application/octet-stream' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = this._subgraph.name + "_" + name + ".bin";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+            });
+            value._element.appendChild(saveButton);
+        }
         value.on('show-graph', (sender, graph) => {
             this.emit('show-graph', graph);
         });
