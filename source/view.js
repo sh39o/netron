@@ -1740,8 +1740,8 @@ view.Graph = class extends grapher.Graph {
                         }
                     }
                     if (groupName) {
-                        createCluster(`${groupName}\ngroup`);
-                        this.setParent(viewNode.name, `${groupName}\ngroup`);
+                        createCluster(groupName);
+                        this.setParent(viewNode.name, groupName);
                     }
                 }
             }
