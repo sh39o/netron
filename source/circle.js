@@ -8,44 +8,46 @@ const circle = {};
 circle.ModelFactory = class {
 
     match(context) {
-        const tags = context.tags('flatbuffers');
-        if (tags.get('file_identifier') === 'CIR0') {
-            return 'circle.flatbuffers';
+        const reader = context.peek('flatbuffers.binary');
+        if (reader && reader.identifier === 'CIR0') {
+            context.type = 'circle.flatbuffers';
+            context.target = reader;
+            return;
         }
         const obj = context.peek('json');
         if (obj && obj.subgraphs && obj.operator_codes) {
-            return 'circle.flatbuffers.json';
+            context.type = 'circle.flatbuffers.json';
+            context.target = obj;
+            return;
         }
-        return undefined;
     }
 
-    async open(context, target) {
-        await context.require('./circle-schema');
-        circle.schema = flatbuffers.get('circle').circle;
+    async open(context) {
+        circle.schema = await context.require('./circle-schema');
+        circle.schema = circle.schema.circle;
         let model = null;
         const attachments = new Map();
-        switch (target) {
+        switch (context.type) {
             case 'circle.flatbuffers.json': {
                 try {
-                    const obj = context.peek('json');
-                    const reader = new flatbuffers.TextReader(obj);
+                    const reader = context.read('flatbuffers.text');
                     model = circle.schema.Model.createText(reader);
                 } catch (error) {
                     const message = error && error.message ? error.message : error.toString();
-                    throw new circle.Error('File text format is not circle.Model (' + message.replace(/\.$/, '') + ').');
+                    throw new circle.Error(`File text format is not circle.Model (${message.replace(/\.$/, '')}).`);
                 }
                 break;
             }
             case 'circle.flatbuffers': {
-                const stream = context.stream;
                 try {
-                    const reader = flatbuffers.BinaryReader.open(stream);
+                    const reader = context.target;
                     model = circle.schema.Model.create(reader);
                 } catch (error) {
                     const message = error && error.message ? error.message : error.toString();
-                    throw new circle.Error('File format is not circle.Model (' + message.replace(/\.$/, '') + ').');
+                    throw new circle.Error(`File format is not circle.Model (${message.replace(/\.$/, '')}).`);
                 }
                 try {
+                    const stream = context.stream;
                     const archive = zip.Archive.open(stream);
                     if (archive) {
                         for (const [name, value] of archive.entries) {
@@ -58,7 +60,7 @@ circle.ModelFactory = class {
                 break;
             }
             default: {
-                throw new circle.Error("Unsupported Circle format '" + target + "'.");
+                throw new circle.Error(`Unsupported Circle format '${context.type}'.`);
             }
         }
         const metadata = await context.metadata('circle-metadata.json');
@@ -71,9 +73,9 @@ circle.Model = class {
     constructor(metadata, model) {
         this._graphs = [];
         this._format = 'Circle';
-        this._format = this._format + ' v' + model.version.toString();
+        this._format = `${this._format} v${model.version}`;
         this._description = model.description || '';
-        this._metadata = [];
+        this._metadata = new Map();
         const builtinOperators = new Map();
         const upperCase = new Set([ '2D', 'LSH', 'SVDF', 'RNN', 'L2', 'LSTM' ]);
         for (const key of Object.keys(circle.schema.BuiltinOperator)) {
@@ -114,10 +116,10 @@ circle.Model = class {
                                 this._description = this._description ? [ this._description, modelMetadata.description].join(' ') : modelMetadata.description;
                             }
                             if (modelMetadata.author) {
-                                this._metadata.push({ name: 'author', value: modelMetadata.author });
+                                this._metadata.set('author', modelMetadata.author);
                             }
                             if (modelMetadata.license) {
-                                this._metadata.push({ name: 'license', value: modelMetadata.license });
+                                this._metadata.set('license', modelMetadata.license);
                             }
                         }
                         break;
@@ -196,7 +198,7 @@ circle.Graph = class {
         for (let i = 0; i < subgraph.operators.length; i++) {
             const node = subgraph.operators[i];
             const index = node.opcode_index;
-            const operator = index < operators.length ? operators[index] : { name: '(' + index.toString() + ')' };
+            const operator = index < operators.length ? operators[index] : { name: `(${index})` };
             this._nodes.push(new circle.Node(metadata, node, operator, i.toString(), args));
         }
         const applyTensorMetadata = (argument, tensorMetadata) => {
@@ -217,12 +219,12 @@ circle.Graph = class {
                             case 0: denotation += '(Unknown)'; break;
                             case 1: denotation += '(RGB)'; break;
                             case 2: denotation += '(Grayscale)'; break;
-                            default: throw circle.Error("Unsupported image color space '" + contentProperties.color_space + "'.");
+                            default: throw circle.Error(`Unsupported image color space '${contentProperties.color_space}'.`);
                         }
                     } else if (contentProperties instanceof circle.schema.BoundingBoxProperties) {
                         denotation = 'BoundingBox';
                     } else if (contentProperties instanceof circle.schema.AudioProperties) {
-                        denotation = 'Audio(' + contentProperties.sample_rate.toString() + ',' + contentProperties.channels.toString() + ')';
+                        denotation = `Audio(${contentProperties.sample_rate},${contentProperties.channels})`;
                     }
                     if (denotation) {
                         argument.type.denotation = denotation;
@@ -358,7 +360,7 @@ circle.Node = class {
                     if (name === 'fused_activation_function' && value !== 0) {
                         const activationFunctionMap = { 1: 'Relu', 2: 'ReluN1To1', 3: 'Relu6', 4: 'Tanh', 5: 'SignBit' };
                         if (!activationFunctionMap[value]) {
-                            throw new circle.Error("Unsupported activation funtion index '" + JSON.stringify(value) + "'.");
+                            throw new circle.Error(`Unsupported activation funtion index '${JSON.stringify(value)}'.`);
                         }
                         const type = activationFunctionMap[value];
                         this._chain = [ new circle.Node(metadata, null, { name: type }, null, []) ];
@@ -468,61 +470,21 @@ circle.Value = class {
 
     constructor(index, tensor, initializer) {
         const name = tensor.name || '';
-        this._name = name + '\n' + index.toString();
-        this._location = index.toString();
-        this._type = tensor.type !== undefined && tensor.shape !== undefined ? new circle.TensorType(tensor) : null;
-        this._initializer = initializer;
+        this.name = `${name}\n${index}`;
+        this.location = index.toString();
+        this.type = tensor.type !== undefined && tensor.shape !== undefined ? new circle.TensorType(tensor) : null;
+        this.initializer = initializer;
         const quantization = tensor.quantization;
-        if (quantization) {
-            const length = Math.max(quantization.scale.length, quantization.zero_point.length, quantization.min.length, quantization.max.length);
-            const list = [];
-            for (let i = 0; i < length; i++) {
-                let value = 'q';
-                const scale = i < quantization.scale.length ? quantization.scale[i] : 0;
-                const zeroPoint = (i < quantization.zero_point.length ? quantization.zero_point[i] : 0).toString();
-                if (scale !== 0 || zeroPoint !== '0') {
-                    value = scale.toString() + ' * ' + (zeroPoint === '0' ? 'q' : ('(q' + (!zeroPoint.startsWith('-') ? ' - ' + zeroPoint : ' + ' + zeroPoint.substring(1)) + ')'));
-                }
-                if (i < quantization.min.length) {
-                    value = quantization.min[i].toString() + ' \u2264 ' + value;
-                }
-                if (i < quantization.max.length) {
-                    value = value + ' \u2264 ' + quantization.max[i].toString();
-                }
-                list.push(value);
-            }
-            if (list.length > 0 && !list.every((value) => value === 'q')) {
-                this._quantization = list;
-            }
+        if (quantization && (quantization.scale.length > 0 || quantization.zero_point.length > 0 || quantization.min.length > 0 || quantization.max.length)) {
+            this.quantization = {
+                type: 'linear',
+                dimension: quantization.quantized_dimension,
+                scale: quantization.scale,
+                offset: quantization.zero_point.map((value) => value.toNumber()),
+                min: quantization.min,
+                max: quantization.max
+            };
         }
-    }
-
-    get name() {
-        return this._name;
-    }
-
-    get location() {
-        return this._location;
-    }
-
-    get type() {
-        return this._type;
-    }
-
-    get quantization() {
-        return this._quantization;
-    }
-
-    set description(value) {
-        this._description = value;
-    }
-
-    get description() {
-        return this._description;
-    }
-
-    get initializer() {
-        return this._initializer;
     }
 };
 
@@ -627,7 +589,7 @@ circle.TensorShape = class {
         if (!this._dimensions || this._dimensions.length == 0) {
             return '';
         }
-        return '[' + this._dimensions.map((dimension) => dimension.toString()).join(',') + ']';
+        return `[${this._dimensions.map((dimension) => dimension.toString()).join(',')}]`;
     }
 };
 

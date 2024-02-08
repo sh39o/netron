@@ -8,14 +8,14 @@ lasagne.ModelFactory = class {
     match(context) {
         const obj = context.peek('pkl');
         if (obj && obj.__class__ && obj.__class__.__module__ === 'nolearn.lasagne.base' && obj.__class__.__name__ == 'NeuralNet') {
-            return obj;
+            context.type = 'lasagne';
+            context.target = obj;
         }
-        return null;
     }
 
-    async open(context, target) {
+    async open(context) {
         const metadata = await context.metadata('lasagne-metadata.json');
-        return new lasagne.Model(metadata, target);
+        return new lasagne.Model(metadata, context.target);
     }
 };
 
@@ -38,9 +38,9 @@ lasagne.Graph = class {
             if (!values.has(name)) {
                 values.set(name, new lasagne.Value(name, type, tensor));
             } else if (tensor) {
-                throw new lasagne.Error("Duplicate value '" + name + "'.");
+                throw new lasagne.Error(`Duplicate value '${name}'.`);
             } else if (type && !type.equals(values.get(name).type)) {
-                throw new lasagne.Error("Duplicate value '" + name + "'.");
+                throw new lasagne.Error(`Duplicate value '${name}'.`);
             }
             return values.get(name);
         };
@@ -84,7 +84,7 @@ lasagne.Value = class {
 
     constructor(name, type, initializer) {
         if (typeof name !== 'string') {
-            throw new lasagne.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
+            throw new lasagne.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this.name= name;
         this.type = type ? type : initializer ? initializer.type : null;
@@ -96,7 +96,7 @@ lasagne.Node = class {
 
     constructor(metadata, layer, values) {
         this.name = layer.name || '';
-        const type = layer.__class__ ? layer.__class__.__module__ + '.' + layer.__class__.__name__ : '';
+        const type = layer.__class__ ? `${layer.__class__.__module__}.${layer.__class__.__name__}` : '';
         this.type = metadata.type(type) || { name: type };
         this.inputs = [];
         this.outputs = [];
@@ -138,7 +138,7 @@ lasagne.Attribute = class {
         this.name = name;
         this.value = value;
         if (value && value.__class__) {
-            this.type = value.__class__.__module__ + '.' + value.__class__.__name__;
+            this.type = `${value.__class__.__module__}.${value.__class__.__name__}`;
         }
     }
 };
@@ -173,7 +173,7 @@ lasagne.TensorShape = class {
 
     toString() {
         if (this.dimensions && this.dimensions.length > 0) {
-            return '[' + this.dimensions.map((dimension) => dimension ? dimension.toString() : '?').join(',') + ']';
+            return `[${this.dimensions.map((dimension) => dimension ? dimension.toString() : '?').join(',')}]`;
         }
         return '';
     }

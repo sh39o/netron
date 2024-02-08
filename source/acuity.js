@@ -4,19 +4,16 @@ const acuity = {};
 acuity.ModelFactory = class {
 
     match(context) {
-        const extension = context.identifier.split('.').pop().toLowerCase();
-        if (extension === 'json') {
-            const obj = context.peek('json');
-            if (obj && obj.MetaData && obj.Layers) {
-                return obj;
-            }
+        const obj = context.peek('json');
+        if (obj && obj.MetaData && obj.Layers) {
+            context.type = 'acuity';
+            context.target = obj;
         }
-        return null;
     }
 
-    async open(context, target) {
+    async open(context) {
         const metadata = await context.metadata('acuity-metadata.json');
-        return new acuity.Model(metadata, target);
+        return new acuity.Model(metadata, context.target);
     }
 };
 
@@ -24,7 +21,7 @@ acuity.Model = class {
 
     constructor(metadata, model, data, quantization) {
         this.name = model.MetaData.Name;
-        this.format = 'Acuity ' + 'v' + model.MetaData.AcuityVersion;
+        this.format = `Acuity v${model.MetaData.AcuityVersion}`;
         this.runtime = model.MetaData.Platform;
         this.graphs = [ new acuity.Graph(metadata, model, data, quantization) ];
     }
@@ -48,7 +45,7 @@ acuity.Graph = class {
                 return value(input);
             });
             layer.outputs = layer.outputs.map((port) => {
-                const output = value("@" + name + ":" + port);
+                const output = value(`@${name}:${port}`);
                 let shape = null;
                 if (layer.op.toLowerCase() == 'input' ||
                     layer.op.toLowerCase() == 'variable') {
@@ -108,7 +105,10 @@ acuity.Node = class {
         if (this.type) {
             if (layer.parameters) {
                 for (const [name, value] of Object.entries(layer.parameters)) {
-                    const attribute = new acuity.Attribute(metadata.attribute(op, name), name, value);
+                    const meta = metadata.attribute(op, name);
+                    const type = meta && meta.type ? meta.type : null;
+                    const visible = meta && meta.default !== undefined && meta.default === value ? false : true;
+                    const attribute = new acuity.Argument(name, value, type, visible);
                     this.attributes.push(attribute);
                 }
             }
@@ -116,8 +116,9 @@ acuity.Node = class {
         for (let i = 0; i < layer.inputs.length; i++) {
             const input = layer.inputs[i];
             const value = values.get(input.name);
-            const name = this.type && this.type.inputs && i < this.type.inputs.length ? this.type.inputs[i].name : 'input' + i.toString();
-            this.inputs.push(new acuity.Argument(name, [ value ]));
+            const name = this.type && this.type.inputs && i < this.type.inputs.length ? this.type.inputs[i].name : `input${i}`;
+            const argument = new acuity.Argument(name, [ value ]);
+            this.inputs.push(argument);
         }
 
         if (this.type && this.type.constants) {
@@ -125,41 +126,32 @@ acuity.Node = class {
                 // const name = "@" + this.name + ":" + constant.name;
                 const type = new acuity.TensorType(null, new acuity.TensorShape(null));
                 const value = new acuity.Value('', type, null, new acuity.Tensor(type));
-                this.inputs.push(new acuity.Argument(constant.name, [ value ]));
+                const argument = new acuity.Argument(constant.name, [ value ]);
+                this.inputs.push(argument);
             }
         }
 
         for (let i = 0; i < layer.outputs.length; i++) {
             const output = layer.outputs[i];
             const value = values.get(output.name);
-            const name = this.type && this.type.outputs && i < this.type.outputs.length ? this.type.outputs[i].name : 'output' + i.toString();
-            this.outputs.push(new acuity.Argument(name, [ value ]));
-        }
-    }
-};
-
-acuity.Attribute = class {
-
-    constructor(metadata, name, value) {
-        this.type = null;
-        this.name = name;
-        this.value = value;
-        if (metadata) {
-            this.type = metadata.type || null;
-            if (Object.prototype.hasOwnProperty.call(metadata, 'default')) {
-                if (metadata.default === value) {
-                    this.visible = false;
-                }
-            }
+            const name = this.type && this.type.outputs && i < this.type.outputs.length ? this.type.outputs[i].name : `output${i}`;
+            const argument = new acuity.Argument(name, [ value ]);
+            this.outputs.push(argument);
         }
     }
 };
 
 acuity.Argument = class {
 
-    constructor(name, value) {
+    constructor(name, value, type, visible) {
         this.name = name;
         this.value = value;
+        if (type) {
+            this.type = type;
+        }
+        if (visible === false) {
+            this.visible = false;
+        }
     }
 };
 
@@ -167,7 +159,7 @@ acuity.Value = class {
 
     constructor(name, type, quantization, initializer) {
         if (typeof name !== 'string') {
-            throw new acuity.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
+            throw new acuity.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this.name = name;
         this.type = type || null;
@@ -198,7 +190,7 @@ acuity.TensorShape = class {
         if (!Array.isArray(this.dimensions) || this.dimensions.length == 0 || (this.dimensions.length == 1 && this.dimensions[0] == 0)) {
             return '';
         }
-        return '[' + this.dimensions.map((dimension) => dimension ? dimension.toString() : '?').join(',') + ']';
+        return `[${this.dimensions.map((dimension) => dimension ? dimension.toString() : '?').join(',')}]`;
     }
 };
 

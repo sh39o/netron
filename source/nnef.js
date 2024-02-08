@@ -11,7 +11,8 @@ nnef.ModelFactory = class {
         if (extension === 'nnef') {
             const stream = context.stream;
             if (nnef.TextReader.open(stream)) {
-                return 'nnef.graph';
+                context.type = 'nnef.graph';
+                return;
             }
         }
         if (extension === 'dat') {
@@ -19,25 +20,29 @@ nnef.ModelFactory = class {
             if (stream && stream.length > 2) {
                 const buffer = stream.peek(2);
                 if (buffer[0] === 0x4E && buffer[1] === 0xEF) {
-                    return 'nnef.dat';
+                    context.type = 'nnef.dat';
+                    return;
                 }
             }
         }
-        return null;
     }
 
-    async open(context, target) {
-        switch (target) {
+    filter(context, type) {
+        return context.type !== 'nnef.graph' || type !== 'nnef.dat';
+    }
+
+    async open(context) {
+        switch (context.type) {
             case 'nnef.graph': {
                 const stream = context.stream;
                 const reader = nnef.TextReader.open(stream);
-                throw new nnef.Error("NNEF v" + reader.version + " support not implemented.");
+                throw new nnef.Error(`NNEF v${reader.version} support not implemented.`);
             }
             case 'nnef.dat': {
                 throw new nnef.Error('NNEF dat format support not implemented.');
             }
             default: {
-                throw new nnef.Error("Unsupported NNEF format '" + target + "'.");
+                throw new nnef.Error(`Unsupported NNEF format '${context.type}'.`);
             }
         }
     }

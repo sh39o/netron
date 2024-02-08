@@ -5,11 +5,26 @@ const hailo = {};
 hailo.ModelFactory = class {
 
     match(context) {
-        return hailo.Container.open(context);
+        const container = hailo.Container.open(context);
+        if (container) {
+            context.type = container.type;
+            context.target = container;
+        }
     }
 
-    async open(context, target) {
+    filter(context, type) {
+        if (context.type === 'hailo.metadata' && (type === 'hailo.configuration' || type === 'npz')) {
+            return false;
+        }
+        if (context.type === 'hailo.configuration' && type === 'npz') {
+            return false;
+        }
+        return true;
+    }
+
+    async open(context) {
         const metadata = await context.metadata('hailo-metadata.json');
+        const target = context.target;
         await target.read();
         return new hailo.Model(metadata, target);
     }
@@ -21,10 +36,10 @@ hailo.Model = class {
         const configuration = container.configuration;
         this.graphs = [ new hailo.Graph(metadata, configuration, container.weights) ];
         this.name = configuration && configuration.name || "";
-        this.format = container.format + (container.metadata && container.metadata.sdk_version ? ' v' + container.metadata.sdk_version : '');
-        this.metadata = [];
+        this.format = container.format + (container.metadata && container.metadata.sdk_version ? ` v${container.metadata.sdk_version}` : '');
+        this.metadata = new Map();
         if (container.metadata && container.metadata.state) {
-            this.metadata.push({ name: 'state', value: container.metadata.state });
+            this.metadata.set('state', container.metadata.state);
         }
     }
 };
@@ -43,9 +58,9 @@ hailo.Graph = class {
             if (!values.has(name)) {
                 values.set(name, new hailo.Value(name, type || null, tensor || null));
             } else if (tensor) {
-                throw new hailo.Error("Duplicate value '" + name + "'.");
+                throw new hailo.Error(`Duplicate value '${name}'.`);
             } else if (type && !type.equals(values.get(name).type)) {
-                throw new hailo.Error("Duplicate value '" + name + "'.");
+                throw new hailo.Error(`Duplicate value '${name}'.`);
             }
             return values.get(name);
         };
@@ -94,7 +109,7 @@ hailo.Value = class {
 
     constructor(name, type, initializer) {
         if (typeof name !== 'string') {
-            throw new hailo.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
+            throw new hailo.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this.name = name;
         this.type = initializer ? initializer.type : type;
@@ -222,7 +237,7 @@ hailo.TensorShape = class {
 
     toString() {
         if (this.dimensions && this.dimensions.length > 0) {
-            return '[' + this.dimensions.map((dimension) => dimension.toString()).join(',') + ']';
+            return `[${this.dimensions.map((dimension) => dimension.toString()).join(',')}]`;
         }
         return '';
     }
@@ -253,15 +268,16 @@ hailo.Container = class {
     }
 
     constructor(context, basename, configuration, metadata) {
-        this._context = context;
-        this._basename = basename;
+        this.type = metadata ? 'hailo.metadata' : configuration ? 'hailo.configuration' : 'hailo';
+        this.context = context;
+        this.basename = basename;
         this.configuration = configuration;
         this.metadata = metadata;
     }
 
     async _request(name, type) {
         try {
-            const content = await this._context.fetch(name);
+            const content = await this.context.fetch(name);
             if (content) {
                 return content.read(type);
             }
@@ -275,7 +291,7 @@ hailo.Container = class {
         this.format = 'Hailo NN';
         this.weights = new Map();
         if (!this.metadata) {
-            this.metadata = await this._request(this._basename + '.metadata.json', 'json');
+            this.metadata = await this._request(`${this.basename}.metadata.json`, 'json');
         }
         if (this.metadata) {
             this.format = 'Hailo Archive';
@@ -290,11 +306,12 @@ hailo.Container = class {
                 case 'compiled_model': extension = '.q.npz'; break;
                 default: extension = '.npz'; break;
             }
-            const entries = await this._request(this._basename + extension, 'npz');
+            const entries = await this._request(this.basename + extension, 'npz');
             if (entries && entries.size > 0) {
                 const inputs = new Set([
                     'kernel', 'bias',
-                    'input_activation_bits', 'output_activation_bits', 'weight_bits', 'bias_decomposition'
+                    'input_activation_bits', 'output_activation_bits',
+                    'weight_bits', 'bias_decomposition'
                 ]);
                 for (const [name, value] of entries) {
                     const key = name.split('.').slice(0, -1).join('.');
@@ -302,7 +319,7 @@ hailo.Container = class {
                     if (match) {
                         const path = match[0].split('/');
                         if (inputs.has(path[2])) {
-                            const layer = path[0] + '/' + path[1];
+                            const layer = `${path[0]}/${path[1]}`;
                             if (!this.weights.has(layer)) {
                                 this.weights.set(layer, new Map());
                             }
@@ -313,6 +330,8 @@ hailo.Container = class {
                 }
             }
         }
+        delete this.context;
+        delete this.basename;
     }
 };
 

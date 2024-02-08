@@ -8,8 +8,8 @@ const mlir = {};
 
 mlir.ModelFactory = class {
 
-    match(/* context */) {
-        return 'mlir';
+    match(context) {
+        context.type = 'mlir';
     }
 
     async open(context) {
@@ -68,7 +68,7 @@ mlir.Graph = class {
         }
         // outputs of function
         for (let i = 0; i < func.outputTypes.length; i++) {
-            const output = "%return" + "/" + i;
+            const output = `%return` + `/${i}`;
             const outputType = func.outputTypes[i];
             const type = valueType(outputType);
             const value = new mlir.Value(output, type, "output desc", null);
@@ -228,50 +228,12 @@ mlir.Value = class {
 
     constructor(name, type, description, initializer) {
         if (typeof name !== 'string') {
-            throw new mlir.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
+            throw new mlir.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
-        this._name = name;          // string
-        this._type = type || null;  // mlir.TensorType
-        this._description = description || null;
-        this._initializer = initializer || null;
-    }
-
-    get name() {
-        return this._name;
-    }
-
-    set name(value) {
-        this._name = value;
-    }
-
-    get type() {
-        if (this._initializer) {
-            return this._initializer.type;
-        }
-        return this._type;
-    }
-
-    set type(value) {
-        this._type = value;
-    }
-
-    get description() {
-        return this._description;
-    }
-
-    set description(value) {
-        this._description = value;
-    }
-
-    get quantization() {
-        if (this._initializer) {
-            return this._initializer.quantization;
-        }
-        return null;
-    }
-
-    get initializer() {
-        return this._initializer;
+        this.name = name;
+        this.type = type ? type : initializer && initializer.type ? initializer.type : null;
+        this.description = description || null;
+        this.initializer = initializer || null;
     }
 };
 
@@ -343,7 +305,7 @@ mlir.TensorShape = class {
         if (!this.dimensions || this.dimensions.length == 0) {
             return '';
         }
-        return '[' + this.dimensions.map((dimension) => dimension.toString()).join(',') + ']';
+        return `[${this.dimensions.map((dimension) => dimension.toString()).join(',')}]`;
     }
 };
 
@@ -513,7 +475,7 @@ mlir.Tokenizer = class {
         let c;
         do {
             if (this._decoder.position === this._position) {
-                return ' at ' + line.toString() + ':' + column.toString() + '.';
+                return `at ${line}:${column}.`;
             }
             c = this._decoder.decode();
             if (c === '\n') {
@@ -524,7 +486,7 @@ mlir.Tokenizer = class {
             }
         }
         while (c !== undefined);
-        return ' at ' + line.toString() + ':' + column.toString() + '.';
+        return `at ${line}:${column}.`;
     }
 
     _read() {
@@ -1029,7 +991,7 @@ mlir.Parser = class {
             if (output.split(':').length == 2) {
                 const [valueId, length] = output.split(':');
                 for (let i = 0; i < length; i++) {
-                    result.push(valueId + '#' + i);
+                    result.push(`${valueId}#${i}`);
                 }
             } else {
                 result.push(output);
@@ -1054,7 +1016,7 @@ mlir.Parser = class {
                 }
                 break;
             default:
-                throw new mlir.Error("Unexpected operation name '" + JSON.stringify(this._current) + "'" + this._tokenizer.location());
+                throw new mlir.Error(`Unexpected operation name '${JSON.stringify(this._current)}' ${this._tokenizer.location()}`);
         }
         return value;
     }
@@ -1158,7 +1120,7 @@ mlir.Parser = class {
                             default:
                                 break;
                         }
-                        value += this._current.value + ' ';
+                        value += `${this._current.value} `;
                         this._read(this._current.type);
                     }
                     attributes[name] = value.trim();
@@ -1180,10 +1142,10 @@ mlir.Parser = class {
 
     _read(type, value) {
         if (this._current.type !== type) {
-            throw new mlir.Error("Expected token of type '" + type + "', but got '" + this._current.type + "'" + this._tokenizer.location());
+            throw new mlir.Error(`Expected token of type '${type}', but got '${this._current.type}' ${this._tokenizer.location()}`);
         }
         if (value && this._current.value !== value) {
-            throw new mlir.Error("Expected token with value '" + value + "', but got '" + this._current.value + "'" + this._tokenizer.location());
+            throw new mlir.Error(`Expected token with value '${value}', but got '${this._current.value}' ${this._tokenizer.location()}`);
         }
         const current = this._current;
         this._current = this._tokenizer.read();
@@ -1202,7 +1164,7 @@ mlir.Utility = class {
             case 'i32': return 'int32';
             case 'i64': return 'int64';
             case 'i1': return 'boolean';
-            default: throw new mlir.Error("Unknown data type '" + value + "'.");
+            default: throw new mlir.Error(`Unknown data type '${value}'.`);
         }
     }
 };

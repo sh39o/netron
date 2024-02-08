@@ -8,31 +8,32 @@ safetensors.ModelFactory = class {
     match(context) {
         const container = safetensors.Container.open(context);
         if (container) {
-            return { name: 'safetensors', value: container };
+            context.type = 'safetensors';
+            context.target = container;
+            return;
         }
         const obj = context.peek('json');
-        if (obj.weight_map) {
+        if (obj && obj.weight_map) {
             const entries = Object.entries(obj.weight_map);
-            if (entries.every(([, value]) => typeof value === 'string' && value.endsWith('.safetensors'))) {
-                if (entries.length > 0) {
-                    return { name: 'safetensors.json', value: entries };
-                }
+            if (entries.length > 0 && entries.every(([, value]) => typeof value === 'string' && value.endsWith('.safetensors'))) {
+                context.type = 'safetensors.json';
+                context.target = entries;
+                return;
             }
         }
-        return '';
     }
 
-    async open(context, target) {
-        switch (target.name) {
+    async open(context) {
+        switch (context.type) {
             case 'safetensors': {
-                const container = target.value;
+                const container = context.target;
                 await container.read();
                 return new safetensors.Model(container.entries);
             }
             case 'safetensors.json': {
-                target = new Map(target.value);
-                const keys = new Set(target.keys());
-                const files = Array.from(new Set(target.values()));
+                const weight_map = new Map(context.target);
+                const keys = new Set(weight_map.keys());
+                const files = Array.from(new Set(weight_map.values()));
                 const contexts = await Promise.all(files.map((name) => context.fetch(name)));
                 const containers = contexts.map((context) => safetensors.Container.open(context));
                 await Promise.all(containers.map((container) => container.read()));
@@ -47,7 +48,7 @@ safetensors.ModelFactory = class {
                 return new safetensors.Model(entries);
             }
             default: {
-                throw new safetensors.Error("Unsupported Safetensors format '" + target.name + "'.");
+                throw new safetensors.Error(`Unsupported Safetensors format '${context.type}'.`);
             }
         }
     }
@@ -140,7 +141,7 @@ safetensors.TensorType = class {
             case 'F16':  this.dataType = 'float16'; break;
             case 'F32':  this.dataType = 'float32'; break;
             case 'F64':  this.dataType = 'float64'; break;
-            default: throw new safetensors.Error("Unsupported data type '" + dtype + "'.");
+            default: throw new safetensors.Error(`Unsupported data type '${dtype}'.`);
         }
         this.shape = shape;
     }
@@ -157,7 +158,7 @@ safetensors.TensorShape = class {
     }
 
     toString() {
-        return '[' + this.dimensions.map((dimension) => dimension.toString()).join(',') + ']';
+        return `[${this.dimensions.map((dimension) => dimension.toString()).join(',')}]`;
     }
 };
 

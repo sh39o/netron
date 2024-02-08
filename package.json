@@ -6,8 +6,8 @@
         "email": "lutzroeder@users.noreply.github.com",
         "url": "https://www.lutzroeder.com"
     },
-    "version": "7.3.4",
-    "date": "2023-12-15 20:17:32",
+    "version": "7.4.2",
+    "date": "2024-02-03 04:32:49",
     "description": "Visualizer for neural network, deep learning, and machine learning models",
     "license": "MIT",
     "repository": "sun/netron",
@@ -18,6 +18,7 @@
         "server": "python package.py build start",
         "test": "node test/models.js",
         "lint": "node package.js lint",
+        "validate": "node package.js validate",
         "clean": "node package.js clean",
         "purge": "node package.js purge",
         "install": "node package.js install",
@@ -33,9 +34,9 @@
         "electron-updater": "6.1.7"
     },
     "devDependencies": {
-        "electron": "28.0.0",
+        "electron": "28.2.2",
         "electron-builder": "24.9.1",
-        "@electron/notarize": "2.2.0",
+        "@electron/notarize": "2.2.1",
         "eslint": "8.56.0"
     },
     "eslintConfig": {
@@ -58,7 +59,6 @@
             "default-case-last": "error",
             "indent": [ "error", 4, { "SwitchCase": 1 } ],
             "keyword-spacing": "error",
-            "linebreak-style": "off",
             "no-array-constructor": "error",
             "no-await-in-loop": "error",
             "no-console": "error",
@@ -87,15 +87,25 @@
             "object-curly-spacing": [ "error", "always" ],
             "prefer-const": [ "error" ],
             "prefer-destructuring": [ "error", { "array": true } ],
+            "prefer-template": "error",
             "require-atomic-updates": "error",
             "semi": [ "error", "always" ],
             "space-before-blocks": "error",
-            "space-in-parens": "error"
+            "space-in-parens": "error",
+            "template-curly-spacing": "error"
         },
         "globals": {
             "flatbuffers": "readonly",
             "protobuf": "readonly"
         }
+    },
+    "nyc": {
+        "reporter": [ "lcov" ],
+        "report-dir": "dist/nyc/coverage",
+        "temp-dir": "dist/nyc/.nyc_output"
+    },
+    "config": {
+        "forge": "publish/forge.config.js"
     },
     "build": {
         "appId": "com.lutzroeder.netron",
@@ -110,6 +120,7 @@
             { "ext": "cmf",         "name": "CNTK Model"               },
             { "ext": "dlc",         "name": "DLC Model"                },
             { "ext": "dnn",         "name": "CNTK Model"               },
+            { "ext": "gguf",        "name": "GGUF Model"               },
             { "ext": "h5",          "name": "Keras Model"              },
             { "ext": "har",         "name": "Hailo Model"              },
             { "ext": "hd5",         "name": "Keras Model"              },
@@ -147,6 +158,7 @@
             { "ext": "pkl",         "name": "Pickle Model"             },
             { "ext": "prototxt",    "name": "Text Protocol Buffer"     },
             { "ext": "pt",          "name": "PyTorch Model"            },
+            { "ext": "pt2",         "name": "PyTorch Model"            },
             { "ext": "pth",         "name": "PyTorch Model"            },
             { "ext": "ptl",         "name": "PyTorch Model"            },
             { "ext": "rknn",        "name": "RKNN Model"               },

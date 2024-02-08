@@ -9,13 +9,18 @@ const openvx = {};
 rknn.ModelFactory = class {
 
     match(context) {
-        return rknn.Container.open(context);
+        const container = rknn.Container.open(context);
+        if (container) {
+            context.type = 'rknn';
+            context.target = container;
+        }
     }
 
-    async open(context, target) {
-        await context.require('./rknn-schema');
-        rknn.schema = flatbuffers.get('rknn').rknn;
+    async open(context) {
+        rknn.schema = await context.require('./rknn-schema');
+        rknn.schema = rknn.schema.rknn;
         const metadata = await context.metadata('rknn-metadata.json');
+        const target = context.target;
         target.read();
         if (target.has('json')) {
             const buffer = target.get('json');
@@ -43,7 +48,7 @@ rknn.Model = class {
     constructor(metadata, type, model, container) {
         switch (type) {
             case 'json': {
-                this._format = 'RKNN v' + model.version.split('-').shift();
+                this._format = `RKNN v${model.version.split('-').shift()}`;
                 this._name = model.name || '';
                 this._producer = model.ori_network_platform || model.network_platform || '';
                 this._runtime = model.target_platform ? model.target_platform.join(',') : '';
@@ -52,12 +57,12 @@ rknn.Model = class {
             }
             case 'flatbuffers': {
                 const version = model.compiler.split('-').shift();
-                this._format = 'RKNN Lite' + (version ? ' v' + version : '');
+                this._format = `RKNN Lite${version ? ` v${version}` : ''}`;
                 this._runtime = model.runtime;
                 this._name = model.name || '';
                 this._graphs = model.graphs.map((graph) => new rknn.Graph(metadata, type, '', graph, null));
-                this._metadata = [];
-                this._metadata.push({ name: 'source', value: model.source });
+                this._metadata = new Map();
+                this._metadata.set('source', model.source);
                 break;
             }
             case 'openvx': {
@@ -67,7 +72,7 @@ rknn.Model = class {
                 break;
             }
             default: {
-                throw new rknn.Error("Unsupported RKNN model type '" + type + "'.");
+                throw new rknn.Error(`Unsupported RKNN model type '${type}'.`);
             }
         }
     }
@@ -121,7 +126,7 @@ rknn.Graph = class {
                             return type;
                         default:
                             if (value.vx_type !== '') {
-                                throw new rknn.Error("Invalid data type '" + JSON.stringify(dataType) + "'.");
+                                throw new rknn.Error(`Invalid data type '${JSON.stringify(dataType)}'.`);
                             }
                             return '?';
                     }
@@ -129,7 +134,7 @@ rknn.Graph = class {
                 const model = obj;
                 const values = new Map();
                 for (const const_tensor of model.const_tensor) {
-                    const name = 'const_tensor:' + const_tensor.tensor_id.toString();
+                    const name = `const_tensor:${const_tensor.tensor_id}`;
                     const shape = new rknn.TensorShape(const_tensor.size);
                     const type = new rknn.TensorType(dataType(const_tensor.dtype), shape);
                     const tensor = new rknn.Tensor(type, const_tensor.offset, null);
@@ -137,12 +142,12 @@ rknn.Graph = class {
                     values.set(name, value);
                 }
                 for (const virtual_tensor of model.virtual_tensor) {
-                    const name = virtual_tensor.node_id.toString() + ':' + virtual_tensor.output_port.toString();
+                    const name = `${virtual_tensor.node_id}:${virtual_tensor.output_port}`;
                     const value = new rknn.Value(name, null, null);
                     values.set(name, value);
                 }
                 for (const norm_tensor of model.norm_tensor) {
-                    const name = 'norm_tensor:' + norm_tensor.tensor_id.toString();
+                    const name = `norm_tensor:${norm_tensor.tensor_id}`;
                     const shape = new rknn.TensorShape(norm_tensor.size);
                     const type = new rknn.TensorType(dataType(norm_tensor.dtype), shape);
                     const value = new rknn.Value(name, type, null);
@@ -170,11 +175,11 @@ rknn.Graph = class {
                             model.nodes[connection.node_id].output.push(connection);
                             break;
                         default:
-                            throw new rknn.Error("Unsupported left connection '" + connection.left + "'.");
+                            throw new rknn.Error(`Unsupported left connection '${connection.left}'.`);
                     }
                 }
                 for (const graph of model.graph) {
-                    const key = graph.right + ':' + graph.right_tensor_id.toString();
+                    const key = `${graph.right}:${graph.right_tensor_id}`;
                     const name = graph.left + (graph.left_tensor_id === 0 ? '' : graph.left_tensor_id.toString());
                     const argument = new rknn.Argument(name, [ value(key) ]);
                     switch (graph.left) {
@@ -185,7 +190,7 @@ rknn.Graph = class {
                             this._outputs.push(argument);
                             break;
                         default:
-                            throw new rknn.Error("Unsupported left graph connection '" + graph.left + "'.");
+                            throw new rknn.Error(`Unsupported left graph connection '${graph.left}'.`);
                     }
                 }
                 this._nodes = model.nodes.map((node) => new rknn.Node(metadata, type, node, value, container));
@@ -198,7 +203,7 @@ rknn.Graph = class {
                     const shape = new rknn.TensorShape(Array.from(tensor.shape));
                     const dataType = tensor.data_type < dataTypes.length ? dataTypes[tensor.data_type] : '?';
                     if (dataType === '?') {
-                        throw new rknn.Error("Unsupported tensor data type '" + tensor.data_type + "'.");
+                        throw new rknn.Error(`Unsupported tensor data type '${tensor.data_type}'.`);
                     }
                     const type = new rknn.TensorType(dataType, shape);
                     const initializer = tensor.kind !== 4 && tensor.kind !== 5 ? null : new rknn.Tensor(type, 0, null);
@@ -206,7 +211,7 @@ rknn.Graph = class {
                 });
                 const arg = (index) => {
                     if (index >= args.length) {
-                        throw new rknn.Error("Invalid tensor index '" + index.toString() + "'.");
+                        throw new rknn.Error(`Invalid tensor index '${index}'.`);
                     }
                     return args[index];
                 };
@@ -219,7 +224,7 @@ rknn.Graph = class {
                 break;
             }
             default: {
-                throw new rknn.Error("Unsupported RKNN graph type '" + type + "'.");
+                throw new rknn.Error(`Unsupported RKNN graph type '${type}'.`);
             }
         }
     }
@@ -261,7 +266,7 @@ rknn.Value = class {
 
     constructor(name, type, initializer) {
         if (typeof name !== 'string') {
-            throw new rknn.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
+            throw new rknn.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this._name = name;
         this._type = type || null;
@@ -311,10 +316,10 @@ rknn.Node = class {
                     const count = input.list ? node.input.length - i : 1;
                     const list = node.input.slice(i, i + count).map((input) => {
                         if (input.right_tensor) {
-                            return value(input.right_tensor.type + ':' + input.right_tensor.tensor_id.toString());
+                            return value(`${input.right_tensor.type}:${input.right_tensor.tensor_id}`);
                         }
                         if (input.right_node) {
-                            return value(input.right_node.node_id.toString() + ':' + input.right_node.tensor_id.toString());
+                            return value(`${input.right_node.node_id}:${input.right_node.tensor_id}`);
                         }
                         throw new rknn.Error('Invalid input argument.');
                     });
@@ -327,10 +332,10 @@ rknn.Node = class {
                     const count = output.list ? node.output.length - i : 1;
                     const list = node.output.slice(i, i + count).map((output) => {
                         if (output.right_tensor) {
-                            return value(output.right_tensor.type + ':' + output.right_tensor.tensor_id.toString());
+                            return value(`${output.right_tensor.type}:${output.right_tensor.tensor_id}`);
                         }
                         if (output.right_node) {
-                            return value(output.right_node.node_id.toString() + ':' + output.right_node.tensor_id.toString());
+                            return value(`${output.right_node.node_id}:${output.right_node.tensor_id}`);
                         }
                         throw new rknn.Error('Invalid output argument.');
                     });
@@ -380,7 +385,7 @@ rknn.Node = class {
                 break;
             }
             default: {
-                throw new rknn.Error("Unsupported RKNN node type '" + type + "'.");
+                throw new rknn.Error(`Unsupported RKNN node type '${type}'.`);
             }
         }
     }
@@ -438,7 +443,7 @@ rknn.Tensor = class {
             case 'float32': itemsize = 4; break;
             case 'float64': itemsize = 8; break;
             case 'vdata': itemsize = 1; break;
-            default: throw new rknn.Error("Unsupported tensor data type '" + this._type.dataType + "'.");
+            default: throw new rknn.Error(`Unsupported tensor data type '${this._type.dataType}'.`);
         }
         if (weights) {
             const shape = type.shape.dimensions;
@@ -492,7 +497,7 @@ rknn.TensorShape = class {
         if (!this._dimensions || this._dimensions.length == 0) {
             return '';
         }
-        return '[' + this._dimensions.join(',') + ']';
+        return `[${this._dimensions.join(',')}]`;
     }
 };
 
@@ -506,7 +511,8 @@ rknn.Container = class extends Map {
                 case 'rknn':
                 case 'openvx':
                 case 'flatbuffers':
-                    return new rknn.Container(stream);
+                case 'cyptrknn':
+                    return new rknn.Container(stream, signature);
                 default:
                     break;
             }
@@ -514,23 +520,22 @@ rknn.Container = class extends Map {
             if (obj && obj.version && Array.isArray(obj.nodes) && obj.network_platform) {
                 const entries = new Map();
                 entries.set('json', stream);
-                return new rknn.Container(null, entries);
+                return new rknn.Container(null, null, entries);
             }
         }
         return null;
     }
 
-    constructor(stream, entries) {
+    constructor(stream, signature, entries) {
         super(entries);
-        this._stream = stream;
+        this.stream = stream;
+        this.signature = signature;
     }
 
     read() {
-        if (this._stream) {
-            const stream = this._stream;
-            delete this._stream;
-            const signature = rknn.Container.signature(stream);
-            switch (signature) {
+        const stream = this.stream;
+        if (stream) {
+            switch (this.signature) {
                 case 'rknn': {
                     const uint64 = () => {
                         const buffer = stream.read(8);
@@ -557,7 +562,7 @@ rknn.Container = class extends Map {
                             }
                             break;
                         default:
-                            throw new rknn.Error("Unsupported RKNN container version '" + version + "'.");
+                            throw new rknn.Error(`Unsupported RKNN container version '${version}'.`);
                     }
                     const signature = rknn.Container.signature(stream, data_size);
                     const data = stream.read(data_size);
@@ -571,7 +576,7 @@ rknn.Container = class extends Map {
                 }
                 case 'openvx':
                 case 'flatbuffers': {
-                    this.set(signature, stream.peek());
+                    this.set(this.signature, stream.peek());
                     break;
                 }
                 case 'cyptrknn': {
@@ -581,6 +586,7 @@ rknn.Container = class extends Map {
                     break;
                 }
             }
+            delete this.stream;
         }
     }
 

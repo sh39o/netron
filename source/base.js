@@ -110,7 +110,7 @@ base.Int64 = class Int64 {
                 const remainder = div.multiply(radix).subtract(this);
                 return div.toString(radix) + (remainder.low >>> 0).toString(radix);
             }
-            return '-' + this.negate().toString(r);
+            return `-${this.negate().toString(r)}`;
         }
         if (this.high === 0) {
             return this.low.toString(radix);
@@ -405,9 +405,9 @@ base.Utility = class {
                 return digits + result;
             }
             while (digits.length < 6) {
-                digits = '0' + digits;
+                digits = `0${digits}`;
             }
-            result = '' + digits + result;
+            result = `${digits}${result}`;
         }
     }
 
@@ -440,7 +440,7 @@ base.Complex64 = class Complex {
     }
 
     toString(/* radix */) {
-        return this.real + ' + ' + this.imaginary + 'i';
+        return `${this.real} + ${this.imaginary}i`;
     }
 };
 
@@ -456,7 +456,7 @@ base.Complex128 = class Complex {
     }
 
     toString(/* radix */) {
-        return this.real + ' + ' + this.imaginary + 'i';
+        return `${this.real} + ${this.imaginary}i`;
     }
 };
 
@@ -640,23 +640,18 @@ DataView.prototype.setInt64 = DataView.prototype.setInt64 || function(byteOffset
     }
 };
 
-DataView.prototype.getIntBits = DataView.prototype.getUintBits || function(offset, bits) {
+DataView.prototype.getIntBits = DataView.prototype.getUintBits || function(offset, bits, littleEndian) {
     offset = offset * bits;
-    const available = (this.byteLength << 3) - offset;
-    if (bits > available) {
-        throw new RangeError("Invalid bit size '" + bits + "'.");
+    const position = Math.floor(offset / 8);
+    const remainder = offset % 8;
+    let value = (remainder + bits) <= 8 ?
+        littleEndian ? this.getUint8(position) >> remainder /* TODO */ : this.getUint8(position) >> (8 - remainder - bits) :
+        littleEndian ? this.getUint16(position, true) >> remainder /* TODO */ : this.getUint16(position, false) >> (16 - remainder - bits);
+    value &= (1 << bits) - 1;
+    if (value & (1 << (bits - 1))) {
+        value -= 1 << bits;
     }
-    let value = 0;
-    let index = 0;
-    while (index < bits) {
-        const remainder = offset & 7;
-        const size = Math.min(bits - index, 8 - remainder);
-        value <<= size;
-        value |= (this.getUint8(offset >> 3) >> (8 - size - remainder)) & ~(0xff << size);
-        offset += size;
-        index += size;
-    }
-    return (value < (2 << (bits - 1)) ? value : (2 << bits));
+    return value;
 };
 
 DataView.prototype.getUint64 = DataView.prototype.getUint64 || function(byteOffset, littleEndian) {
@@ -675,23 +670,14 @@ DataView.prototype.setUint64 = DataView.prototype.setUint64 || function(byteOffs
     }
 };
 
-DataView.prototype.getUintBits = DataView.prototype.getUintBits || function(offset, bits) {
+DataView.prototype.getUintBits = DataView.prototype.getUintBits || function(offset, bits, littleEndian) {
     offset = offset * bits;
-    const available = (this.byteLength << 3) - offset;
-    if (bits > available) {
-        throw new RangeError("Invalid bit size '" + bits + "'.");
-    }
-    let value = 0;
-    let index = 0;
-    while (index < bits) {
-        const remainder = offset & 7;
-        const size = Math.min(bits - index, 8 - remainder);
-        value <<= size;
-        value |= (this.getUint8(offset >> 3) >> (8 - size - remainder)) & ~(0xff << size);
-        offset += size;
-        index += size;
-    }
-    return value;
+    const position = Math.floor(offset / 8);
+    const remainder = offset % 8;
+    const value = (remainder + bits) <= 8 ?
+        littleEndian ? this.getUint8(position) >> remainder /* TODO */ : this.getUint8(position) >> (8 - remainder - bits) :
+        littleEndian ? this.getUint16(position, true) >> remainder /* TODO */ : this.getUint16(position, false) >> (16 - remainder - bits);
+    return value & ((1 << bits) - 1);
 };
 
 DataView.prototype.getComplex64 = DataView.prototype.getComplex64 || function(byteOffset, littleEndian) {
@@ -750,14 +736,14 @@ base.BinaryStream = class {
     seek(position) {
         this._position = position >= 0 ? position : this._length + position;
         if (this._position > this._buffer.length) {
-            throw new Error('Expected ' + (this._position - this._buffer.length) + ' more bytes. The file might be corrupted. Unexpected end of file.');
+            throw new Error(`Expected ${this._position - this._buffer.length} more bytes. The file might be corrupted. Unexpected end of file.`);
         }
     }
 
     skip(offset) {
         this._position += offset;
         if (this._position > this._buffer.length) {
-            throw new Error('Expected ' + (this._position - this._buffer.length) + ' more bytes. The file might be corrupted. Unexpected end of file.');
+            throw new Error(`Expected ${this._position - this._buffer.length} more bytes. The file might be corrupted. Unexpected end of file.`);
         }
     }
 
@@ -791,8 +777,9 @@ base.BinaryStream = class {
 
 base.BinaryReader = class {
 
-    constructor(data) {
+    constructor(data, littleEndian) {
         this._buffer = data instanceof Uint8Array ? data : data.peek();
+        this._littleEndian = littleEndian !== false;
         this._position = 0;
         this._length = this._buffer.length;
         this._view = new DataView(this._buffer.buffer, this._buffer.byteOffset, this._buffer.byteLength);
@@ -809,14 +796,14 @@ base.BinaryReader = class {
     seek(position) {
         this._position = position >= 0 ? position : this._length + position;
         if (this._position > this._length || this._position < 0) {
-            throw new Error('Expected ' + (this._position - this._length) + ' more bytes. The file might be corrupted. Unexpected end of file.');
+            throw new Error(`Expected ${this._position - this._length} more bytes. The file might be corrupted. Unexpected end of file.`);
         }
     }
 
     skip(offset) {
         this._position += offset;
         if (this._position > this._length) {
-            throw new Error('Expected ' + (this._position - this._length) + ' more bytes. The file might be corrupted. Unexpected end of file.');
+            throw new Error(`Expected ${this._position - this._length} more bytes. The file might be corrupted. Unexpected end of file.`);
         }
     }
 
@@ -856,44 +843,44 @@ base.BinaryReader = class {
     int8() {
         const position = this._position;
         this.skip(1);
-        return this._view.getInt8(position, true);
+        return this._view.getInt8(position, this._littleEndian);
     }
 
     int16() {
         const position = this._position;
         this.skip(2);
-        return this._view.getInt16(position, true);
+        return this._view.getInt16(position, this._littleEndian);
     }
 
     int32() {
         const position = this._position;
         this.skip(4);
-        return this._view.getInt32(position, true);
+        return this._view.getInt32(position, this._littleEndian);
     }
 
     int64() {
         const position = this._position;
         this.skip(8);
-        return this._view.getInt64(position, true).toNumber();
+        return this._view.getInt64(position, this._littleEndian).toNumber();
     }
 
     uint16() {
         const position = this._position;
         this.skip(2);
-        return this._view.getUint16(position, true);
+        return this._view.getUint16(position, this._littleEndian);
     }
 
     uint32() {
         const position = this._position;
         this.skip(4);
-        return this._view.getUint32(position, true);
+        return this._view.getUint32(position, this._littleEndian);
     }
 
     uint64() {
         const position = this._position;
         this.skip(8);
-        const low = this._view.getUint32(position, true);
-        const high = this._view.getUint32(position + 4, true);
+        const low = this._view.getUint32(position, this._littleEndian);
+        const high = this._view.getUint32(position + 4, this._littleEndian);
         if (high === 0) {
             return low;
         }
@@ -907,13 +894,13 @@ base.BinaryReader = class {
     float32() {
         const position = this._position;
         this.skip(4);
-        return this._view.getFloat32(position, true);
+        return this._view.getFloat32(position, this._littleEndian);
     }
 
     float64() {
         const position = this._position;
         this.skip(8);
-        return this._view.getFloat64(position, true);
+        return this._view.getFloat64(position, this._littleEndian);
     }
 
     string() {
@@ -927,6 +914,87 @@ base.BinaryReader = class {
 
     boolean() {
         return this.byte() !== 0 ? true : false;
+    }
+};
+
+base.StreamReader = class {
+
+    constructor(stream, littleEndian) {
+        this._stream = stream;
+        this._littleEndian = littleEndian !== false;
+        this._buffer = new Uint8Array(8);
+        this._view = new DataView(this._buffer.buffer, this._buffer.byteOffset, this._buffer.byteLength);
+    }
+
+    get position() {
+        return this._stream.position;
+    }
+
+    get length() {
+        return this._stream.length;
+    }
+
+    seek(position) {
+        this._stream.seek(position);
+    }
+
+    skip(position) {
+        this._stream.skip(position);
+    }
+
+    stream(length) {
+        return this._stream.stream(length);
+    }
+
+    read(length) {
+        return this._stream.read(length);
+    }
+
+    byte() {
+        return this._stream.byte();
+    }
+
+    int16() {
+        const buffer = this._stream.read(2);
+        this._buffer.set(buffer, 0);
+        return this._view.getInt16(0, this._littleEndian);
+    }
+
+    int32() {
+        const buffer = this._stream.read(4);
+        this._buffer.set(buffer, 0);
+        return this._view.getInt32(0, this._littleEndian);
+    }
+
+    uint16() {
+        const buffer = this._stream.read(2);
+        this._buffer.set(buffer, 0);
+        return this._view.getUint16(0, this._littleEndian);
+    }
+
+    uint32() {
+        const buffer = this._stream.read(4);
+        this._buffer.set(buffer, 0);
+        return this._view.getUint32(0, this._littleEndian);
+    }
+
+    uint64() {
+        const low = this.uint32();
+        const high = this.uint32();
+        if (high === 0) {
+            return low;
+        }
+        const value = (high * 4294967296) + low;
+        if (Number.isSafeInteger(value)) {
+            return value;
+        }
+        throw new Error("Unsigned 64-bit value exceeds safe integer.");
+    }
+
+    float32() {
+        const buffer = this._stream.read(4);
+        this._buffer.set(buffer, 0);
+        return this._view.getFloat32(0, this._littleEndian);
     }
 };
 
@@ -994,13 +1062,13 @@ base.Telemetry = class {
             this._metadata.is_new_to_site = 1;
         }
         this.set('language', ((this._navigator && (this._navigator.language || this._navigator.browserLanguage)) || '').toLowerCase());
-        this.set('screen_resolution', (window.screen ? window.screen.width : 0) + 'x' + (window.screen ? window.screen.height : 0));
+        this.set('screen_resolution', `${window.screen ? window.screen.width : 0}x${window.screen ? window.screen.height : 0}`);
         if (this._navigator && this._navigator.userAgentData && this._navigator.userAgentData.getHighEntropyValues) {
             const values = await this._navigator.userAgentData.getHighEntropyValues([ 'platform', 'platformVersion', 'architecture', 'model', 'uaFullVersion', 'bitness', 'fullVersionList', 'wow64' ]);
             if (values) {
                 this.set('_user_agent_architecture', values.architecture);
                 this.set('_user_agent_bitness', values.bitness);
-                this.set('_user_agent_full_version_list', Array.isArray(values.fullVersionList) ? values.fullVersionList.map((h) => encodeURIComponent(h.brand || '') + ';' + encodeURIComponent(h.version || '')).join('|') : '');
+                this.set('_user_agent_full_version_list', Array.isArray(values.fullVersionList) ? values.fullVersionList.map((h) => `${encodeURIComponent(h.brand || '')};${encodeURIComponent(h.version || '')}`).join('|') : '');
                 this.set('_user_agent_mobile', values.mobile ? 1 : 0);
                 this.set('_user_agent_model', values.model);
                 this.set('_user_agent_platform', values.platform);
@@ -1050,11 +1118,11 @@ base.Telemetry = class {
                     params.engagement_time_msec = this._engagement_time_msec;
                     this._engagement_time_msec = 0;
                 }
-                const build = (entries) => entries.map(([name, value]) => name + '=' + encodeURIComponent(value)).join('&');
+                const build = (entries) => entries.map(([name, value]) => `${name}=${encodeURIComponent(value)}`).join('&');
                 this._cache = this._cache || build(Array.from(this._config));
                 const key = (name, value) => this._schema.get(name) || ('number' === typeof value && !isNaN(value) ? 'epn.' : 'ep.') + name;
                 const body = build(Object.entries(params).map(([name, value]) => [ key(name, value), value ]));
-                const url = 'https://analytics.google.com/g/collect?' + this._cache;
+                const url = `https://analytics.google.com/g/collect?${this._cache}`;
                 this._navigator.sendBeacon(url, body);
                 this._session[2] = this.get('session_engaged') || '0';
                 this.set('hit_count', this.get('hit_count') + 1);
@@ -1084,10 +1152,11 @@ base.Metadata = class {
 
     get extensions() {
         return [
-            'onnx', 'tflite', 'pb', 'pt', 'pth', 'h5', 'pbtxt', 'prototxt', 'caffemodel', 'mlmodel', 'mlpackage',
-            'model', 'json', 'xml', 'cfg', 'bin',
+            'onnx', 'tflite', 'pb', 'pt', 'pt2', 'pth', 'h5', 'pbtxt', 'prototxt', 'caffemodel', 'mlmodel', 'mlpackage',
+            'model', 'json', 'xml', 'cfg', 'weights', 'bin',
             'ort',
             'dnn', 'cmf',
+            'gguf',
             'hd5', 'hdf5', 'keras',
             'tfl', 'circle', 'lite',
             'mlnet', 'mar', 'maxviz', 'meta', 'nn', 'ngf', 'hn', 'har',
@@ -1114,5 +1183,6 @@ export const Complex64 = base.Complex64;
 export const Complex128 = base.Complex128;
 export const BinaryStream = base.BinaryStream;
 export const BinaryReader = base.BinaryReader;
+export const StreamReader = base.StreamReader;
 export const Telemetry = base.Telemetry;
 export const Metadata = base.Metadata;

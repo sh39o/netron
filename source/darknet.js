@@ -9,63 +9,57 @@ darknet.ModelFactory = class {
         const identifier = context.identifier;
         const extension = identifier.split('.').pop().toLowerCase();
         if (extension === 'weights') {
-            const weights = darknet.Weights.open(context.stream);
+            const weights = darknet.Weights.open(context);
             if (weights) {
-                return { name: 'darknet.weights', value: weights };
+                context.type = 'darknet.weights';
+                context.target = weights;
             }
-            return undefined;
+            return;
         }
         try {
             const reader = text.Reader.open(context.stream, 65536);
-            for (;;) {
-                const line = reader.read();
-                if (line === undefined) {
-                    break;
-                }
+            for (let line = reader.read(); line !== undefined; line = reader.read()) {
                 const content = line.trim();
-                if (content.length === 0 || content.startsWith('#')) {
-                    continue;
+                if (content.length > 0 && !content.startsWith('#')) {
+                    if (content.startsWith('[') && content.endsWith(']')) {
+                        context.type = 'darknet.model';
+                    }
+                    return;
                 }
-                if (content.startsWith('[') && content.endsWith(']')) {
-                    return { name: 'darknet.model', value: context.stream };
-                }
-                return undefined;
             }
         } catch (err) {
             // continue regardless of error
         }
-        return undefined;
     }
 
-    async open(context, target) {
+    async open(context) {
         const metadata = await context.metadata('darknet-metadata.json');
         const identifier = context.identifier;
         const parts = identifier.split('.');
         parts.pop();
         const basename = parts.join('.');
-        switch (target.name) {
+        switch (context.type) {
             case 'darknet.weights': {
-                const weights = target.value;
-                const name = basename + '.cfg';
+                const weights = context.target;
+                const name = `${basename}.cfg`;
                 const content = await context.fetch(name);
-                const buffer = content.stream.peek();
-                return new darknet.Model(metadata, buffer, weights);
+                const reader = new darknet.Reader(content.stream, content.identifier);
+                return new darknet.Model(metadata, reader, weights);
             }
             case 'darknet.model': {
-                const stream = target.value;
                 try {
-                    const name = basename + '.weights';
+                    const name = `${basename}.weights`;
                     const content = await context.fetch(name);
-                    const weights = darknet.Weights.open(content.stream);
-                    const buffer = stream.peek();
-                    return new darknet.Model(metadata, buffer, weights);
+                    const weights = darknet.Weights.open(content);
+                    const reader = new darknet.Reader(context.stream, context.identifier);
+                    return new darknet.Model(metadata, reader, weights);
                 } catch (error) {
-                    const buffer = stream.peek();
-                    return new darknet.Model(metadata, buffer, null);
+                    const reader = new darknet.Reader(context.stream, context.identifier);
+                    return new darknet.Model(metadata, reader, null);
                 }
             }
             default: {
-                throw new darknet.Error("Unsupported Darknet format '" + target + "'.");
+                throw new darknet.Error(`Unsupported Darknet format '${context.type}'.`);
             }
         }
     }
@@ -73,8 +67,8 @@ darknet.ModelFactory = class {
 
 darknet.Model = class {
 
-    constructor(metadata, cfg, weights) {
-        this._graphs = [ new darknet.Graph(metadata, cfg, weights) ];
+    constructor(metadata, reader, weights) {
+        this._graphs = [ new darknet.Graph(metadata, reader, weights) ];
     }
 
     get format() {
@@ -88,55 +82,12 @@ darknet.Model = class {
 
 darknet.Graph = class {
 
-    constructor(metadata, cfg, weights) {
+    constructor(metadata, reader, weights) {
         this._inputs = [];
         this._outputs = [];
         this._nodes = [];
-
-        // read_cfg
-        const sections = [];
-        let section = null;
-        const reader = text.Reader.open(cfg);
-        let lineNumber = 0;
-        for (;;) {
-            lineNumber++;
-            const content = reader.read();
-            if (content === undefined) {
-                break;
-            }
-            const line = content.replace(/\s/g, '');
-            if (line.length > 0) {
-                switch (line[0]) {
-                    case '#':
-                    case ';':
-                        break;
-                    case '[': {
-                        const type = line[line.length - 1] === ']' ? line.substring(1, line.length - 1) : line.substring(1);
-                        section = {
-                            line: lineNumber,
-                            type: type,
-                            options: {}
-                        };
-                        sections.push(section);
-                        break;
-                    }
-                    default: {
-                        if (!section || line[0] < 0x20 || line[0] > 0x7E) {
-                            throw new darknet.Error("Invalid cfg '" + content.replace(/[^\x20-\x7E]+/g, '?').trim() + "' at line " + lineNumber.toString() + ".");
-                        }
-                        const index = line.indexOf('=');
-                        if (index < 0) {
-                            throw new darknet.Error("Invalid cfg '" + content.replace(/[^\x20-\x7E]+/g, '?').trim() + "' at line " + lineNumber.toString() + ".");
-                        }
-                        const key = line.substring(0, index);
-                        const value = line.substring(index + 1);
-                        section.options[key] = value;
-                        break;
-                    }
-                }
-            }
-        }
         const params = {};
+        const sections = reader.read();
         const globals = new Map();
         const net = sections.shift();
         const option_find_int = (options, key, defaultValue) => {
@@ -148,7 +99,7 @@ darknet.Graph = class {
             if (value !== undefined) {
                 const number = parseInt(value, 10);
                 if (!Number.isInteger(number)) {
-                    throw new darknet.Error("Invalid int option '" + JSON.stringify(options[key]) + "'.");
+                    throw new darknet.Error(`Invalid int option '${JSON.stringify(options[key])}'.`);
                 }
                 return number;
             }
@@ -160,7 +111,7 @@ darknet.Graph = class {
         };
         const make_shape = (dimensions, source) => {
             if (dimensions.some((dimension) => dimension === 0 || dimension === undefined || isNaN(dimension))) {
-                throw new darknet.Error("Invalid tensor shape '" + JSON.stringify(dimensions) + "' in '" + source + "'.");
+                throw new darknet.Error(`Invalid tensor shape '${JSON.stringify(dimensions)}' in '${source}'.`);
             }
             return new darknet.TensorShape(dimensions);
         };
@@ -172,16 +123,16 @@ darknet.Graph = class {
             return new darknet.Argument(name, visible === false ? false : true, [ value ]);
         };
         const load_batch_normalize_weights = (layer, prefix, size) => {
-            layer.weights.push(load_weights(prefix + 'scale', [ size ], prefix === ''));
-            layer.weights.push(load_weights(prefix + 'mean', [ size ], prefix === ''));
-            layer.weights.push(load_weights(prefix + 'variance', [ size ], prefix === ''));
+            layer.weights.push(load_weights(`${prefix}scale`, [ size ], prefix === ''));
+            layer.weights.push(load_weights(`${prefix}mean`, [ size ], prefix === ''));
+            layer.weights.push(load_weights(`${prefix}variance`, [ size ], prefix === ''));
         };
         const make_convolutional_layer = (layer, prefix, w, h, c, n, groups, size, stride_x, stride_y, padding, batch_normalize) => {
             layer.out_w = Math.floor((w + 2 * padding - size) / stride_x) + 1;
             layer.out_h = Math.floor((h + 2 * padding - size) / stride_y) + 1;
             layer.out_c = n;
             layer.out = layer.out_w * layer.out_h * layer.out_c;
-            layer.weights.push(load_weights(prefix + 'biases', [ n ], prefix === ''));
+            layer.weights.push(load_weights(`${prefix}biases`, [ n ], prefix === ''));
             if (batch_normalize) {
                 if (prefix) {
                     load_batch_normalize_weights(layer, prefix, n);
@@ -191,7 +142,7 @@ darknet.Graph = class {
                     layer.chain.push({ type: 'batchnorm', layer: batchnorm_layer });
                 }
             }
-            layer.weights.push(load_weights(prefix + 'weights', [ Math.floor(c / groups), n, size, size ], prefix === ''));
+            layer.weights.push(load_weights(`${prefix}weights`, [ Math.floor(c / groups), n, size, size ], prefix === ''));
             layer.outputs[0].type = new darknet.TensorType('float32', make_shape([ layer.out_w, layer.out_h, layer.out_c ], 'make_convolutional_layer'));
         };
         const make_connected_layer = (layer, prefix, inputs, outputs, batch_normalize) => {
@@ -199,7 +150,7 @@ darknet.Graph = class {
             layer.out_w = 1;
             layer.out_c = outputs;
             layer.out = outputs;
-            layer.weights.push(load_weights(prefix + 'biases', [ outputs ], prefix === ''));
+            layer.weights.push(load_weights(`${prefix}biases`, [ outputs ], prefix === ''));
             if (batch_normalize) {
                 if (prefix) {
                     load_batch_normalize_weights(layer, prefix, outputs);
@@ -209,7 +160,7 @@ darknet.Graph = class {
                     layer.chain.push({ type: 'batchnorm', layer: batchnorm_layer });
                 }
             }
-            layer.weights.push(load_weights(prefix + 'weights', [ inputs, outputs ], prefix === ''));
+            layer.weights.push(load_weights(`${prefix}weights`, [ inputs, outputs ], prefix === ''));
             layer.outputs[0].type = new darknet.TensorType('float32', make_shape([ outputs ], 'make_connected_layer'));
         };
         if (sections.length === 0) {
@@ -228,7 +179,7 @@ darknet.Graph = class {
                 break;
             }
             default: {
-                throw new darknet.Error("Unexpected '[" + net.type + "]' section. First section must be [net] or [network].");
+                throw new darknet.Error(`Unexpected '[${net.type}]' section. First section must be [net] or [network].`);
             }
         }
         const inputType = params.w && params.h && params.c ?
@@ -828,7 +779,7 @@ darknet.Value = class {
 
     constructor(name, type, initializer) {
         if (typeof name !== 'string') {
-            throw new darknet.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
+            throw new darknet.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this._name = name;
         this._type = type;
@@ -955,7 +906,7 @@ darknet.Attribute = class {
                     break;
                 }
                 default: {
-                    throw new darknet.Error("Unsupported attribute type '" + this._type + "'.");
+                    throw new darknet.Error(`Unsupported attribute type '${this._type}'.`);
                 }
             }
             if (metadata && metadata.visible === false) {
@@ -1029,7 +980,7 @@ darknet.TensorShape = class {
 
     constructor(dimensions) {
         if (dimensions.some((dimension) => dimension === 0 || dimension === undefined || isNaN(dimension))) {
-            throw new darknet.Error("Invalid tensor shape '" + JSON.stringify(dimensions) + "'.");
+            throw new darknet.Error(`Invalid tensor shape '${JSON.stringify(dimensions)}'.`);
         }
         this._dimensions = dimensions;
     }
@@ -1043,40 +994,99 @@ darknet.TensorShape = class {
             if (this._dimensions.length == 0) {
                 return '';
             }
-            return '[' + this._dimensions.map((dimension) => dimension.toString()).join(',') + ']';
+            return `[${this._dimensions.map((dimension) => dimension.toString()).join(',')}]`;
         }
         return '';
     }
 };
 
+darknet.Reader = class {
+
+    constructor(stream, identifier) {
+        this.stream = stream;
+        this.identifier = identifier;
+    }
+
+    read() {
+        // read_cfg
+        const sections = [];
+        let section = null;
+        const reader = text.Reader.open(this.stream);
+        let lineNumber = 0;
+        const setup = /^setup.*\.cfg$/.test(this.identifier);
+        for (let content = reader.read(); content !== undefined; content = reader.read()) {
+            lineNumber++;
+            const line = content.replace(/\s/g, '');
+            if (line.length > 0) {
+                switch (line[0]) {
+                    case '#':
+                    case ';':
+                        break;
+                    case '[': {
+                        const type = line[line.length - 1] === ']' ? line.substring(1, line.length - 1) : line.substring(1);
+                        if (setup) {
+                            if (type === 'metadata' || type === 'global' || type === 'wheel' ||
+                                type === 'isort' || type === 'flake8' || type === 'build_ext' ||
+                                type.startsWith('bdist_') || type.startsWith('tool:') || type.startsWith('coverage:')) {
+                                throw new darknet.Error('Invalid file content. File contains Python setup configuration data.');
+                            }
+                        }
+                        section = {
+                            line: lineNumber,
+                            type: type,
+                            options: {}
+                        };
+                        sections.push(section);
+                        break;
+                    }
+                    default: {
+                        if (!section || line[0] < 0x20 || line[0] > 0x7E) {
+                            throw new darknet.Error(`Invalid cfg '${content.replace(/[^\x20-\x7E]+/g, '?').trim()}' at line ${lineNumber}.`);
+                        }
+                        const index = line.indexOf('=');
+                        if (index < 0) {
+                            throw new darknet.Error(`Invalid cfg '${content.replace(/[^\x20-\x7E]+/g, '?').trim()}' at line ${lineNumber}.`);
+                        }
+                        const key = line.substring(0, index);
+                        const value = line.substring(index + 1);
+                        section.options[key] = value;
+                        break;
+                    }
+                }
+            }
+        }
+        return sections;
+    }
+};
+
 darknet.Weights = class {
 
-    static open(stream) {
-        if (stream && stream.length >= 20) {
-            const buffer = stream.peek(12);
-            const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-            const major = view.getInt32(0, true);
-            const minor = view.getInt32(4, true);
-            view.getInt32(8, true); // revision
+    static open(context) {
+        const reader = context.reader;
+        if (reader && reader.length >= 20) {
+            const major = reader.int32();
+            const minor = reader.int32();
+            reader.int32(); // revision
             const transpose = (major > 1000) || (minor > 1000);
             if (!transpose) {
-                stream.skip(12 + (((major * 10 + minor) >= 2) ? 8 : 4));
-                return new darknet.Weights(stream);
+                reader.skip((major * 10 + minor) >= 2 ? 8 : 4);
+                return new darknet.Weights(reader);
             }
+            reader.seek(0);
         }
         return null;
     }
 
-    constructor(stream) {
-        this._stream = stream;
+    constructor(reader) {
+        this._reader = reader;
     }
 
     read(size) {
-        return this._stream.read(size);
+        return this._reader.read(size);
     }
 
     validate() {
-        if (this._stream.position != this._stream.length) {
+        if (this._reader.position != this._reader.length) {
             throw new darknet.Error('Invalid weights size.');
         }
     }

@@ -1,6 +1,4 @@
 
-import * as protobuf from './protobuf.js';
-
 const caffe = {};
 
 caffe.ModelFactory = class {
@@ -9,34 +7,36 @@ caffe.ModelFactory = class {
         const identifier = context.identifier;
         const extension = identifier.split('.').pop().toLowerCase();
         if (extension == 'caffemodel') {
-            return 'caffe.pb';
+            context.type = 'caffe.pb';
+            return;
         }
         if (identifier == 'saved_model.pbtxt' || identifier == 'saved_model.prototxt' ||
             identifier.endsWith('predict_net.pbtxt') || identifier.endsWith('predict_net.prototxt') ||
             identifier.endsWith('init_net.pbtxt') || identifier.endsWith('init_net.prototxt')) {
-            return undefined;
+            return;
         }
         const tags = context.tags('pbtxt');
         if (tags.has('layer') || tags.has('layers')) {
-            return 'caffe.pbtxt';
+            context.type = 'caffe.pbtxt';
+            return;
         }
         if (tags.has('net') || tags.has('train_net') || tags.has('net_param')) {
-            return 'caffe.pbtxt.solver';
+            context.type = 'caffe.pbtxt.solver';
+            return;
         }
-        return undefined;
     }
 
-    async open(context, target) {
-        await context.require('./caffe-proto');
-        caffe.proto = protobuf.get('caffe').caffe;
+    async open(context) {
+        caffe.proto = await context.require('./caffe-proto');
+        caffe.proto = caffe.proto.caffe;
         const openModel = async (context, netParameter) => {
             const metadata = await context.metadata('caffe-metadata.json');
             return new caffe.Model(metadata, netParameter);
         };
-        const openNetParameterText = (context, identifier, buffer) => {
+        const openNetParameterText = (context, identifier, content) => {
             let netParameter = null;
             try {
-                const reader = protobuf.TextReader.open(buffer);
+                const reader = content.read('protobuf.text');
                 reader.field = function(tag, message) {
                     const type = message.constructor.name;
                     if (tag.endsWith('_param') && (type == 'LayerParameter' || type == 'V1LayerParameter' || type == 'V0LayerParameter')) {
@@ -53,7 +53,7 @@ caffe.ModelFactory = class {
                         }
                         return;
                     }
-                    throw new Error("Unknown field '" + tag + "'" + this.location());
+                    throw new Error(`Unknown field '${tag}' ${this.location()}`);
                 };
                 reader.enum = function(type) {
                     const token = this.token();
@@ -83,20 +83,19 @@ caffe.ModelFactory = class {
                 netParameter = caffe.proto.NetParameter.decodeText(reader);
             } catch (error) {
                 const message = error && error.message ? error.message : error.toString();
-                throw new caffe.Error('File text format is not caffe.NetParameter (' + message.replace(/\.$/, '') + ').');
+                throw new caffe.Error(`File text format is not caffe.NetParameter (${message.replace(/\.$/, '')}).`);
             }
             return openModel(context, netParameter);
         };
-        switch (target) {
+        switch (context.type) {
             case 'caffe.pbtxt.solver': {
-                const stream = context.stream;
-                const reader = protobuf.TextReader.open(stream);
+                const reader = context.read('protobuf.text');
                 reader.field = function(tag, message) {
                     if (message instanceof caffe.proto.SolverParameter) {
                         message[tag] = this.read();
                         return;
                     }
-                    throw new Error("Unknown field '" + tag + "'" + this.location());
+                    throw new Error(`Unknown field '${tag}'${this.location()}`);
                 };
                 const solver = caffe.proto.SolverParameter.decodeText(reader);
                 if (solver.net_param) {
@@ -106,30 +105,28 @@ caffe.ModelFactory = class {
                 name = name.split('/').pop();
                 try {
                     const content = await context.fetch(name);
-                    const buffer = content.stream.peek();
-                    return openNetParameterText(context, name, buffer);
+                    return openNetParameterText(context, name, content);
                 } catch (error) {
                     const message = error.message ? error.message : error.toString();
-                    throw new caffe.Error("Failed to load '" + name + "' (" + message.replace(/\.$/, '') + ').');
+                    throw new caffe.Error(`Failed to load '${name}' (${message.replace(/\.$/, '')}).`);
                 }
             }
             case 'caffe.pbtxt': {
-                return openNetParameterText(context, context.identifier, context.stream.peek());
+                return openNetParameterText(context, context.identifier, context);
             }
             case 'caffe.pb': {
                 let netParameter = null;
                 try {
-                    const stream = context.stream;
-                    const reader = protobuf.BinaryReader.open(stream);
+                    const reader = context.read('protobuf.binary');
                     netParameter = caffe.proto.NetParameter.decode(reader);
                 } catch (error) {
                     const message = error && error.message ? error.message : error.toString();
-                    throw new caffe.Error('File format is not caffe.NetParameter (' + message.replace(/\.$/, '') + ').');
+                    throw new caffe.Error(`File format is not caffe.NetParameter (${message.replace(/\.$/, '')}).`);
                 }
                 return openModel(context, netParameter);
             }
             default: {
-                throw new caffe.Error("Unsupported Caffe format '" + target + "'.");
+                throw new caffe.Error(`Unsupported Caffe format '${context.type}'.`);
             }
         }
     }
@@ -191,7 +188,7 @@ caffe.Model = class {
     }
 
     get format() {
-        return 'Caffe' + (this._version ? ' v' + this._version.toString() : '');
+        return `Caffe${this._version ? ` v${this._version}` : ''}`;
     }
 
     get graphs() {
@@ -227,7 +224,7 @@ caffe.Graph = class {
         for (const layer of layers) {
             layer.input = layer.input.map((input) => scopes.has(input) ? scopes.get(input) : input);
             layer.output = layer.output.map((output) => {
-                const value = scopes.has(output) ? output + '\n' + index.toString() : output;
+                const value = scopes.has(output) ? `${output}\n${index}` : output;
                 scopes.set(output, value);
                 return value;
             });
@@ -253,7 +250,7 @@ caffe.Graph = class {
             if (!values.has(name)) {
                 values.set(name, new caffe.Value(name, type));
             } else if (type) {
-                throw new caffe.Error("Duplicate value '" + name + "'.");
+                throw new caffe.Error(`Duplicate value '${name}'.`);
             }
             return values.get(name);
         };
@@ -369,7 +366,7 @@ caffe.Value = class {
 
     constructor(name, type, initializer) {
         if (typeof name !== 'string') {
-            throw new caffe.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
+            throw new caffe.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this._name = name;
         this._type = type || null;
@@ -412,7 +409,7 @@ caffe.Node = class {
                 break;
             }
             default: {
-                throw new new caffe.Error("Unsupported Caffe version '" + version + "'.");
+                throw new new caffe.Error(`Unsupported Caffe version '${version}'.`);
             }
         }
         this._type = metadata.type(type) || { name: type };
@@ -463,7 +460,7 @@ caffe.Node = class {
                 break;
             }
             default: {
-                throw new caffe.Error("Unsupported Caffe version '" + version + "'.");
+                throw new caffe.Error(`Unsupported Caffe version '${version}'.`);
             }
         }
         this._inputs = [];
@@ -668,7 +665,7 @@ caffe.TensorShape = class {
     }
 
     toString() {
-        return this._dimensions ? ('[' + this._dimensions.map((dimension) => dimension.toString()).join(',') + ']') : '';
+        return this._dimensions ? (`[${this._dimensions.map((dimension) => dimension.toString()).join(',')}]`) : '';
     }
 };
 

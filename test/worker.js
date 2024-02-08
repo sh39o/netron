@@ -1,25 +1,15 @@
 
 import * as fs from 'fs/promises';
+import * as http from 'http';
+import * as https from 'https';
 import * as path from 'path';
 import * as process from 'process';
 import * as url from 'url';
 import * as worker_threads from 'worker_threads';
 import * as base from '../source/base.js';
-import * as view from '../source/view.js';
 import * as zip from '../source/zip.js';
 import * as tar from '../source/tar.js';
-
-const clearLine = () => {
-    if (process.stdout.clearLine) {
-        process.stdout.clearLine();
-    }
-};
-
-const write = (message) => {
-    if (process.stdout.write) {
-        process.stdout.write(message);
-    }
-};
+import * as view from '../source/view.js';
 
 const access = async (path) => {
     try {
@@ -28,6 +18,12 @@ const access = async (path) => {
     } catch (error) {
         return false;
     }
+};
+
+const dirname = (...args) => {
+    const file = url.fileURLToPath(import.meta.url);
+    const dir = path.dirname(file);
+    return path.join(dir, ...args);
 };
 
 const decompress = (buffer) => {
@@ -50,19 +46,11 @@ const host = {};
 
 host.TestHost = class {
 
-    constructor() {
-        this._window = global.window;
-        this._document = this._window.document;
-        const dirname = path.dirname(url.fileURLToPath(import.meta.url));
-        this._sourceDir = path.join(dirname, '..', 'source');
-    }
-
-    get window() {
-        return this._window;
-    }
-
-    get document() {
-        return this._document;
+    constructor(window) {
+        this.errors = [];
+        this.window = window;
+        this.document = window.document;
+        host.TestHost.source = host.TestHost.source || dirname('..', 'source');
     }
 
     async view(/* view */) {
@@ -82,15 +70,15 @@ host.TestHost = class {
     }
 
     async require(id) {
-        const file = path.join(this._sourceDir, id + '.js');
-        return await import('file://' + file);
+        const file = path.join(host.TestHost.source, `${id}.js`);
+        return await import(`file://${file}`);
     }
 
     async request(file, encoding, basename) {
-        const pathname = path.join(basename || this._sourceDir, file);
+        const pathname = path.join(basename || host.TestHost.source, file);
         const exists = await access(pathname);
         if (!exists) {
-            throw new Error("The file '" + file + "' does not exist.");
+            throw new Error(`The file '${file}' does not exist.`);
         }
         if (encoding) {
             const buffer = await fs.readFile(pathname, encoding);
@@ -103,8 +91,8 @@ host.TestHost = class {
     event(/* name, params */) {
     }
 
-    exception(err /*, fatal */) {
-        throw err;
+    exception(error /*, fatal */) {
+        this.errors.push(error);
     }
 };
 
@@ -143,43 +131,28 @@ host.TestHost.Context = class {
     }
 };
 
-global.Document = class {
+class CSSStyleDeclaration {
 
     constructor() {
-        this._elements = {};
-        this.documentElement = new HTMLElement();
-        this.body = new HTMLElement();
+        this._properties = new Map();
     }
 
-    createElement(/* name */) {
-        return new HTMLElement();
+    setProperty(name, value) {
+        this._properties.set(name, value);
     }
 
-    createElementNS(/* namespace, name */) {
-        return new HTMLElement();
+    removeProperty(name) {
+        this._properties.delete(name);
     }
+}
 
-    createTextNode(/* text */) {
-        return new HTMLElement();
+class DOMTokenList {
+
+    add(/* token */) {
     }
+}
 
-    getElementById(id) {
-        let element = this._elements[id];
-        if (!element) {
-            element = new HTMLElement();
-            this._elements[id] = element;
-        }
-        return element;
-    }
-
-    addEventListener(/* event, callback */) {
-    }
-
-    removeEventListener(/* event, callback */) {
-    }
-};
-
-global.HTMLElement = class {
+class HTMLElement {
 
     constructor() {
         this._childNodes = [];
@@ -192,8 +165,23 @@ global.HTMLElement = class {
 
     }
 
+    get lastChild() {
+        const index = this._childNodes.length - 1;
+        if (index >= 0) {
+            return this._childNodes[index];
+        }
+        return null;
+    }
+
     appendChild(node) {
         this._childNodes.push(node);
+    }
+
+    removeChild(node) {
+        const index = this._childNodes.lastIndexOf(node);
+        if (index !== -1) {
+            this._childNodes.splice(index, 1);
+        }
     }
 
     setAttribute(name, value) {
@@ -245,30 +233,53 @@ global.HTMLElement = class {
 
     focus() {
     }
-};
+}
 
-global.CSSStyleDeclaration = class {
+class Document {
 
     constructor() {
-        this._properties = new Map();
+        this._elements = {};
+        this._documentElement = new HTMLElement();
+        this._body = new HTMLElement();
     }
 
-    setProperty(name, value) {
-        this._properties.set(name, value);
+    get documentElement() {
+        return this._documentElement;
     }
 
-    removeProperty(name) {
-        this._properties.delete(name);
+    get body() {
+        return this._body;
     }
-};
 
-global.DOMTokenList = class {
-
-    add(/* token */) {
+    createElement(/* name */) {
+        return new HTMLElement();
     }
-};
 
-global.Window = class {
+    createElementNS(/* namespace, name */) {
+        return new HTMLElement();
+    }
+
+    createTextNode(/* text */) {
+        return new HTMLElement();
+    }
+
+    getElementById(id) {
+        let element = this._elements[id];
+        if (!element) {
+            element = new HTMLElement();
+            this._elements[id] = element;
+        }
+        return element;
+    }
+
+    addEventListener(/* event, callback */) {
+    }
+
+    removeEventListener(/* event, callback */) {
+    }
+}
+
+class Window {
 
     constructor() {
         this._document = new Document();
@@ -283,73 +294,39 @@ global.Window = class {
 
     removeEventListener(/* event, callback */) {
     }
-};
-
-const request = async (url, init) => {
-    const response = await fetch(url, init);
-    if (!response.ok) {
-        throw new Error(response.status.toString());
-    }
-    if (response.body) {
-        const reader = response.body.getReader();
-        const length = response.headers.has('Content-Length') ? Number(response.headers.get('Content-Length')) : -1;
-        let position = 0;
-        const stream = new ReadableStream({
-            start(controller) {
-                const read = async () => {
-                    try {
-                        const result = await reader.read();
-                        if (result.done) {
-                            clearLine();
-                            controller.close();
-                        } else {
-                            position += result.value.length;
-                            if (length >= 0) {
-                                const label = url.length > 70 ? url.substring(0, 66) + '...' : url;
-                                write('  (' + ('  ' + Math.floor(100 * (position / length))).slice(-3) + '%) ' + label + '\r');
-                            } else {
-                                write('  ' + position + ' bytes\r');
-                            }
-                            controller.enqueue(result.value);
-                            read();
-                        }
-                    } catch (error) {
-                        controller.error(error);
-                    }
-                };
-                read();
-            }
-        });
-        return new Response(stream, {
-            status: response.status,
-            statusText: response.statusText,
-            headers: response.headers
-        });
-    }
-    return response;
-};
+}
 
 export class Target {
 
-    constructor(host, item) {
+    constructor(item) {
         Object.assign(this, item);
-        this.host = host;
-        const target = item.target.split(',');
-        this.target = item.type ? target : target.map((target) => path.resolve(process.cwd(), target));
-        this.action = new Set((this.action || '').split(';'));
-        const dirname = path.dirname(url.fileURLToPath(import.meta.url));
-        this.folder = item.type ? path.normalize(path.join(dirname, '..', 'third_party' , 'test', item.type)) : '';
-        this.name = this.type ? this.type + '/' + this.target[0] : this.target[0];
+        this.events = {};
+        this.tags = new Set(this.tags);
+        this.folder = item.type ? path.normalize(dirname('..', 'third_party' , 'test', item.type)) : process.cwd();
         this.measures = new Map([ [ 'name', this.name ] ]);
     }
 
-    static async start() {
-        global.window = new Window();
-        await zip.Archive.import();
-        return new host.TestHost();
+    on(event, callback) {
+        this.events[event] = this.events[event] || [];
+        this.events[event].push(callback);
+    }
+
+    emit(event, data) {
+        if (this.events && this.events[event]) {
+            for (const callback of this.events[event]) {
+                callback(this, data);
+            }
+        }
+    }
+
+    status(message) {
+        this.emit('status', message);
     }
 
     async execute() {
+        await zip.Archive.import();
+        this.window = this.window || new Window();
+        this.host = await new host.TestHost(this.window);
         const time = async (method) => {
             const start = process.hrtime.bigint();
             let err = null;
@@ -364,29 +341,80 @@ export class Target {
                 throw err;
             }
         };
-        write(this.name + '\n');
-        clearLine();
-        await time(this.download);
+        this.status({ name: 'name', target: this.name });
+        const errors = [];
         try {
+            await time(this.download);
             await time(this.load);
             await time(this.validate);
-            if (!this.action.has('skip-render')) {
+            if (!this.tags.has('skip-render')) {
                 await time(this.render);
             }
-            if (this.error) {
-                throw new Error('Expected error.');
-            }
         } catch (error) {
-            if (!this.error || error.message !== this.error) {
-                throw error;
+            errors.push(error);
+        }
+        errors.push(...this.host.errors);
+        if (errors.length === 0 && this.error) {
+            throw new Error('Expected error.');
+        }
+        if (errors.length > 0 && (!this.error || errors.map((error) => error.message).join('\n') !== this.error)) {
+            throw errors[0];
+        }
+    }
+
+    async request(location) {
+        const request = new Promise((resolve, reject) => {
+            const url = new URL(location);
+            const request = url.protocol === 'https:' ? https.request(location) : http.request(location);
+            request.on('response', (response) => resolve(response));
+            request.on('error', (error) => reject(error));
+            request.end();
+        });
+        const response = await request;
+        const url = new URL(location);
+        switch (response.statusCode) {
+            case 200: {
+                return new Promise((resolve, reject) => {
+                    let position = 0;
+                    const data = [];
+                    const length = response.headers['content-length'] ? Number(response.headers['content-length']) : -1;
+                    response.on('data', (chunk) => {
+                        position += chunk.length;
+                        if (length >= 0) {
+                            const percent = position / length;
+                            this.status({ name: 'download', target: location, percent: percent });
+                        } else {
+                            this.status({ name: 'download', target: location, position: position });
+                        }
+                        data.push(chunk);
+                    });
+                    response.on('end', () => {
+                        this.status({ name: 'download' });
+                        resolve(Buffer.concat(data));
+                    });
+                    response.on('error', (error) => {
+                        this.status({ name: 'download' });
+                        reject(error);
+                    });
+                });
+            }
+            case 301:
+            case 302: {
+                location = response.headers.location;
+                const context = location.startsWith('http://') || location.startsWith('https://') ? '' : `${url.protocol}//${url.hostname}`;
+                response.destroy();
+                return this.request(context + location);
+            }
+            default: {
+                throw new Error(`${response.statusCode} ${location}`);
             }
         }
     }
 
     async download(targets, sources) {
-        targets = targets || Array.from(this.target);
+        targets = targets || Array.from(this.targets);
         sources = sources || this.source;
-        const files = targets.map((file) => path.join(this.folder, file));
+        const files = targets.map((file) => path.resolve(this.folder, file));
         const exists = await Promise.all(files.map((file) => access(file)));
         if (exists.every((value) => value)) {
             return;
@@ -412,23 +440,19 @@ export class Target {
             }
         }
         await Promise.all(targets.map((target) => {
-            const dir = path.dirname(this.folder + '/' + target);
+            const dir = path.dirname(`${this.folder}/${target}`);
             return fs.mkdir(dir, { recursive: true });
         }));
-        const response = await request(source);
-        const buffer = await response.arrayBuffer();
-        const data = new Uint8Array(buffer);
+        const data = await this.request(source);
         if (sourceFiles.length > 0) {
-            clearLine();
-            write('  decompress...\r');
+            this.status({ name: 'decompress' });
             const archive = decompress(data);
-            clearLine();
             for (const name of sourceFiles) {
-                write('  write ' + name + '\r');
+                this.status({ name: 'write', target: name });
                 if (name !== '.') {
                     const stream = archive.entries.get(name);
                     if (!stream) {
-                        throw new Error("Entry not found '" + name + '. Archive contains entries: ' + JSON.stringify(Array.from(archive.entries.keys())) + " .");
+                        throw new Error(`Entry not found '${name}. Archive contains entries: ${JSON.stringify(Array.from(archive.entries.keys()))} .`);
                     }
                     const target = targets.shift();
                     const buffer = stream.peek();
@@ -443,22 +467,19 @@ export class Target {
                     await fs.mkdir(dir, { recursive: true });
                     /* eslint-enable no-await-in-loop */
                 }
-                clearLine();
             }
         } else {
             const target = targets.shift();
-            clearLine();
-            write('  write ' + target + '\r');
-            await fs.writeFile(this.folder + '/' + target, data, null);
+            this.status({ name: 'write', target: target });
+            await fs.writeFile(`${this.folder}/${target}`, data, null);
         }
-        clearLine();
         if (targets.length > 0 && sources.length > 0) {
             await this.download(targets, sources);
         }
     }
 
     async load() {
-        const target = path.join(this.folder, this.target[0]);
+        const target = path.resolve(this.folder, this.targets[0]);
         const identifier = path.basename(target);
         const stat = await fs.stat(target);
         let context = null;
@@ -497,13 +518,16 @@ export class Target {
 
     validate() {
         if (!this.model.format || (this.format && this.format != this.model.format)) {
-            throw new Error("Invalid model format '" + this.model.format + "'.");
+            throw new Error(`Invalid model format '${this.model.format}'.`);
         }
         if (this.producer && this.model.producer != this.producer) {
-            throw new Error("Invalid producer '" + this.model.producer + "'.");
+            throw new Error(`Invalid producer '${this.model.producer}'.`);
         }
         if (this.runtime && this.model.runtime != this.runtime) {
-            throw new Error("Invalid runtime '" + this.model.runtime + "'.");
+            throw new Error(`Invalid runtime '${this.model.runtime}'.`);
+        }
+        if (this.model.metadata && !(this.model.metadata instanceof Map)) {
+            throw new Error("Invalid metadata.'");
         }
         if (this.assert) {
             for (const assert of this.assert) {
@@ -526,23 +550,29 @@ export class Target {
                             continue;
                         }
                     }
-                    throw new Error("Invalid property path: '" + parts[0]);
+                    throw new Error(`Invalid property path: '${parts[0]}`);
                 }
                 if (context !== value) {
-                    throw new Error("Invalid '" + context.toString() + "' != '" + assert + "'.");
+                    throw new Error(`Invalid '${context}' != '${assert}'.`);
                 }
             }
         }
         if (this.model.version || this.model.description || this.model.author || this.model.license) {
             // continue
         }
-        for (const graph of this.model.graphs) {
+        const validateGraph = (graph) => {
             const values = new Map();
             const validateValue = (value) => {
                 value.name.toString();
                 value.name.length;
                 value.description;
-                value.quantization;
+                if (value.quantization) {
+                    if (!this.tags.has('quantization')) {
+                        throw new Error("Invalid 'quantization' tag.");
+                    }
+                    const quantization = new view.Quantization(value.quantization);
+                    quantization.toString();
+                }
                 if (value.type) {
                     value.type.toString();
                 }
@@ -550,10 +580,10 @@ export class Target {
                     value.initializer.type.toString();
                     const tensor = new view.Tensor(value.initializer);
                     if (tensor.encoding !== '<' && tensor.encoding !== '>' && tensor.encoding !== '|') {
-                        throw new Error("Tensor encoding '" + tensor.encoding + "' is not implemented.");
+                        throw new Error(`Tensor encoding '${tensor.encoding}' is not implemented.`);
                     }
                     if (tensor.layout && (tensor.layout !== 'sparse' && tensor.layout !== 'sparse.coo')) {
-                        throw new Error("Tensor layout '" + tensor.layout + "' is not implemented.");
+                        throw new Error(`Tensor layout '${tensor.layout}' is not implemented.`);
                     }
                     if (!tensor.empty) {
                         if (tensor.type && tensor.type.dataType === '?') {
@@ -586,7 +616,7 @@ export class Target {
                     if (!values.has(value.name)) {
                         values.set(value.name, value);
                     } else if (value !== values.get(value.name)) {
-                        throw new Error("Duplicate value '" + value.name + "'.");
+                        throw new Error(`Duplicate value '${value.name}'.`);
                     }
                 }
             };
@@ -607,7 +637,10 @@ export class Target {
             for (const node of graph.nodes) {
                 const type = node.type;
                 if (!type || typeof type.name != 'string') {
-                    throw new Error("Invalid node type '" + JSON.stringify(node.type) + "'.");
+                    throw new Error(`Invalid node type '${JSON.stringify(node.type)}'.`);
+                }
+                if (Array.isArray(type.nodes)) {
+                    validateGraph(type);
                 }
                 view.Documentation.format(type);
                 node.name.toString();
@@ -616,11 +649,17 @@ export class Target {
                 for (const attribute of node.attributes) {
                     attribute.name.toString();
                     attribute.name.length;
-                    let value = new view.Formatter(attribute.value, attribute.type).toString();
-                    if (value && value.length > 1000) {
-                        value = value.substring(0, 1000) + '...';
+                    const type = attribute.type;
+                    const value = attribute.value;
+                    if ((type === 'graph' || type === 'function') && value && Array.isArray(value.nodes)) {
+                        validateGraph(value);
+                    } else {
+                        let text = new view.Formatter(attribute.value, attribute.type).toString();
+                        if (text && text.length > 1000) {
+                            text = `${text.substring(0, 1000)}...`;
+                        }
+                        /* value = */ text.split('<');
                     }
-                    /* value = */ value.split('<');
                 }
                 for (const input of node.inputs) {
                     input.name.toString();
@@ -644,6 +683,9 @@ export class Target {
                 }
                 // new dialog.NodeSidebar(host, node);
             }
+        };
+        for (const graph of this.model.graphs) {
+            validateGraph(graph);
         }
     }
 
@@ -655,19 +697,34 @@ export class Target {
     }
 }
 
-const main = async () => {
-    const __host__ = await Target.start();
+const main = () => {
     worker_threads.parentPort.on('message', async (message) => {
-        const data = {};
+        const response = {};
         try {
-            const target = new Target(__host__, message);
-            data.name = target.name;
+            const target = new Target(message);
+            response.type = 'complete';
+            response.target = target.name;
+            target.on('status', (_, message) => {
+                message = Object.assign({ type: 'status' }, message);
+                worker_threads.parentPort.postMessage(message);
+            });
             await target.execute();
-            data.measures = target.measures;
+            response.measures = target.measures;
         } catch (error) {
-            data.error = error.message;
+            response.type = 'error';
+            response.error = {
+                name: error.name,
+                message: error.message
+            };
+            const cause = error.cause;
+            if (cause) {
+                response.error.cause = {
+                    name: cause.name,
+                    message: cause.message
+                };
+            }
         }
-        worker_threads.parentPort.postMessage(data);
+        worker_threads.parentPort.postMessage(response);
     });
 };
 

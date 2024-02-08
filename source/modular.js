@@ -6,13 +6,13 @@ modular.ModelFactory = class {
     match(context) {
         const obj = context.peek('json');
         if (obj && obj.signature == "netron:modular") {
-            return obj;
+            context.type = 'modular';
+            context.target = obj;
         }
-        return null;
     }
 
-    async open(context, target) {
-        return new modular.Model(target);
+    async open(context) {
+        return new modular.Model(context.target);
     }
 };
 
@@ -72,7 +72,7 @@ modular.Value = class {
 
     constructor(name, value) {
         if (typeof name !== 'string') {
-            throw new modular.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
+            throw new modular.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this._name = name;
         this._value = value;

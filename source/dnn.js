@@ -1,8 +1,6 @@
 
 // Experimental
 
-import * as protobuf from './protobuf.js';
-
 const dnn = {};
 
 dnn.ModelFactory = class {
@@ -10,22 +8,20 @@ dnn.ModelFactory = class {
     match(context) {
         const tags = context.tags('pb');
         if (tags.get(4) == 0 && tags.get(10) == 2) {
-            return { name: 'dnn' };
+            context.type = 'dnn';
         }
-        return undefined;
     }
 
     async open(context) {
-        await context.require('./dnn-proto');
+        dnn.proto = await context.require('./dnn-proto');
+        dnn.proto = dnn.proto.dnn;
         let model = null;
         try {
-            dnn.proto = protobuf.get('dnn').dnn;
-            const stream = context.stream;
-            const reader = protobuf.BinaryReader.open(stream);
+            const reader = context.read('protobuf.binary');
             model = dnn.proto.Model.decode(reader);
         } catch (error) {
             const message = error && error.message ? error.message : error.toString();
-            throw new dnn.Error('File format is not dnn.Graph (' + message.replace(/\.$/, '') + ').');
+            throw new dnn.Error(`File format is not dnn.Graph (${message.replace(/\.$/, '')}).`);
         }
         const metadata = await context.metadata('dnn-metadata.json');
         return new dnn.Model(metadata, model);
@@ -36,7 +32,7 @@ dnn.Model = class {
 
     constructor(metadata, model) {
         this.name = model.name || '';
-        this.format = 'SnapML' + (model.version ? ' v' + model.version.toString() : '');
+        this.format = `SnapML${model.version ? ` v${model.version}` : ''}`;
         this.graphs = [ new dnn.Graph(metadata, model) ];
     }
 };
@@ -52,7 +48,7 @@ dnn.Graph = class {
         for (const node of model.node) {
             node.input = node.input.map((input) => scope[input] ? scope[input] : input);
             node.output = node.output.map((output) => {
-                scope[output] = scope[output] ? output + '\n' + index.toString() : output; // custom argument id
+                scope[output] = scope[output] ? `${output}\n${index}` : output; // custom argument id
                 return scope[output];
             });
             index++;
@@ -113,19 +109,17 @@ dnn.Value = class {
 
     constructor(name, type, initializer, quantization) {
         if (typeof name !== 'string') {
-            throw new dnn.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
+            throw new dnn.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this.name = name;
         this.type = type || null;
         this.initializer = initializer || null;
-        this._quantization = quantization || null;
-    }
-
-    get quantization() {
-        if (this._quantization) {
-            return this._quantization.map((value, index) => index.toString() + ' = ' + value.toString()).join('; ');
+        if (quantization) {
+            this.quantization = {
+                type: 'lookup',
+                value: new Map(quantization.map((value, index) => [ index, value ]))
+            };
         }
-        return null;
     }
 };
 
@@ -247,7 +241,7 @@ dnn.TensorShape = class {
         if (!this.dimensions || this.dimensions.length == 0) {
             return '';
         }
-        return '[' + this.dimensions.join(',') + ']';
+        return `[${this.dimensions.join(',')}]`;
     }
 };
 

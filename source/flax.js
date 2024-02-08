@@ -12,10 +12,9 @@ flax.ModelFactory = class {
         if (stream.length > 4) {
             const buffer = stream.peek(1);
             if (buffer[0] === 0xDE || buffer[0] === 0xDF || ((buffer[0] & 0x80) === 0x80)) {
-                return 'msgpack.map';
+                context.type = 'flax.msgpack.map';
             }
         }
-        return null;
     }
 
     async open(context) {
@@ -32,7 +31,7 @@ flax.ModelFactory = class {
                     return execution.invoke('numpy.ndarray', [ tuple[0], dtype, tuple[2] ]);
                 }
                 default: {
-                    throw new flax.Error("Unsupported MessagePack extension '" + code + "'.");
+                    throw new flax.Error(`Unsupported MessagePack extension '${code}'.`);
                 }
             }
         };
@@ -99,7 +98,7 @@ flax.Value = class {
 
     constructor(name, initializer) {
         if (typeof name !== 'string') {
-            throw new flax.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
+            throw new flax.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this.name = name;
         this.type = initializer ? initializer.type : null;
@@ -159,7 +158,7 @@ flax.TensorShape = class {
 
     toString() {
         return (Array.isArray(this.dimensions) && this.dimensions.length > 0) ?
-            '[' + this.dimensions.join(',') + ']' : '';
+            `[${this.dimensions.join(',')}]` : '';
     }
 };
 

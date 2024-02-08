@@ -1,29 +1,23 @@
-
-import * as protobuf from './protobuf.js';
-
 const xmodel = {};
-
 xmodel.ModelFactory = class {
 
     match(context) {
         const tags = context.tags('pb');
         if (tags.get(5) === 2) {
-            return 'xmodel.pb';
+            context.type = 'xmodel.pb';
         }
-        return undefined;
     }
 
     async open(context) {
-        await context.require('./xmodel-proto');
+        xmodel.proto = await context.require('./xmodel-proto');
+        xmodel.proto = xmodel.proto.serial_v2;
         let graph = null;
         try {
-            xmodel.proto = protobuf.get('xmodel').serial_v2;
-            const stream = context.stream;
-            const reader = protobuf.BinaryReader.open(stream);
+            const reader = context.read('protobuf.binary');
             graph = xmodel.proto.Graph.decode(reader);
         } catch (error) {
             const message = error && error.message ? error.message : error.toString();
-            throw new xmodel.Error('File format is not serial_v2.Graph (' + message.replace(/\.$/, '') + ').');
+            throw new xmodel.Error(`File format is not serial_v2.Graph (${message.replace(/\.$/, '')}).`);
         }
         return new xmodel.Model(graph);
     }
@@ -76,7 +70,8 @@ xmodel.Graph = class {
                 }
             }
             if (node.args.length === 0 && counts.get(node.op_name) === 1) {
-                if (node.op_type === 'const-fix' || (node.op_type === 'const' && node.output_tensor.data_type !== 4)) {  // const fp32 will show in netron
+                if ((node.op_type === 'const-fix' || node.op_type === 'const') &&               
+                    this.root_subg.subg_child.length > 0) {
                     values.map(node.op_name, node, true);
                     const_nodes.push(node);
                     continue;
@@ -179,7 +174,7 @@ xmodel.Value = class {
 
     constructor(name, node, initializer) {
         if (typeof name !== 'string') {
-            throw new xmodel.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
+            throw new xmodel.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this.name = name;
         if (node) {
@@ -344,9 +339,16 @@ xmodel.TensorType = class {
             Object.keys(attr)
               .sort()
               .forEach((key) => {
-                denotation.push(
-                  `${key}: ${attr[key]}`
-                );
+                let value = attr[key];
+                if (
+                  typeof value === "object" &&
+                  "value" in value &&
+                  value.value.length > 0 &&
+                  value.value.constructor.name.endsWith("Array")
+                ) {
+                  value = "[" + value.value.join(", ") + "]";
+                }
+                denotation.push(`${key}: ${value}`);
               });
             this.denotation = '\n' + denotation.join('\n');
         }
@@ -367,7 +369,7 @@ xmodel.TensorShape = class {
         if (!this.dimensions || this.dimensions.length == 0) {
             return '';
         }
-        return '[' + this.dimensions.map((dimension) => dimension.toString()).join(',') + ']';
+        return `[${this.dimensions.map((dimension) => dimension.toString()).join(',')}]`;
     }
 };
 
@@ -541,7 +543,7 @@ xmodel.Metadata = class {
                 return attribute;
             });
             for (const attribute of type.attributes) {
-                this._attributes.set(type.name + ':' + attribute.name, attribute);
+                this._attributes.set(`${type.name}:${attribute.name}`, attribute);
             }
             this._types.set(type.name, type);
         }
@@ -555,7 +557,7 @@ xmodel.Metadata = class {
     }
 
     attribute(type, name) {
-        const key = type + ':' + name;
+        const key = `${type}:${name}`;
         return this._attributes.get(key);
     }
 };

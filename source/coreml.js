@@ -1,6 +1,5 @@
 
 import * as base from './base.js';
-import * as protobuf from './protobuf.js';
 
 const coreml = {};
 
@@ -26,15 +25,17 @@ coreml.ModelFactory = class {
                     (key >= 2000 && key < 2010) ||
                     (key === 3000);
                 if (!keys.some((key) => match(key))) {
-                    return null;
+                    return;
                 }
             }
-            return 'coreml.pb';
+            context.type = 'coreml.pb';
+            return;
         }
         if (extension === 'pbtxt') {
             const tags = context.tags('pbtxt');
             if (tags.has('specificationVersion') && tags.has('description')) {
-                return 'coreml.pbtxt';
+                context.type = 'coreml.pbtxt';
+                return;
             }
         }
         if (identifier === 'manifest.json') {
@@ -42,20 +43,23 @@ coreml.ModelFactory = class {
             if (obj && obj.rootModelIdentifier && obj.itemInfoEntries) {
                 const entries = Object.keys(obj.itemInfoEntries).map((key) => obj.itemInfoEntries[key]);
                 if (entries.filter((entry) => entry.path.toLowerCase().endsWith('.mlmodel').length === 1)) {
-                    return 'coreml.manifest';
+                    context.type = 'coreml.manifest';
+                    return;
                 }
             }
         }
         if (identifier === 'metadata.json') {
             const obj = context.peek('json');
             if (obj && obj.rootModelIdentifier && obj.itemInfoEntries) {
-                return 'coreml.metadata';
+                context.type = 'coreml.metadata';
+                return;
             }
         }
         if (identifier === 'featuredescriptions.json') {
             const obj = context.peek('json');
             if (obj && (obj.Inputs || obj.Outputs)) {
-                return 'coreml.featuredescriptions';
+                context.type = 'coreml.featuredescriptions';
+                return;
             }
         }
         if (extension === 'bin' && stream.length > 16) {
@@ -63,25 +67,25 @@ coreml.ModelFactory = class {
             for (let i = 0; i < buffer.length - 4; i++) {
                 const signature = (buffer[i] | buffer[i + 1] << 8 | buffer[i + 2] << 16 | buffer [i + 3] << 24) >>> 0;
                 if (signature === 0xdeadbeef) {
-                    return 'coreml.weights';
+                    context.type = 'coreml.weights';
+                    return;
                 }
             }
         }
-        return undefined;
     }
 
-    async open(context, target) {
-        await context.require('./coreml-proto');
+    async open(context) {
+        coreml.proto = await context.require('./coreml-proto');
+        coreml.proto = coreml.proto.CoreML.Specification;
         const metadata = await context.metadata('coreml-metadata.json');
-        const openBinary = async (stream, context, path, format) => {
+        const openBinary = async (content, context, path, format) => {
             let model = null;
             try {
-                coreml.proto = protobuf.get('coreml').CoreML.Specification;
-                const reader = protobuf.BinaryReader.open(stream);
+                const reader = content.read('protobuf.binary');
                 model = coreml.proto.Model.decode(reader);
             } catch (error) {
                 const message = error && error.message ? error.message : error.toString();
-                throw new coreml.Error('File format is not coreml.Model (' + message.replace(/\.$/, '') + ').');
+                throw new coreml.Error(`File format is not coreml.Model (${message.replace(/\.$/, '')}).`);
             }
             const weightPaths = new Set();
             const walkProgram = (program) => {
@@ -122,7 +126,7 @@ coreml.ModelFactory = class {
             if (weightPaths.size > 0) {
                 const folder = path.replace(/\/[^/]*$/, '');
                 const keys = Array.from(weightPaths);
-                const paths = keys.map((path) => path.replace(/^@model_path\//, folder + '/'));
+                const paths = keys.map((path) => path.replace(/^@model_path\//, `${folder}/`));
                 try {
                     const contexts = await Promise.all(paths.map((path) => context.fetch(path)));
                     for (let i = 0; i < keys.length; i++) {
@@ -134,15 +138,14 @@ coreml.ModelFactory = class {
             }
             return new coreml.Model(metadata, format, model, weights);
         };
-        const openText = async (stream) => {
+        const openText = async (context) => {
             let model = null;
             try {
-                coreml.proto = protobuf.get('coreml').CoreML.Specification;
-                const reader = protobuf.TextReader.open(stream);
+                const reader = context.read('protobuf.text');
                 model = coreml.proto.Model.decodeText(reader);
             } catch (error) {
                 const message = error && error.message ? error.message : error.toString();
-                throw new coreml.Error('File format is not coreml.Model (' + message.replace(/\.$/, '') + ').');
+                throw new coreml.Error(`File format is not coreml.Model (${message.replace(/\.$/, '')}).`);
             }
             const weights = new Map();
             return new coreml.Model(metadata, null, model, weights);
@@ -152,22 +155,22 @@ coreml.ModelFactory = class {
             if (entries.length !== 1) {
                 throw new coreml.Error('Manifest does not contain Core ML model.');
             }
-            const name = path + 'Data/' + entries[0].path;
+            const name = `${path}Data/${entries[0].path}`;
             const content = await context.fetch(name);
-            return openBinary(content.stream, context, name, 'Core ML Package');
+            return openBinary(content, context, name, 'Core ML Package');
         };
         const openManifestStream = async (context, path) => {
-            const name = path + 'Manifest.json';
+            const name = `${path}Manifest.json`;
             const content = await context.fetch(name);
             const obj = content.read('json');
             return openManifest(obj, context, path);
         };
-        switch (target) {
+        switch (context.type) {
             case 'coreml.pb': {
-                return openBinary(context.stream, context, context.identifier);
+                return openBinary(context, context, context.identifier);
             }
             case 'coreml.pbtxt': {
-                return openText(context.stream, context, context.identifier);
+                return openText(context, context, context.identifier);
             }
             case 'coreml.manifest': {
                 const obj = context.peek('json');
@@ -181,7 +184,7 @@ coreml.ModelFactory = class {
                 return openManifestStream(context, '../../../');
             }
             default: {
-                throw new coreml.Error("Unsupported Core ML format '" + target + "'.");
+                throw new coreml.Error(`Unsupported Core ML format '${context.type}'.`);
             }
         }
     }
@@ -190,8 +193,8 @@ coreml.ModelFactory = class {
 coreml.Model = class {
 
     constructor(metadata, format, model, weights) {
-        this.format = (format || 'Core ML') + ' v' + model.specificationVersion.toString();
-        this.metadata = [];
+        this.format = `${format || 'Core ML'} v${model.specificationVersion}`;
+        this.metadata = new Map();
         const context = new coreml.Context(metadata, model, weights);
         const graph = new coreml.Graph(context);
         this.graphs = [ graph ];
@@ -204,10 +207,10 @@ coreml.Model = class {
                 this.description = properties.shortDescription;
             }
             if (properties.author) {
-                this.metadata.push({ name: 'author', value: properties.author });
+                this.metadata.set('author', properties.author);
             }
             if (properties.license) {
-                this.metadata.push({ name: 'license', value: properties.license });
+                this.metadata.set('license', properties.license);
             }
             if (metadata.userDefined && Object.keys(properties.userDefined).length > 0) {
                 /* empty */
@@ -271,7 +274,7 @@ coreml.Value = class {
 
     constructor(name, type, description, initializer) {
         if (typeof name !== 'string') {
-            throw new coreml.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
+            throw new coreml.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this.name = name;
         this.type = type ? type : initializer ? initializer.type : null;
@@ -345,26 +348,36 @@ coreml.Tensor = class {
 
     constructor(type, values, quantization, category) {
         this.type = type;
-        this.encoding = type.dataType === 'float32' ? '|' : '<';
         this.values = values;
         this.category = category;
         this._quantization = quantization;
-    }
-
-    get quantization() {
-        if (this._quantization) {
-            if (this._quantization.lookupTableQuantization &&
-                this._quantization.lookupTableQuantization.floatValue &&
-                this._quantization.lookupTableQuantization.floatValue.length > 0) {
-                const map = [];
-                for (const key of Object.keys(this._quantization.lookupTableQuantization.floatValue)) {
-                    map.push(key.toString() + ' = ' + this._quantization.lookupTableQuantization.floatValue[key].toString());
-                }
-                return map.join('; ');
-            }
-            return '?';
+        if (type.dataType === 'float32') {
+            this.encoding = '|';
+        } else if ((type.dataType.startsWith('uint') && type.dataType.length === 5) ||
+                   (type.dataType.startsWith('int')  && type.dataType.length === 4)) {
+            this.encoding = '>';
+        } else {
+            this.encoding = '<';
         }
-        return null;
+        if (quantization &&
+            quantization.linearQuantization &&
+            Array.isArray(quantization.linearQuantization.scale) &&
+            Array.isArray(quantization.linearQuantization.bias)) {
+            this.quantization = {
+                type: 'linear',
+                scale: quantization.linearQuantization.scale,
+                bias: quantization.linearQuantization.bias
+            };
+        }
+        if (quantization &&
+            quantization.lookupTableQuantization &&
+            quantization.lookupTableQuantization.floatValue &&
+            quantization.lookupTableQuantization.floatValue.length > 0) {
+            this.quantization = {
+                type: 'lookup',
+                value: quantization.lookupTableQuantization.floatValue
+            };
+        }
     }
 };
 
@@ -398,7 +411,7 @@ coreml.TensorShape = class {
 
     toString() {
         return Array.isArray(this.dimensions) && this.dimensions.length > 0 ?
-            '[' + this.dimensions.map((dimension) => dimension.toString()).join(',') + ']' : '';
+            `[${this.dimensions.map((dimension) => dimension.toString()).join(',')}]` : '';
     }
 };
 
@@ -413,7 +426,7 @@ coreml.ListType = class {
     }
 
     toString() {
-        return 'list<' + this.elementType.toString() + '>';
+        return `list<${this.elementType}>`;
     }
 };
 
@@ -424,8 +437,12 @@ coreml.MapType = class {
         this.valueType = valueType;
     }
 
+    equals(obj) {
+        return obj instanceof coreml.MapType && this.keyType.equals(obj.keyType) && this.valueType.equals(obj.valueType);
+    }
+
     toString() {
-        return 'map<' + this.keyType + ',' + this.valueType.toString() + '>';
+        return `map<${this.keyType},${this.valueType}>`;
     }
 };
 
@@ -435,8 +452,12 @@ coreml.SequenceType = class {
         this.type = type;
     }
 
+    equals(obj) {
+        return obj instanceof coreml.SequenceType && this.type.equals(obj.type);
+    }
+
     toString() {
-        return 'sequence<' + this.type + '>';
+        return `sequence<${this.type}>`;
     }
 };
 
@@ -459,7 +480,7 @@ coreml.ImageType = class {
                 this.colorSpace = 'grayscale:float16';
                 break;
             default:
-                throw new coreml.Error("Unsupported image color space '" + colorSpace + "'.");
+                throw new coreml.Error(`Unsupported image color space '${colorSpace}'.`);
         }
     }
 
@@ -468,7 +489,7 @@ coreml.ImageType = class {
     }
 
     toString() {
-        return 'image<' + this.colorSpace + ',' + this.width. toString() + 'x' + this.height.toString() + '>';
+        return `image<${this.colorSpace},${this.width. toString()}x${this.height}>`;
     }
 };
 
@@ -478,8 +499,12 @@ coreml.OptionalType = class {
         this.type = type;
     }
 
+    equals(obj) {
+        return obj instanceof coreml.OptionalType && this.type.equals(obj.type);
+    }
+
     toString() {
-        return 'optional<' + this.type.toString() + '>';
+        return `optional<${this.type}>`;
     }
 };
 
@@ -536,12 +561,12 @@ coreml.Context = class {
         if (!this.values.has(name)) {
             const value = { counter: 0, name: name, to: [], from: [] };
             this.values.set(name, value);
-            const key = name + '|' + value.counter.toString();
+            const key = `${name}|${value.counter}`;
             this.values.set(key, value);
         } else {
             const value = Object.assign({}, this.values.get(name));
             value.counter++;
-            value.name = name + '|' + value.counter.toString(); // custom argument id
+            value.name = `${name}|${value.counter}`; // custom argument id
             this.values.set(name, value);
             this.values.set(value.name, value);
         }
@@ -600,7 +625,7 @@ coreml.Context = class {
                 } else if (data.rawValue && data.rawValue.length > 0) {
                     if (data.quantization) {
                         values = data.rawValue;
-                        dataType = 'uint' + data.quantization.numberOfBits.toString();
+                        dataType = `uint${data.quantization.numberOfBits}`;
                     } else {
                         shape = [];
                     }
@@ -699,24 +724,24 @@ coreml.Context = class {
                     for (let i = 0; i < count; i++) {
                         const weights = count == 1 ? data.weightParams : data.weightParams[i];
                         const suffix = (i == 0) ? '' : '_rev';
-                        initializer(type, 'inputGateWeightMatrix' + suffix, [h,x], weights.inputGateWeightMatrix);
-                        initializer(type, 'forgetGateWeightMatrix' + suffix, [h,x], weights.forgetGateWeightMatrix);
-                        initializer(type, 'blockInputWeightMatrix' + suffix, [h,x], weights.blockInputWeightMatrix);
-                        initializer(type, 'outputGateWeightMatrix' + suffix, [h,x], weights.outputGateWeightMatrix);
-                        initializer(type, 'inputGateRecursionMatrix' + suffix, [h,h], weights.inputGateRecursionMatrix);
-                        initializer(type, 'forgetGateRecursionMatrix' + suffix, [h,h],weights.forgetGateRecursionMatrix);
-                        initializer(type, 'blockInputRecursionMatrix' + suffix, [h,h], weights.blockInputRecursionMatrix);
-                        initializer(type, 'outputGateRecursionMatrix' + suffix, [h,h], weights.outputGateRecursionMatrix);
+                        initializer(type, `inputGateWeightMatrix${suffix}`, [h,x], weights.inputGateWeightMatrix);
+                        initializer(type, `forgetGateWeightMatrix${suffix}`, [h,x], weights.forgetGateWeightMatrix);
+                        initializer(type, `blockInputWeightMatrix${suffix}`, [h,x], weights.blockInputWeightMatrix);
+                        initializer(type, `outputGateWeightMatrix${suffix}`, [h,x], weights.outputGateWeightMatrix);
+                        initializer(type, `inputGateRecursionMatrix${suffix}`, [h,h], weights.inputGateRecursionMatrix);
+                        initializer(type, `forgetGateRecursionMatrix${suffix}`, [h,h],weights.forgetGateRecursionMatrix);
+                        initializer(type, `blockInputRecursionMatrix${suffix}`, [h,h], weights.blockInputRecursionMatrix);
+                        initializer(type, `outputGateRecursionMatrix${suffix}`, [h,h], weights.outputGateRecursionMatrix);
                         if (data.params.hasBiasVectors) {
-                            initializer(type, 'inputGateBiasVector' + suffix, [h], weights.inputGateBiasVector);
-                            initializer(type, 'forgetGateBiasVector' + suffix, [h], weights.forgetGateBiasVector);
-                            initializer(type, 'blockInputBiasVector' + suffix, [h], weights.blockInputBiasVector);
-                            initializer(type, 'outputGateBiasVector' + suffix, [h], weights.outputGateBiasVector);
+                            initializer(type, `inputGateBiasVector${suffix}`, [h], weights.inputGateBiasVector);
+                            initializer(type, `forgetGateBiasVector${suffix}`, [h], weights.forgetGateBiasVector);
+                            initializer(type, `blockInputBiasVector${suffix}`, [h], weights.blockInputBiasVector);
+                            initializer(type, `outputGateBiasVector${suffix}`, [h], weights.outputGateBiasVector);
                         }
                         if (data.params.hasPeepholeVectors) {
-                            initializer(type, 'inputGatePeepholeVector' + suffix, [h], weights.inputGatePeepholeVector);
-                            initializer(type, 'forgetGatePeepholeVector' + suffix, [h], weights.forgetGatePeepholeVector);
-                            initializer(type, 'outputGatePeepholeVector' + suffix, [h], weights.outputGatePeepholeVector);
+                            initializer(type, `inputGatePeepholeVector${suffix}`, [h], weights.inputGatePeepholeVector);
+                            initializer(type, `forgetGatePeepholeVector${suffix}`, [h], weights.forgetGatePeepholeVector);
+                            initializer(type, `outputGatePeepholeVector${suffix}`, [h], weights.outputGatePeepholeVector);
                         }
                     }
                     return { 'weightParams': true };
@@ -812,19 +837,19 @@ coreml.Context = class {
             }
             case 'pipeline': {
                 for (let i = 0; i < model.pipeline.models.length; i++) {
-                    this.model(model.pipeline.models[i], (group ? (group + '/') : '') + 'pipeline[' + i.toString() + ']', description);
+                    this.model(model.pipeline.models[i], `${group ? (`${group}/`) : ''}pipeline[${i}]`, description);
                 }
                 return 'Pipeline';
             }
             case 'pipelineClassifier': {
                 for (let i = 0; i < model.pipelineClassifier.pipeline.models.length; i++) {
-                    this.model(model.pipelineClassifier.pipeline.models[i], (group ? (group + '/') : '') + 'pipelineClassifier[' + i.toString() + ']', description);
+                    this.model(model.pipelineClassifier.pipeline.models[i], `${group ? (`${group}/`) : ''}pipelineClassifier[${i}]`, description);
                 }
                 return 'Pipeline Classifier';
             }
             case 'pipelineRegressor': {
                 for (let i = 0; i < model.pipelineRegressor.pipeline.models.length; i++) {
-                    this.model(model.pipelineRegressor.pipeline.models[i], (group ? (group + '/') : '') + 'pipelineRegressor[' + i.toString() + ']', description);
+                    this.model(model.pipelineRegressor.pipeline.models[i], `${group ? (`${group}/`) : ''}pipelineRegressor[${i}]`, description);
                 }
                 return 'Pipeline Regressor';
             }
@@ -1055,7 +1080,7 @@ coreml.Context = class {
                 return this.program(model.mlProgram, group);
             }
             default: {
-                throw new coreml.Error("Unsupported model type '" + JSON.stringify(Object.keys(model)) + "'.");
+                throw new coreml.Error(`Unsupported model type '${JSON.stringify(Object.keys(model))}'.`);
             }
         }
     }
@@ -1073,7 +1098,7 @@ coreml.Context = class {
         if ((predictedFeatureName || predictedProbabilitiesName) && labelProbabilityLayerName && classifier.ClassLabels) {
             predictedFeatureName = predictedFeatureName ? predictedFeatureName : '?';
             predictedProbabilitiesName = predictedProbabilitiesName ? predictedProbabilitiesName : '?';
-            const labelProbabilityInput = labelProbabilityLayerName + ':labelProbabilityLayerName';
+            const labelProbabilityInput = `${labelProbabilityLayerName}:labelProbabilityLayerName`;
             const values = new Set();
             for (const node of this.nodes) {
                 for (const output of node.outputs) {
@@ -1120,7 +1145,7 @@ coreml.Context = class {
             let preprocessorIndex = 0;
             for (const preprocessing of preprocessings) {
                 const input = preprocessing.featureName ? preprocessing.featureName : currentOutput;
-                currentOutput = preprocessingInput + ':' + preprocessorIndex.toString();
+                currentOutput = `${preprocessingInput}:${preprocessorIndex}`;
                 const preprocessor = preprocessing.preprocessor;
                 const node = this.node(group, preprocessor, null, '', preprocessing[preprocessor], [ input ], [ currentOutput ]);
                 /* eslint-disable prefer-destructuring */
@@ -1172,7 +1197,7 @@ coreml.Context = class {
                             values = tensor.bytes.values;
                             break;
                         default:
-                            throw new coreml.Error("Unsupported tensor value '" + tensor.value + "'.");
+                            throw new coreml.Error(`Unsupported tensor value '${tensor.value}'.`);
                     }
                     if (type.shape.dimensions.length === 0) {
                         [values] = values;
@@ -1209,14 +1234,14 @@ coreml.Context = class {
                                     break;
                                 }
                                 default:
-                                    throw new coreml.Error("Unsupported blob data type '" + type.dataType + "'.");
+                                    throw new coreml.Error(`Unsupported blob data type '${type.dataType}'.`);
                             }
                         }
                     }
                     return new coreml.Tensor(type, data, null, 'Blob');
                 }
                 default: {
-                    throw new coreml.Error("Unsupported value '" + value.value + "'.");
+                    throw new coreml.Error(`Unsupported value '${value.value}'.`);
                 }
             }
         };
@@ -1302,7 +1327,7 @@ coreml.Context = class {
                 this.values.set(name, value);
             } else if ((value.type && !value.type.equals(this.values.get(name).type)) ||
                        (value.initializer && value.initializer !== this.values.get(name).initializer)) {
-                throw new coreml.Error("Duplicate value '" + name + "'.");
+                throw new coreml.Error(`Duplicate value '${name}'.`);
             }
             return this.values.get(name);
         };
@@ -1320,7 +1345,7 @@ coreml.Context = class {
         }
         for (const op of operations.filter((op) => !op.delete)) {
             op.group = group;
-            op.type = 'program:' + op.type;
+            op.type = `program:${op.type}`;
             const metadata = this.metadata.type(op.type);
             if (metadata && Array.isArray(metadata.inputs)) {
                 const map = new Map(metadata.inputs.map((input, index) => [ input.name, index + 1 ]));
@@ -1382,7 +1407,7 @@ coreml.Utility = class {
                             dataType = 'int32';
                             break;
                         default:
-                            throw new coreml.Error("Unsupported array data type '" + type.multiArrayType.dataType + "'.");
+                            throw new coreml.Error(`Unsupported array data type '${type.multiArrayType.dataType}'.`);
                     }
                     result = new coreml.TensorType(dataType, shape);
                     break;
@@ -1412,7 +1437,7 @@ coreml.Utility = class {
                     break;
                 }
                 default: {
-                    throw new coreml.Error("Unsupported feature type '" + type.Type + "'.");
+                    throw new coreml.Error(`Unsupported feature type '${type.Type}'.`);
                 }
             }
             if (type.isOptional) {
@@ -1431,7 +1456,7 @@ coreml.Utility = class {
         const shape = type.dimensions.map((dim) => dim.constant ? dim.constant.size : '?');
         const dataType = coreml.Utility._dataTypes.get(type.dataType);
         if (!dataType) {
-            throw new coreml.Error("Unsupported data type '" + type.dataType + "'.");
+            throw new coreml.Error(`Unsupported data type '${type.dataType}'.`);
         }
         return new coreml.TensorType(dataType, new coreml.TensorShape(shape));
     }
@@ -1445,7 +1470,7 @@ coreml.Utility = class {
             case 'dictionaryType':
                 return new coreml.MapType(coreml.Utility.valueType(type.dictionaryType.keyType), coreml.Utility.valueType(type.dictionaryType.valueType));
             default:
-                throw new coreml.Error("Unsupported value type '" + type.type + "'.");
+                throw new coreml.Error(`Unsupported value type '${type.type}'.`);
         }
     }
 };

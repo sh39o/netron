@@ -1,9 +1,17 @@
 
 import * as fs from 'fs/promises';
+import * as inspector from 'inspector';
 import * as os from 'os';
 import * as path from 'path';
+import * as process from 'process';
 import * as url from 'url';
 import * as worker_threads from 'worker_threads';
+
+const clearLine = () => {
+    if (process.stdout.clearLine) {
+        process.stdout.clearLine();
+    }
+};
 
 const write = (message) => {
     if (process.stdout.write) {
@@ -20,35 +28,122 @@ const access = async (path) => {
     }
 };
 
-class Queue {
+const exit = (error) => {
+    /* eslint-disable no-console */
+    console.error(`${error.name}: ${error.message}`);
+    if (error.cause) {
+        console.error(`  ${error.cause.name}: ${error.cause.message}`);
+    }
+    /* eslint-enable no-console */
+    process.exit(1);
+};
 
-    constructor(targets, patterns) {
-        this.targets = targets;
-        this.patterns = patterns;
+const dirname = (...args) => {
+    const file = url.fileURLToPath(import.meta.url);
+    const dir = path.dirname(file);
+    return path.join(dir, ...args);
+};
+
+const configuration = async () => {
+    const file = dirname('models.json');
+    const content = await fs.readFile(file, 'utf-8');
+    return JSON.parse(content);
+};
+
+class Logger {
+
+    constructor(threads) {
+        this._threads = threads;
+        this._entries = new Map();
     }
 
-    next() {
-        while (this.targets.length > 0) {
-            const item = this.targets.pop();
-            if (this.patterns.length === 0) {
-                return item;
-            }
-            const parts = item.target.split(',');
-            const files = item.type ? parts : parts.map((file) => path.resolve(process.cwd(), file));
-            const type = item.type;
-            for (const pattern of this.patterns) {
-                for (const file of files) {
-                    const name = type + '/' + file;
-                    const match = pattern.indexOf('*') !== -1 ?
-                        new RegExp('^' + pattern.replace('*', '.*') + '$').test(name) :
-                        name.startsWith(pattern);
-                    if (match) {
-                        return item;
-                    }
-                }
+    update(identifier, message) {
+        let value = null;
+        if (message) {
+            switch (message.name) {
+                case 'name':
+                    delete this._cache;
+                    clearLine();
+                    write(`${message.target}\n`);
+                    value = '';
+                    break;
+                case 'download':
+                    value = message.percent !== undefined ?
+                        `${(`  ${Math.floor(100 * message.percent)}`).slice(-3)}% ` :
+                        ` ${message.position}${this._threads === 1 ? ' bytes' : ''} `;
+                    break;
+                case 'decompress':
+                    value = this._threads === 1 ? 'decompress' : '  ^  ';
+                    break;
+                case 'write':
+                    value = this._threads === 1 ? 'write' : '  *  ';
+                    break;
+                default:
+                    throw new Error(`Unsupported status message '${message.name}'.`);
             }
         }
-        return null;
+        if (!this._entries.has(identifier) || this._entries.get(identifier) !== value) {
+            this._entries.set(identifier, value);
+            this._flush();
+        }
+    }
+
+    delete(identifier) {
+        this._entries.delete(identifier);
+        this._flush();
+    }
+
+    flush() {
+        delete this._cache;
+        this._flush();
+    }
+
+    _flush() {
+        const values = Array.from(this._entries.values());
+        const text = values.some((s) => s) ? `  ${values.map((s) => s || '     ').join('-')}\r` : '';
+        if (this._cache !== text) {
+            this._cache = text;
+            clearLine();
+            write(text);
+        }
+    }
+}
+
+class Queue extends Array {
+
+    constructor(targets, patterns) {
+        for (const target of targets) {
+            target.targets = target.target.split(',');
+            target.name = target.type ? `${target.type}/${target.targets[0]}` : target.targets[0];
+            target.tags = target.tags? target.tags.split(',') : [];
+        }
+        if (patterns.length > 0) {
+            const tags = new Set();
+            patterns = patterns.filter((pattern) => {
+                if (pattern.startsWith('tag:')) {
+                    tags.add(pattern.substring(4));
+                    return false;
+                }
+                return true;
+            });
+            patterns = patterns.map((pattern) => {
+                const wildcard = pattern.indexOf('*') !== -1;
+                return new RegExp(`^${wildcard ? `${pattern.replace(/\*/g, '.*')}$` : pattern}`);
+            });
+            targets = targets.filter((target) => {
+                for (const file of target.targets) {
+                    const value = target.type ? `${target.type}/${file}` : file;
+                    if (patterns.some((pattern) => pattern.test(value))) {
+                        return true;
+                    }
+                    if (target.tags.some((tag) => tags.has(tag))) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+        super(...targets.reverse());
     }
 }
 
@@ -56,17 +151,17 @@ class Table {
 
     constructor(schema) {
         this.schema = schema;
-        const line = Array.from(this.schema).join(',') + '\n';
+        const line = `${Array.from(this.schema).join(',')}\n`;
         this.content = [ line ];
     }
 
     async add(row) {
         row = new Map(row);
-        const line = Array.from(this.schema).map((key) => {
+        const line = `${Array.from(this.schema).map((key) => {
             const value = row.has(key) ? row.get(key) : '';
             row.delete(key);
             return value;
-        }).join(',') + '\n';
+        }).join(',')}\n`;
         if (row.size > 0) {
             throw new Error();
         }
@@ -85,80 +180,105 @@ class Table {
     }
 }
 
-const main = async () => {
-    try {
-        let patterns = process.argv.length > 2 ? process.argv.slice(2) : [];
-        const dirname = path.dirname(url.fileURLToPath(import.meta.url));
-        const configuration = await fs.readFile(dirname + '/models.json', 'utf-8');
-        let targets = JSON.parse(configuration).reverse();
-        if (patterns.length > 0) {
-            const exists = await Promise.all(patterns.map((pattern) => access(pattern)));
-            if (exists.every((value) => value)) {
-                targets = patterns.map((path) => {
-                    return { target: path };
-                });
-                patterns = [];
-            }
+class Worker {
+
+    constructor(identifier, queue, logger, measures) {
+        this._identifier = identifier;
+        this._queue = queue;
+        this._logger = logger;
+        this._measures = measures;
+    }
+
+    async start() {
+        this._events = {};
+        this._events.message = (message) => this._message(message);
+        this._events.error = (error) => this._error(error);
+        this._worker = new worker_threads.Worker('./test/worker.js');
+        for (let task = this._queue.pop(); task; task = this._queue.pop()) {
+            this._logger.update(this._identifier, null);
+            /* eslint-disable no-await-in-loop */
+            await new Promise((resolve) => {
+                this._resolve = resolve;
+                this._attach();
+                this._worker.postMessage(task);
+            });
+            /* eslint-enable no-await-in-loop */
         }
-        const queue = new Queue(targets, patterns);
-        const measures = new Table([ 'name', 'download', 'load', 'validate', 'render' ]);
-        await measures.log(path.join(dirname, '..', 'dist', 'test', 'measures.csv'));
-        const mode = '';
-        // const mode = 'threads';
-        switch (mode) {
-            case 'threads': {
-                const workers = new Set();
-                const cpus = Math.min(6, os.cpus().length - 2);
-                for (let i = 0; i < cpus; i++) {
-                    const worker = new worker_threads.Worker('./test/worker.js');
-                    worker.next = function() {
-                        const item = queue.next();
-                        if (item) {
-                            this.postMessage(item);
-                        } else {
-                            this.terminate();
-                            workers.delete(this);
-                            if (workers.size === 0) {
-                                process.exit(1);
-                            }
-                        }
-                    };
-                    worker.on('message', async (message) => {
-                        await measures.add(message.measures);
-                        if (message.__error__) {
-                            write(message.error);
-                            process.exit(1);
-                        } else {
-                            // write(message.name);
-                        }
-                        worker.next();
-                    });
-                    workers.add(worker);
-                    worker.next();
-                }
+        this._logger.delete(this._identifier);
+        await this._worker.terminate();
+    }
+    _attach() {
+        this._worker.on('message', this._events.message);
+        this._worker.on('error', this._events.error);
+    }
+
+    _detach() {
+        this._worker.off('message', this._events.message);
+        this._worker.off('error', this._events.error);
+    }
+
+    async _message(message) {
+        switch (message.type) {
+            case 'status': {
+                this._logger.update(this._identifier, message);
+                break;
+            }
+            case 'error': {
+                write(`\n${message.target}\n`);
+                this._error(message.error);
+                break;
+            }
+            case 'complete': {
+                await this._measures.add(message.measures);
+                this._detach();
+                this._resolve();
+                delete this._resolve;
                 break;
             }
             default: {
-                const worker = await import('./worker.js');
-                const __host__ = await worker.Target.start();
-                for (let item = queue.next(); item; item = queue.next()) {
-                    const target = new worker.Target(__host__, item);
-                    /* eslint-disable no-await-in-loop */
-                    await target.execute();
-                    await measures.add(target.measures);
-                    /* eslint-enable no-await-in-loop */
-                }
-                break;
+                throw new Error(`Unsupported message type '${message.type}'.`);
             }
         }
-    } catch (error) {
-        /* eslint-disable no-console */
-        console.error(error.name + ': ' + error.message);
-        if (error.cause) {
-            console.error('  ' + error.cause.name + ': ' + error.cause.message);
+    }
+
+    _error(error) {
+        this._detach();
+        delete this._resolve;
+        exit(error);
+    }
+}
+
+const main = async () => {
+    try {
+        const args = process.argv.length > 2 ? process.argv.slice(2) : [];
+        const exists = await Promise.all(args.map((pattern) => access(pattern)));
+        const paths = exists.length > 0 && exists.every((value) => value);
+        const patterns = paths ? [] : args;
+        const targets = paths ? args.map((path) => ({ target: path })) : await configuration();
+        const queue = new Queue(targets, patterns);
+        const threads = inspector.url() ? 1 : undefined;
+        const logger = new Logger(threads);
+        const measures = new Table([ 'name', 'download', 'load', 'validate', 'render' ]);
+        // await measures.log(dirname('..', 'dist', 'test', 'measures.csv'));
+        if (threads === 1) {
+            const worker = await import('./worker.js');
+            for (let item = queue.pop(); item; item = queue.pop()) {
+                const target = new worker.Target(item);
+                target.on('status', (_, message) => logger.update('', message));
+                /* eslint-disable no-await-in-loop */
+                await target.execute();
+                await measures.add(target.measures);
+                /* eslint-enable no-await-in-loop */
+            }
+        } else {
+            const cores = Math.min(10, Math.round(0.7 * os.cpus().length), queue.length);
+            const identifiers = [...new Array(cores).keys()].map((value) => value.toString());
+            const workers = identifiers.map((identifier) => new Worker(identifier, queue, logger, measures));
+            const promises = workers.map((worker) => worker.start());
+            await Promise.all(promises);
         }
-        /* eslint-enable no-console */
-        process.exit(1);
+    } catch (error) {
+        exit(error);
     }
 };
 

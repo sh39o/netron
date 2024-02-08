@@ -35,8 +35,8 @@ jobs:
       - name: Install npm packages 
         run: npm install
 
-      - name: Lint
-        run: npm run lint
+      - name: Validate
+        run: npm run validate
 
       - name: Publish Electron
         shell: bash
@@ -81,7 +81,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PUBLISH_GITHUB_TOKEN }}
           GITHUB_USER: ${{ secrets.PUBLISH_GITHUB_USER }}
-        run: npm run publish web
+        run: git push origin main:release --force
 
       - if: startsWith(matrix.os, 'macos')
         name: Publish cask

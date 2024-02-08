@@ -1,5 +1,4 @@
 
-import * as protobuf from './protobuf.js';
 import * as text from './text.js';
 
 const nnabla = {};
@@ -11,23 +10,21 @@ nnabla.ModelFactory = class {
         if (identifier.endsWith('.nntxt')) {
             const tags = context.tags('pbtxt');
             if (tags.has('network')) {
-                return 'nnabla.pbtxt';
+                context.type = 'nnabla.pbtxt';
             }
         }
-        return undefined;
     }
 
-    async open(context, target) {
-        await context.require('./nnabla-proto');
-        nnabla.proto = protobuf.get('nnabla').nnabla;
-        switch (target) {
+    async open(context) {
+        nnabla.proto = await context.require('./nnabla-proto');
+        nnabla.proto = nnabla.proto.nnabla;
+        switch (context.type) {
             case 'nnabla.pbtxt': {
-                const stream = context.stream;
-                const reader = protobuf.TextReader.open(stream);
+                const reader = context.read('protobuf.text');
                 const model = nnabla.proto.NNablaProtoBuf.decodeText(reader);
                 const open = async (model, version) => {
                     const metadata = await context.metadata('nnabla-metadata.json');
-                    return new nnabla.Model(metadata, model, 'NNabla' + (version ? ' v' + version : ''));
+                    return new nnabla.Model(metadata, model, `NNabla${version ? ` v${version}` : ''}`);
                 };
                 try {
                     const contexts = await Promise.all([
@@ -35,7 +32,7 @@ nnabla.ModelFactory = class {
                         context.fetch('parameter.protobuf')
                     ]);
                     const version = text.Reader.open(contexts[0].stream).read();
-                    const reader = protobuf.BinaryReader.open(contexts[1].stream);
+                    const reader = contexts[1].read('protobuf.binary');
                     const params = nnabla.proto.NNablaProtoBuf.decode(reader);
                     model.parameter = params.parameter;
                     return await open(model, version);
@@ -44,7 +41,7 @@ nnabla.ModelFactory = class {
                 }
             }
             default: {
-                throw new nnabla.Error("Unsupported nnabla format '" + target + "'.");
+                throw new nnabla.Error(`Unsupported nnabla format '${context.type}'.`);
             }
         }
     }
@@ -54,38 +51,54 @@ nnabla.Model = class {
 
     constructor(metadata, model, format) {
         this.format = format;
-        this.graphs = [ new nnabla.Graph(metadata, model) ];
+        this.graphs = [];
+        const tensors = new Map(model.parameter.map((parameter) => {
+            const name = parameter.variable_name;
+            const shape = new nnabla.TensorShape(parameter.shape.dim);
+            const type = new nnabla.TensorType(shape);
+            return [ name, new nnabla.Tensor(name, type, parameter.data) ];
+        }));
+        const networks = new Map(model.network.map((network) => [ network.name, network ]));
+        for (const executor of model.executor) {
+            const network = networks.get(executor.network_name);
+            const graph = new nnabla.Graph(metadata, network, executor.data_variable, executor.output_variable, tensors);
+            this.graphs.push(graph);
+        }
+        for (const optimizer of model.optimizer) {
+            const network = networks.get(optimizer.network_name);
+            const graph = new nnabla.Graph(metadata, network, optimizer.data_variable, optimizer.loss_variable, tensors);
+            this.graphs.push(graph);
+        }
+        for (const monitor of model.monitor) {
+            const network = networks.get(monitor.network_name);
+            const graph = new nnabla.Graph(metadata, network, monitor.data_variable, monitor.monitor_variable, tensors);
+            this.graphs.push(graph);
+        }
     }
 };
 
 nnabla.Graph = class {
 
-    constructor (metadata, model) {
-        const [executor] = model.executor; // TODO: Multiple executors?
-        const network_name = executor.network_name;
-        const network = model.network.find((item) => item.name === network_name);
-        const dataTypes = new Map(network.variable.map((item) => {
-            const shape = new nnabla.TensorShape(item.shape.dim);
-            const type = new nnabla.TensorType(item.type, shape);
-            return [ item.name, type ];
+    constructor (metadata, network, inputs, outputs, tensors) {
+        this.name = network.name;
+        const values = new Map(network.variable.map((variable) => {
+            const name = variable.name;
+            const shape = new nnabla.TensorShape(variable.shape.dim);
+            const type = new nnabla.TensorType(shape);
+            return [ name, new nnabla.Value(name, type, tensors.get(name)) ];
         }));
-        const tensors = new Map(model.parameter.map((item) => {
-            const name = item.variable_name;
-            return [ name, new nnabla.Tensor(name, dataTypes.get(name), item.data) ];
-        }));
-        const values = new Map();
         values.map = (name) => {
             if (!values.has(name)) {
-                values.set(name, new nnabla.Value(name, dataTypes.get(name), tensors.get(name)));
+                values.set(name, new nnabla.Value(name, null, tensors.get(name)));
             }
             return values.get(name);
         };
-        this.inputs = executor.data_variable.map((item) => {
+        this.inputs = inputs.map((item) => {
             const name = item.variable_name;
             return new nnabla.Argument(name, [ values.map(name) ]);
         });
-        this.outputs = executor.output_variable.map((item) => {
-            const name = item.variable_name;
+        this.outputs = outputs.map((output) => {
+            const name = output.variable_name;
             return new nnabla.Argument(name, [ values.map(name) ]);
         });
         const get_parameters = (func) => {
@@ -94,7 +107,6 @@ nnabla.Graph = class {
                     return value;
                 }
             }
-
             return undefined;
         };
         this.nodes = network.function.map((func) => {
@@ -108,7 +120,8 @@ nnabla.Graph = class {
                 const input = func_type.inputs && index < func_type.inputs.length ? func_type.inputs[index] : { name: index.toString() };
                 const count = input.list ? func.input.length - index : 1;
                 const args = func.input.slice(index, index + count).map((input) => values.map(input));
-                inputs.push(new nnabla.Argument(input.name, args));
+                const argument = new nnabla.Argument(input.name, args);
+                inputs.push(argument);
                 index += count;
             }
             const outputs = [];
@@ -116,7 +129,8 @@ nnabla.Graph = class {
                 const output = func_type.outputs && index < func_type.outputs.length ? func_type.outputs[index] : { name: index.toString() };
                 const count = output.list ? func.output.length - index : 1;
                 const args = func.output.slice(index, index + count).map((output) => values.map(output));
-                outputs.push(new nnabla.Argument(output.name, args));
+                const argument = new nnabla.Argument(output.name, args);
+                outputs.push(argument);
                 index += count;
             }
             return new nnabla.Node(metadata, func, attributes, inputs, outputs);
@@ -184,22 +198,22 @@ nnabla.Node = class {
             case "FusedConvolution": {
                 this.inputs = inputs.slice(0, 3) || [];
                 if (inputs.length > 3) {
-                    this.chain.push(new nnabla.Node(metadata, { name: func.name + "/bn", type: "BatchNormalization" }, [], inputs.slice(3, 7)));
+                    this.chain.push(new nnabla.Node(metadata, { name: `${func.name}/bn`, type: "BatchNormalization" }, [], inputs.slice(3, 7)));
                 }
                 if (inputs.length > 7) {
-                    this.chain.push(new nnabla.Node(metadata, { name: func.name + "/add", type: "Add2" }, [], inputs.slice(7)));
+                    this.chain.push(new nnabla.Node(metadata, { name: `${func.name}/add`, type: "Add2" }, [], inputs.slice(7)));
                 }
                 const type_a = attributes.find((item) => item.name === "nonlinearity").value;
-                this.chain.push(new nnabla.Node(metadata, { name: func.name + "/act", type: get_nonlinearity(type_a) }));
+                this.chain.push(new nnabla.Node(metadata, { name: `${func.name}/act`, type: get_nonlinearity(type_a) }));
                 break;
             }
             case "FusedBatchNormalization": {
                 this.inputs = inputs.slice(0, 5) || [];
                 if (inputs.length > 4) {
-                    this.chain.push(new nnabla.Node(metadata, { name: func.name + "/add", type: "Add2" }, [], inputs.slice(5)));
+                    this.chain.push(new nnabla.Node(metadata, { name: `${func.name}/add`, type: "Add2" }, [], inputs.slice(5)));
                 }
                 const type_b = attributes.find((item) => item.name === "nonlinearity").value;
-                this.chain.push(new nnabla.Node(metadata, { name: func.name + "/act", type: get_nonlinearity(type_b) }));
+                this.chain.push(new nnabla.Node(metadata, { name: `${func.name}/act`, type: get_nonlinearity(type_b) }));
                 break;
             }
             default: {
@@ -245,14 +259,14 @@ nnabla.Tensor = class {
         const dataType = this.type.dataType;
         switch (dataType) {
             case 'float32': return new Float32Array(this._values);
-            default: throw new nnabla.Error("Unsupported data type '" + dataType + "'.");
+            default: throw new nnabla.Error(`Unsupported data type '${dataType}'.`);
         }
     }
 };
 
 nnabla.TensorType = class {
 
-    constructor(dataType, shape) {
+    constructor(shape) {
         this.dataType = "float32";
         this.shape = shape;
         this.denotation = null; // TODO
@@ -270,7 +284,7 @@ nnabla.TensorShape = class {
     }
 
     toString() {
-        return (this.dimensions && this.dimensions.length) ? ('[' + this.dimensions.join(',') + ']') : '';
+        return (this.dimensions && this.dimensions.length) ? (`[${this.dimensions.join(',')}]`) : '';
     }
 };
 
