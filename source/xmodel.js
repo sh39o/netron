@@ -179,7 +179,7 @@ xmodel.Value = class {
         this.name = name;
         if (node) {
             const tensor = node.output_tensor;
-            if (tensor && tensor.tensor_attr && tensor.data_type) {
+            if (tensor) {
                 if (initializer) {
                     this.initializer = new xmodel.Tensor(node);
                     this.type = this.initializer.type;
@@ -346,7 +346,7 @@ xmodel.TensorType = class {
                   value.value.length > 0 &&
                   value.value.constructor.name.endsWith("Array")
                 ) {
-                  value = "[" + value.value.join(", ") + "]";
+                  value = "[" + value.value.join(",") + "]";
                 }
                 denotation.push(`${key}: ${value}`);
               });
