@@ -1,6 +1,4 @@
 
-import * as protobuf from './protobuf.js';
-
 export const onnx = {};
 
 onnx.Version = {
@@ -171,7 +169,7 @@ onnx.AttributeProto.prototype.ref_attr_name = "";
 onnx.AttributeProto.prototype.doc_string = "";
 onnx.AttributeProto.prototype.type = 0;
 onnx.AttributeProto.prototype.f = 0;
-onnx.AttributeProto.prototype.i = protobuf.Int64.create(0);
+onnx.AttributeProto.prototype.i = 0n;
 onnx.AttributeProto.prototype.s = new Uint8Array([]);
 onnx.AttributeProto.prototype.t = null;
 onnx.AttributeProto.prototype.g = null;
@@ -281,6 +279,9 @@ onnx.NodeProto = class NodeProto {
                 case 7:
                     message.domain = reader.string();
                     break;
+                case 8:
+                    message.overload = reader.string();
+                    break;
                 case 5:
                     message.attribute.push(onnx.AttributeProto.decode(reader, reader.uint32()));
                     break;
@@ -316,6 +317,9 @@ onnx.NodeProto = class NodeProto {
                 case "domain":
                     message.domain = reader.string();
                     break;
+                case "overload":
+                    message.overload = reader.string();
+                    break;
                 case "attribute":
                     message.attribute.push(onnx.AttributeProto.decodeText(reader));
                     break;
@@ -334,6 +338,7 @@ onnx.NodeProto = class NodeProto {
 onnx.NodeProto.prototype.name = "";
 onnx.NodeProto.prototype.op_type = "";
 onnx.NodeProto.prototype.domain = "";
+onnx.NodeProto.prototype.overload = "";
 onnx.NodeProto.prototype.doc_string = "";
 
 onnx.TrainingInfoProto = class TrainingInfoProto {
@@ -503,11 +508,11 @@ onnx.ModelProto = class ModelProto {
     }
 };
 
-onnx.ModelProto.prototype.ir_version = protobuf.Int64.create(0);
+onnx.ModelProto.prototype.ir_version = 0n;
 onnx.ModelProto.prototype.producer_name = "";
 onnx.ModelProto.prototype.producer_version = "";
 onnx.ModelProto.prototype.domain = "";
-onnx.ModelProto.prototype.model_version = protobuf.Int64.create(0);
+onnx.ModelProto.prototype.model_version = 0n;
 onnx.ModelProto.prototype.doc_string = "";
 onnx.ModelProto.prototype.graph = null;
 
@@ -912,8 +917,8 @@ onnx.TensorProto.Segment = class Segment {
     }
 };
 
-onnx.TensorProto.Segment.prototype.begin = protobuf.Int64.create(0);
-onnx.TensorProto.Segment.prototype.end = protobuf.Int64.create(0);
+onnx.TensorProto.Segment.prototype.begin = 0n;
+onnx.TensorProto.Segment.prototype.end = 0n;
 
 onnx.TensorProto.DataLocation = {
     "DEFAULT": 0,
@@ -1486,7 +1491,7 @@ onnx.OperatorSetIdProto = class OperatorSetIdProto {
 };
 
 onnx.OperatorSetIdProto.prototype.domain = "";
-onnx.OperatorSetIdProto.prototype.version = protobuf.Int64.create(0);
+onnx.OperatorSetIdProto.prototype.version = 0n;
 
 onnx.OperatorStatus = {
     "EXPERIMENTAL": 0,
@@ -1538,6 +1543,9 @@ onnx.FunctionProto = class FunctionProto {
                 case 10:
                     message.domain = reader.string();
                     break;
+                case 13:
+                    message.overload = reader.string();
+                    break;
                 case 12:
                     message.value_info.push(onnx.ValueInfoProto.decode(reader, reader.uint32()));
                     break;
@@ -1582,6 +1590,9 @@ onnx.FunctionProto = class FunctionProto {
                 case "domain":
                     message.domain = reader.string();
                     break;
+                case "overload":
+                    message.overload = reader.string();
+                    break;
                 case "value_info":
                     message.value_info.push(onnx.ValueInfoProto.decodeText(reader));
                     break;
@@ -1597,6 +1608,7 @@ onnx.FunctionProto = class FunctionProto {
 onnx.FunctionProto.prototype.name = "";
 onnx.FunctionProto.prototype.doc_string = "";
 onnx.FunctionProto.prototype.domain = "";
+onnx.FunctionProto.prototype.overload = "";
 
 onnx.OperatorProto = class OperatorProto {
 
@@ -1657,7 +1669,7 @@ onnx.OperatorProto = class OperatorProto {
 };
 
 onnx.OperatorProto.prototype.op_type = "";
-onnx.OperatorProto.prototype.since_version = protobuf.Int64.create(0);
+onnx.OperatorProto.prototype.since_version = 0n;
 onnx.OperatorProto.prototype.status = 0;
 onnx.OperatorProto.prototype.doc_string = "";
 
@@ -1752,9 +1764,9 @@ onnx.OperatorSetProto = class OperatorSetProto {
 };
 
 onnx.OperatorSetProto.prototype.magic = "";
-onnx.OperatorSetProto.prototype.ir_version = protobuf.Int64.create(0);
+onnx.OperatorSetProto.prototype.ir_version = 0n;
 onnx.OperatorSetProto.prototype.ir_version_prerelease = "";
 onnx.OperatorSetProto.prototype.ir_build_metadata = "";
 onnx.OperatorSetProto.prototype.domain = "";
-onnx.OperatorSetProto.prototype.opset_version = protobuf.Int64.create(0);
+onnx.OperatorSetProto.prototype.opset_version = 0n;
 onnx.OperatorSetProto.prototype.doc_string = "";
