@@ -208,13 +208,13 @@ xmodel.Node = class {
                     this.device = obj.string_value;
                     continue;
                 }
-                if (name === 'workload') {
-                    continue;
-                }
                 if (name.startsWith('quant_in_') || name.startsWith('quant_out_')) {
                     continue;
                 }
                 const value = xmodel.Utility.attribute(obj);
+                if (name === "type" && typeof obj.string_value === 'string') {
+                  this.chain.unshift(new xmodel.Node(metadata, { op_type: value.value.toLowerCase() }, values));
+                }
                 if (name === 'nonlinear' && value.value && value.value !== 'NONE' && value.value !== 0) {
                     let activation = value.value;
                     if (typeof activation === 'string') {
@@ -225,7 +225,6 @@ xmodel.Node = class {
                         activation = JSON.stringify(activation);
                     }
                     this.chain.push(new xmodel.Node(metadata, { op_type: activation }, values));
-                    continue;
                 }
                 if (name === 'data' && value.value) {
                     var np_value;
@@ -472,15 +471,37 @@ xmodel.Metadata = class {
         const categories = [
             [ 'avgpool2d', 'Pool' ],
             [ 'batchnorm', 'Normalization' ],
+            [ 'instancenorm', 'Normalization' ],
+            [ 'instancenorm-fix', 'Normalization' ],
             [ 'celu', 'Activation' ],
             [ 'concat-fix', 'Tensor' ],
             [ 'concat', 'Tensor' ],
             [ 'conv2d-fix', 'Layer' ],
+            [ 'qlinear-conv2d', 'Layer'],
             [ 'conv2d', 'Layer' ],
+            [ 'conv3d', 'Layer' ],
+            [ 'conv3d-fix', 'Layer' ],
             [ 'depthwise-conv2d-fix', 'Layer' ],
             [ 'depthwise-conv2d', 'Layer' ],
+            [ 'eltwise-fix', 'Layer' ],
+            [ 'add', 'Layer' ],
+            [ 'sub', 'Layer' ],
+            [ 'mul', 'Layer' ],
+            [ 'div', 'Layer' ],
+            [ 'min', 'Layer' ],
+            [ 'max', 'Layer' ],
+            [ 'equal', 'Layer' ],
+            [ 'greater', 'Layer' ],
+            [ 'greater-equal', 'Layer' ],
+            [ 'less', 'Layer' ],
+            [ 'less-equal', 'Layer' ],
+            [ 'or', 'Layer' ],
+            [ 'and', 'Layer' ],
+            [ 'qlinear-eltwise', 'Layer' ],
             [ 'elu', 'Activation' ],
             [ 'fix', 'Quantization' ],
+            [ 'quantize-linear', 'Quantization'],
+            [ 'dequantize-linear', 'Quantization'],
             [ 'fix2float', 'Quantization' ],
             [ 'flatten', 'Shape' ],
             [ 'float2fix', 'Quantization' ],
@@ -488,7 +509,9 @@ xmodel.Metadata = class {
             [ 'hard-sigmoid', 'Activation' ],
             [ 'hard-sigmoid-fix', 'Activation' ],
             [ 'hard-swish', 'Activation' ],
+            [ 'hard-swish-fix', 'Activation' ],
             [ 'hard-tanh', 'Activation' ],
+            [ 'qlinear-sigmoid', 'Activation'],
             [ 'identity', 'Control' ],
             [ 'inner-product', 'Layer' ],
             [ 'l2_normalize', 'Normalization' ],
@@ -496,8 +519,10 @@ xmodel.Metadata = class {
             [ 'leakyrelu', 'Activation' ],
             [ 'maxpool2d', 'Pool' ],
             [ 'pool-fix', 'Pool' ],
+            [ 'qlinear-pool', 'Pool' ],
             [ 'relu', 'Activation' ],
             [ 'relu6', 'Activation' ],
+            [ 'prelu', 'Activation' ],
             [ 'reshape-fix', 'Shape' ],
             [ 'reshape', 'Shape' ],
             [ 'scale', 'Layer' ],
@@ -506,11 +531,14 @@ xmodel.Metadata = class {
             [ 'sigmoid', 'Activation' ],
             [ 'softmax', 'Activation' ],
             [ 'squeeze', 'Transform' ],
+            [ 'gstiling', 'Transform' ],
+            [ 'tile-fix', 'Transform'],
             [ 'stack', 'Tensor' ],
             [ 'strided_slice', 'Tensor' ],
             [ 'strided_slice-fix', 'Tensor'],
             [ 'swish', 'Activation' ],
             [ 'tanh', 'Activation' ],
+            [ 'tanh-fix', 'Activation'],
             [ 'threshold', 'Quantization' ],
             [ 'transpose', 'Tensor' ],
             [ 'transposed-conv2d', 'Layer' ],
@@ -518,6 +546,19 @@ xmodel.Metadata = class {
             [ 'transposed-depthwise-conv2d', 'Layer' ],
             [ 'transposed-depthwise-conv2d-fix', 'Layer' ],
             [ 'upsample-fix', 'Data' ],
+            [ 'reduction_mean', 'Layer' ],
+            [ 'reduction_mean-fix', 'Layer' ],
+            [ 'reduction_product', 'Layer' ],
+            [ 'reduction_sum', 'Layer' ],
+            [ 'reduction_sum-fix', 'Layer' ],
+            [ 'reduction_min', 'Layer' ],
+            [ 'reduction_min-fix', 'Layer' ],
+            [ 'argmax', 'Layer'],
+            [ 'argmax-fix', 'Layer'],
+            [ 'argmin', 'Layer'],
+            [ 'argmin-fix', 'Layer'],
+            [ 'data', 'Data'],
+            [ 'data-fix', 'Data']
         ];
         this._types = new Map(categories.map(([name, category]) => [ name, { name: name, category: category } ]));
         for (const op_def of op_defs) {
