@@ -1,7 +1,5 @@
 
 import * as fs from 'fs/promises';
-import * as http from 'http';
-import * as https from 'https';
 import * as path from 'path';
 import * as process from 'process';
 import * as url from 'url';
@@ -28,11 +26,11 @@ const dirname = (...args) => {
 
 const decompress = (buffer) => {
     let archive = zip.Archive.open(buffer, 'gzip');
-    if (archive && archive.entries.size == 1) {
+    if (archive && archive.entries.size === 1) {
         const stream = archive.entries.values().next().value;
         buffer = stream.peek();
     }
-    const formats = [ zip, tar ];
+    const formats = [zip, tar];
     for (const module of formats) {
         archive = module.Archive.open(buffer);
         if (archive) {
@@ -60,7 +58,7 @@ host.TestHost = class {
     }
 
     environment(name) {
-        if (name == 'zoom') {
+        if (name === 'zoom') {
             return 'none';
         }
         return null;
@@ -303,7 +301,7 @@ export class Target {
         this.events = {};
         this.tags = new Set(this.tags);
         this.folder = item.type ? path.normalize(dirname('..', 'third_party' , 'test', item.type)) : process.cwd();
-        this.measures = new Map([ [ 'name', this.name ] ]);
+        this.measures = new Map([['name', this.name]]);
     }
 
     on(event, callback) {
@@ -362,55 +360,53 @@ export class Target {
         }
     }
 
-    async request(location) {
-        const request = new Promise((resolve, reject) => {
-            const url = new URL(location);
-            const request = url.protocol === 'https:' ? https.request(location) : http.request(location);
-            request.on('response', (response) => resolve(response));
-            request.on('error', (error) => reject(error));
-            request.end();
-        });
-        const response = await request;
-        const url = new URL(location);
-        switch (response.statusCode) {
-            case 200: {
-                return new Promise((resolve, reject) => {
-                    let position = 0;
-                    const data = [];
-                    const length = response.headers['content-length'] ? Number(response.headers['content-length']) : -1;
-                    response.on('data', (chunk) => {
-                        position += chunk.length;
-                        if (length >= 0) {
-                            const percent = position / length;
-                            this.status({ name: 'download', target: location, percent: percent });
-                        } else {
-                            this.status({ name: 'download', target: location, position: position });
-                        }
-                        data.push(chunk);
-                    });
-                    response.on('end', () => {
-                        this.status({ name: 'download' });
-                        resolve(Buffer.concat(data));
-                    });
-                    response.on('error', (error) => {
-                        this.status({ name: 'download' });
-                        reject(error);
-                    });
-                });
-            }
-            case 301:
-            case 302: {
-                location = response.headers.location;
-                const context = location.startsWith('http://') || location.startsWith('https://') ? '' : `${url.protocol}//${url.hostname}`;
-                response.destroy();
-                return this.request(context + location);
-            }
-            default: {
-                throw new Error(`${response.statusCode} ${location}`);
-            }
+    async request(url, init) {
+        const response = await fetch(url, init);
+        if (!response.ok) {
+            throw new Error(response.status.toString());
         }
-    }
+        if (response.body) {
+            const reader = response.body.getReader();
+            const length = response.headers.has('Content-Length') ? parseInt(response.headers.get('Content-Length'), 10) : -1;
+            let position = 0;
+            const target = this;
+            const stream = new ReadableStream({
+                async start(controller) {
+                    const read = async () => {
+                        try {
+                            const result = await reader.read();
+                            if (result.done) {
+                                target.status({ name: 'download' });
+                                controller.close();
+                            } else {
+                                position += result.value.length;
+                                if (length >= 0) {
+                                    const percent = position / length;
+                                    target.status({ name: 'download', target: url, percent: percent });
+                                } else {
+                                    target.status({ name: 'download', target: url, position: position });
+                                }
+                                controller.enqueue(result.value);
+                                return await read();
+                            }
+                        } catch (error) {
+                            controller.error(error);
+                            throw error;
+                        }
 
+                        return null;
+                    };
+                    return read();
+                }
+            });
+            return new Response(stream, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers
+            });
+        }
+        return response;
+    }
     async download(targets, sources) {
         targets = targets || Array.from(this.targets);
         sources = sources || this.source;
@@ -431,7 +427,7 @@ export class Target {
             sources = sources && sources.startsWith(',') ? sources.substring(1).trim() : '';
         } else {
             const commaIndex = sources.indexOf(',');
-            if (commaIndex != -1) {
+            if (commaIndex !== -1) {
                 source = sources.substring(0, commaIndex);
                 sources = sources.substring(commaIndex + 1);
             } else {
@@ -443,7 +439,9 @@ export class Target {
             const dir = path.dirname(`${this.folder}/${target}`);
             return fs.mkdir(dir, { recursive: true });
         }));
-        const data = await this.request(source);
+        const response = await this.request(source);
+        const buffer = await response.arrayBuffer();
+        const data = new Uint8Array(buffer);
         if (sourceFiles.length > 0) {
             this.status({ name: 'decompress' });
             const archive = decompress(data);
@@ -517,16 +515,17 @@ export class Target {
     }
 
     validate() {
-        if (!this.model.format || (this.format && this.format != this.model.format)) {
+        if (!this.model.format || (this.format && this.format !== this.model.format)) {
             throw new Error(`Invalid model format '${this.model.format}'.`);
         }
-        if (this.producer && this.model.producer != this.producer) {
+        if (this.producer && this.model.producer !== this.producer) {
             throw new Error(`Invalid producer '${this.model.producer}'.`);
         }
-        if (this.runtime && this.model.runtime != this.runtime) {
+        if (this.runtime && this.model.runtime !== this.runtime) {
             throw new Error(`Invalid runtime '${this.model.runtime}'.`);
         }
-        if (this.model.metadata && !(this.model.metadata instanceof Map)) {
+        if (this.model.metadata &&!Array.isArray(this.model.metadata) &&
+            this.model.metadata.every((argument) => argument.name && argument.value)) {
             throw new Error("Invalid metadata.'");
         }
         if (this.assert) {
@@ -560,6 +559,7 @@ export class Target {
         if (this.model.version || this.model.description || this.model.author || this.model.license) {
             // continue
         }
+        /* eslint-disable no-unused-expressions */
         const validateGraph = (graph) => {
             const values = new Map();
             const validateValue = (value) => {
@@ -620,23 +620,26 @@ export class Target {
                     }
                 }
             };
-            for (const input of graph.inputs) {
-                input.name.toString();
-                input.name.length;
-                for (const value of input.value) {
-                    validateValue(value);
+            const signatures = Array.isArray(graph.signatures) ? graph.signatures : [graph];
+            for (const signature of signatures) {
+                for (const input of signature.inputs) {
+                    input.name.toString();
+                    input.name.length;
+                    for (const value of input.value) {
+                        validateValue(value);
+                    }
                 }
-            }
-            for (const output of graph.outputs) {
-                output.name.toString();
-                output.name.length;
-                for (const value of output.value) {
-                    validateValue(value);
+                for (const output of signature.outputs) {
+                    output.name.toString();
+                    output.name.length;
+                    for (const value of output.value) {
+                        validateValue(value);
+                    }
                 }
             }
             for (const node of graph.nodes) {
                 const type = node.type;
-                if (!type || typeof type.name != 'string') {
+                if (!type || typeof type.name !== 'string') {
                     throw new Error(`Invalid node type '${JSON.stringify(node.type)}'.`);
                 }
                 if (Array.isArray(type.nodes)) {
@@ -684,6 +687,7 @@ export class Target {
                 // new dialog.NodeSidebar(host, node);
             }
         };
+        /* eslint-enable no-unused-expressions */
         for (const graph of this.model.graphs) {
             validateGraph(graph);
         }
@@ -693,7 +697,14 @@ export class Target {
         const current = new view.View(this.host);
         current.options.attributes = true;
         current.options.initializers = true;
-        await current.renderGraph(this.model, this.model.graphs[0], current.options);
+        for (const graph of this.model.graphs) {
+            const signatures = Array.isArray(graph.signatures) && graph.signatures.length > 0 ? graph.signatures : [graph];
+            for (const signature of signatures) {
+                /* eslint-disable no-await-in-loop */
+                await current.renderGraph(this.model, graph, signature, current.options);
+                /* eslint-disable no-await-in-loop */
+            }
+        }
     }
 }
 

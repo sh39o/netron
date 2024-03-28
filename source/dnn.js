@@ -7,7 +7,7 @@ dnn.ModelFactory = class {
 
     match(context) {
         const tags = context.tags('pb');
-        if (tags.get(4) == 0 && tags.get(10) == 2) {
+        if (tags.get(4) === 0 && tags.get(10) === 2) {
             context.type = 'dnn';
         }
     }
@@ -33,7 +33,7 @@ dnn.Model = class {
     constructor(metadata, model) {
         this.name = model.name || '';
         this.format = `SnapML${model.version ? ` v${model.version}` : ''}`;
-        this.graphs = [ new dnn.Graph(metadata, model) ];
+        this.graphs = [new dnn.Graph(metadata, model)];
     }
 };
 
@@ -62,22 +62,22 @@ dnn.Graph = class {
         };
         for (const input of model.input) {
             const shape = input.shape;
-            const type = new dnn.TensorType('float32', new dnn.TensorShape([ shape.dim0, shape.dim1, shape.dim2, shape.dim3 ]));
-            const argument = new dnn.Argument(input.name, [ values.map(input.name, type) ]);
+            const type = new dnn.TensorType('float32', new dnn.TensorShape([shape.dim0, shape.dim1, shape.dim2, shape.dim3]));
+            const argument = new dnn.Argument(input.name, [values.map(input.name, type)]);
             this.inputs.push(argument);
         }
         for (const output of model.output) {
             const shape = output.shape;
-            const type = new dnn.TensorType('float32', new dnn.TensorShape([ shape.dim0, shape.dim1, shape.dim2, shape.dim3 ]));
-            const argument = new dnn.Argument(output.name, [ values.map(output.name, type) ]);
+            const type = new dnn.TensorType('float32', new dnn.TensorShape([shape.dim0, shape.dim1, shape.dim2, shape.dim3]));
+            const argument = new dnn.Argument(output.name, [values.map(output.name, type)]);
             this.outputs.push(argument);
         }
         if (this.inputs.length === 0 && model.input_name && model.input_shape && model.input_shape.length === model.input_name.length * 4) {
             for (let i = 0; i < model.input_name.length; i++) {
                 const name = model.input_name[i];
                 const shape = model.input_shape.slice(i * 4, (i * 4 + 4));
-                const type = new dnn.TensorType('float32', new dnn.TensorShape([ shape[1], shape[3], shape[2], shape[0] ]));
-                const argument = new dnn.Argument(name, [ values.map(name, type) ]);
+                const type = new dnn.TensorType('float32', new dnn.TensorShape([shape[1], shape[3], shape[2], shape[0]]));
+                const argument = new dnn.Argument(name, [values.map(name, type)]);
                 this.inputs.push(argument);
             }
         }
@@ -86,8 +86,8 @@ dnn.Graph = class {
             const name = model.node[0].input[0];
             /* eslint-enable prefer-destructuring */
             const shape = model.input_shape;
-            const type = new dnn.TensorType('float32', new dnn.TensorShape([ shape[1], shape[3], shape[2], shape[0] ]));
-            const argument = new dnn.Argument(name, [ values.map(name, type) ]);
+            const type = new dnn.TensorType('float32', new dnn.TensorShape([shape[1], shape[3], shape[2], shape[0]]));
+            const argument = new dnn.Argument(name, [values.map(name, type)]);
             this.inputs.push(argument);
         }
 
@@ -117,7 +117,7 @@ dnn.Value = class {
         if (quantization) {
             this.quantization = {
                 type: 'lookup',
-                value: new Map(quantization.map((value, index) => [ index, value ]))
+                value: new Map(quantization.map((value, index) => [index, value]))
             };
         }
     }
@@ -152,8 +152,8 @@ dnn.Node = class {
             let inputIndex = 0;
             if (this.type && this.type.inputs) {
                 for (const inputSchema of this.type.inputs) {
-                    if (inputIndex < inputs.length || inputSchema.option != 'optional') {
-                        const inputCount = (inputSchema.option == 'variadic') ? (node.input.length - inputIndex) : 1;
+                    if (inputIndex < inputs.length || inputSchema.option !== 'optional') {
+                        const inputCount = (inputSchema.option === 'variadic') ? (node.input.length - inputIndex) : 1;
                         const inputArguments = inputs.slice(inputIndex, inputIndex + inputCount);
                         this.inputs.push(new dnn.Argument(inputSchema.name, inputArguments));
                         inputIndex += inputCount;
@@ -161,14 +161,14 @@ dnn.Node = class {
                 }
             }
             this.inputs.push(...inputs.slice(inputIndex).map((input, index) => {
-                const inputName = ((inputIndex + index) == 0) ? 'input' : (inputIndex + index).toString();
-                return new dnn.Argument(inputName, [ input ]);
+                const inputName = ((inputIndex + index) === 0) ? 'input' : (inputIndex + index).toString();
+                return new dnn.Argument(inputName, [input]);
             }));
         }
         if (outputs.length > 0) {
             this.outputs = outputs.map((output, index) => {
-                const inputName = (index == 0) ? 'output' : index.toString();
-                return new dnn.Argument(inputName, [ output ]);
+                const inputName = (index === 0) ? 'output' : index.toString();
+                return new dnn.Argument(inputName, [output]);
             });
         }
         for (const key of Object.keys(layer)) {
@@ -200,7 +200,7 @@ dnn.Attribute = class {
 dnn.Tensor = class {
 
     constructor(weight, quantization) {
-        const shape = new dnn.TensorShape([ weight.dim0, weight.dim1, weight.dim2, weight.dim3 ]);
+        const shape = new dnn.TensorShape([weight.dim0, weight.dim1, weight.dim2, weight.dim3]);
         this.values = quantization ? weight.quantized_data : weight.data;
         const size = shape.dimensions.reduce((a, b) => a * b, 1);
         const itemSize = Math.floor(this.values.length / size);
@@ -238,7 +238,7 @@ dnn.TensorShape = class {
     }
 
     toString() {
-        if (!this.dimensions || this.dimensions.length == 0) {
+        if (!this.dimensions || this.dimensions.length === 0) {
             return '';
         }
         return `[${this.dimensions.join(',')}]`;

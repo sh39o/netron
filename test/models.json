@@ -305,7 +305,7 @@
     "type":     "caffe",
     "target":   "caffe_invalid_file.caffemodel",
     "source":   "https://github.com/lutzroeder/netron/files/3288816/caffe_examples.zip[caffe_invalid_file.caffemodel]",
-    "error":    "File format is not caffe.NetParameter (Invalid type 4 at offset 11).",
+    "error":    "File format is not caffe.NetParameter (Invalid type '4' at offset 11).",
     "link":     "https://github.com/lutzroeder/netron/issues/276"
   },
   {
@@ -2039,6 +2039,7 @@
     "type":     "flux",
     "target":   "helloworld.bson",
     "source":   "https://github.com/lutzroeder/netron/files/3638212/helloworld.zip[helloworld.bson]",
+    "error":    "File contains unsupported Flux data.",
     "format":   "Flux",
     "link":     "https://github.com/lutzroeder/netron/issues/334"
   },
@@ -2071,7 +2072,6 @@
     "target":   "fcn_hailo_pp_v2.har",
     "source":   "https://github.com/lutzroeder/netron/files/13482814/fcn_hailo_pp_v2.har.zip[fcn_hailo_pp_v2.har]",
     "format":   "Hailo Archive v3.26.0.dev0",
-    "error":    "Duplicate value 'fcn_hailo_pp_v2/feature_splitter1'.",
     "link":     "https://github.com/lutzroeder/netron/issues/1058"
   },
   {
@@ -4323,8 +4323,8 @@
   },
   {
     "type":     "openvino",
-    "target":   "0484.xml,0484.bin",
-    "source":   "https://github.com/lutzroeder/netron/files/14076942/0484.zip[0484.xml,0484.bin]",
+    "target":   "0484.bin,0484.xml",
+    "source":   "https://github.com/lutzroeder/netron/files/14076942/0484.zip[0484.bin,0484.xml]",
     "format":   "OpenVINO IR",
     "link":     "https://github.com/lutzroeder/netron/issues/484"
   },
@@ -4573,6 +4573,14 @@
   },
   {
     "type":     "pickle",
+    "target":   "nfl_model.pkl",
+    "source":   "https://github.com/lutzroeder/netron/files/14547128/nfl_model.pkl.zip[nfl_model.pkl]",
+    "error":    "Unsupported Pickle object.",
+    "format":   "Pickle",
+    "link":     "https://github.com/lutzroeder/netron/issues/901"
+  },
+  {
+    "type":     "pickle",
     "target":   "robinhood-portfolio_data_user.pkl.pkl",
     "source":   "https://raw.githubusercontent.com/omdv/robinhood-portfolio/4622dc61e0556a85ce52c4de178d01a9838acbc5/data/user.pkl",
     "format":   "Pickle",
@@ -4629,6 +4637,14 @@
     "source":   "https://github.com/lutzroeder/netron/files/6096607/alexnet.zip.pth.zip[alexnet.zip.pth]",
     "format":   "PyTorch v1.6",
     "link":     "https://github.com/lutzroeder/netron/issues/133"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "bad-hands-5.pt",
+    "source":   "https://github.com/lutzroeder/netron/files/14471657/bad-hands-5.pt.zip[bad-hands-5.pt]",
+    "format":   "PyTorch v1.6",
+    "error":    "File does not contain root module or state dictionary.",
+    "link":     "https://github.com/lutzroeder/netron/issues/720"
   },
   {
     "type":     "pytorch",
@@ -4742,7 +4758,7 @@
     "type":     "pytorch",
     "target":   "densenet.data.pkl",
     "source":   "https://github.com/lutzroeder/netron/files/13064609/densenet.data.pkl.zip[densenet.data.pkl]",
-    "format":   "PyTorch",
+    "format":   "PyTorch Pickle",
     "link":     "https://github.com/lutzroeder/netron/issues/720"
   },
   {
@@ -4805,7 +4821,7 @@
     "type":     "pytorch",
     "target":   "fast.ai.data.pkl",
     "source":   "https://github.com/lutzroeder/netron/files/13064775/fast.ai.data.pkl.zip[fast.ai.data.pkl]",
-    "format":   "PyTorch",
+    "format":   "PyTorch Pickle",
     "link":     "https://github.com/lutzroeder/netron/issues/720"
   },
   {
@@ -5579,9 +5595,23 @@
   },
   {
     "type":     "pytorch",
+    "target":   "tensor.pkl",
+    "source":   "https://github.com/lutzroeder/netron/files/14733020/tensor.pkl.zip[tensor.pkl]",
+    "format":   "PyTorch Pickle",
+    "link":     "https://github.com/lutzroeder/netron/issues/720"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "tensors.pkl",
+    "source":   "https://github.com/lutzroeder/netron/files/14733021/tensors.pkl.zip[tensors.pkl]",
+    "format":   "PyTorch Pickle",
+    "link":     "https://github.com/lutzroeder/netron/issues/720"
+  },
+  {
+    "type":     "pytorch",
     "target":   "tensors.data.pkl",
     "source":   "https://github.com/lutzroeder/netron/files/13061412/tensors.data.pkl.zip[tensors.data.pkl]",
-    "format":   "PyTorch Pickle Weights",
+    "format":   "PyTorch Pickle",
     "link":     "https://github.com/lutzroeder/netron/issues/720"
   },
   {
@@ -5820,7 +5850,7 @@
     "type":     "pytorch",
     "target":   "yolov5n.tensor.data.pkl",
     "source":   "https://github.com/lutzroeder/netron/files/13064842/yolov5n.tensor.data.pkl.zip[yolov5n.tensor.data.pkl]",
-    "format":   "PyTorch Pickle Weights",
+    "format":   "PyTorch Pickle",
     "link":     "https://github.com/lutzroeder/netron/issues/720"
   },
   {
@@ -5994,7 +6024,7 @@
   {
     "type":     "safetensors",
     "target":   "simple.safetensors",
-    "source":   "https://github.com/lutzroeder/netron/files/11943528/simple.safetensors.zip[simple.safetensors]",
+    "source":   "https://github.com/lutzroeder/netron/files/14323612/simple.safetensors.zip[simple.safetensors]",
     "format":   "Safetensors",
     "assert":   [ "model.graphs[0].nodes[0].inputs[0].name == 'uint64'" ],
     "link":     "https://github.com/lutzroeder/netron/issues/1113"
@@ -6906,6 +6936,13 @@
     "format":   "TensorFlow Lite v3",
     "tags":     "quantization",
     "link":     "https://github.com/lutzroeder/netron/issues/34"
+  },
+  {
+    "type":     "tflite",
+    "target":   "extract_features_micro.tflite",
+    "source":   "https://github.com/lutzroeder/netron/files/14550972/extract_features_micro.tflite.zip[extract_features_micro.tflite]",
+    "format":   "TensorFlow Lite v3",
+    "link":     "https://github.com/lutzroeder/netron/issues/481"
   },
   {
     "type":     "tflite",

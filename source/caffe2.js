@@ -20,16 +20,16 @@ caffe2.ModelFactory = class {
                     if (stream.length > 3) {
                         const buffer = stream.peek(Math.min(stream.length, 67));
                         const [signature, size] = buffer;
-                        if (signature == 0x0A) {
+                        if (signature === 0x0A) {
                             if (size < 64 &&
                                 buffer.length > 2 + size + 1 &&
                                 buffer.slice(2, 2 + size).every((c) => c >= 32 && c <= 127) &&
-                                buffer[2 + size] == 0x12) {
+                                buffer[2 + size] === 0x12) {
                                 context.type = 'caffe2.pb';
                                 return;
                             }
                         }
-                        if (signature == 0x12) {
+                        if (signature === 0x12) {
                             context.type = 'caffe2.pb';
                             return;
                         }
@@ -189,7 +189,7 @@ caffe2.Model = class {
         this.format = 'Caffe2';
         this.domain = predict_net.domain || null;
         const graph = new caffe2.Graph(metadata, predict_net, init_net);
-        this.graphs = [ graph ];
+        this.graphs = [graph];
     }
 };
 
@@ -206,22 +206,22 @@ caffe2.Graph = class {
         }
         if (init) {
             const dataTypes = new Map([
-                [ 'GivenTensorFill', 'float32' ],
-                [ 'GivenTensorDoubleFill', 'float64' ],
-                [ 'GivenTensorBoolFill', 'boolean' ],
-                [ 'GivenTensorByteStringToUInt8Fill', 'uint8' ],
-                [ 'GivenTensorInt16Fill', 'int16' ],
-                [ 'GivenTensorSInt16Fill', 'int16' ],
-                [ 'GivenTensorIntFill', 'int32' ],
-                [ 'GivenTensorInt64Fill', 'int64' ],
-                [ 'GivenTensorStringFill', 'string' ],
-                [ 'Int8GivenIntTensorFill', 'int32' ],
-                [ 'Int8GivenTensorFill', 'int8' ],
-                [ 'XavierFill', null ],
-                [ 'ConstantFill', null ]
+                ['GivenTensorFill', 'float32'],
+                ['GivenTensorDoubleFill', 'float64'],
+                ['GivenTensorBoolFill', 'boolean'],
+                ['GivenTensorByteStringToUInt8Fill', 'uint8'],
+                ['GivenTensorInt16Fill', 'int16'],
+                ['GivenTensorSInt16Fill', 'int16'],
+                ['GivenTensorIntFill', 'int32'],
+                ['GivenTensorInt64Fill', 'int64'],
+                ['GivenTensorStringFill', 'string'],
+                ['Int8GivenIntTensorFill', 'int32'],
+                ['Int8GivenTensorFill', 'int8'],
+                ['XavierFill', null],
+                ['ConstantFill', null]
             ]);
             for (const op of init.op) {
-                if (op.output && op.output.length == 1) {
+                if (op.output && op.output.length === 1) {
                     /* eslint-disable prefer-destructuring */
                     const name = op.output[0];
                     /* eslint-enable prefer-destructuring */
@@ -287,17 +287,17 @@ caffe2.Graph = class {
         let lastOutput = null;
         for (const op of netDef.op) {
             const node = new caffe2.Node(metadata, op, values);
-            if (op.input.length == 1 &&
+            if (op.input.length === 1 &&
                 op.output.length >= 1 &&
-                op.input[0].split('\n').shift() == op.output[0].split('\n').shift() &&
+                op.input[0].split('\n').shift() === op.output[0].split('\n').shift() &&
                 lastNode &&
-                lastOutput == op.input[0].split('\n').shift()) {
+                lastOutput === op.input[0].split('\n').shift()) {
                 lastNode.chain.push(node);
             } else {
                 this.nodes.push(node);
                 lastNode = null;
                 lastOutput = null;
-                if (op.output.length == 1) {
+                if (op.output.length === 1) {
                     lastNode = node;
                     lastOutput = op.output[0].split('\n').shift();
                 }
@@ -308,12 +308,12 @@ caffe2.Graph = class {
             if (netDef.external_input.length > 1 && initializers.has(input)) {
                 continue;
             }
-            const argument = new caffe2.Argument(input, [ values.map(input) ]);
+            const argument = new caffe2.Argument(input, [values.map(input)]);
             this.inputs.push(argument);
         }
         this.outputs = [];
         for (const output of netDef.external_output) {
-            const argument = new caffe2.Argument(output, [ values.map(output) ]);
+            const argument = new caffe2.Argument(output, [values.map(output)]);
             this.outputs.push(argument);
         }
     }
@@ -334,7 +334,7 @@ caffe2.Value = class {
             throw new caffe2.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this.name = name;
-        this.type = type ? type : initializer && initializer.type ? initializer.type : null;
+        this.type = !type && initializer ? initializer.type : type;
         this.quantization = initializer && initializer.quantization ? initializer.quantization : null;
         this.initializer = initializer || null;
     }
@@ -355,25 +355,25 @@ caffe2.Node = class {
         let inputIndex = 0;
         if (this.type && this.type.inputs) {
             for (const inputDef of this.type.inputs) {
-                if (inputIndex < inputs.length || inputDef.option != 'optional') {
-                    const inputCount = (inputDef.option == 'variadic') ? (inputs.length - inputIndex) : 1;
-                    const inputArguments = inputs.slice(inputIndex, inputIndex + inputCount).filter((id) => id != '' || inputDef.option != 'optional').map((id) => values.map(id));
+                if (inputIndex < inputs.length || inputDef.option !== 'optional') {
+                    const inputCount = (inputDef.option === 'variadic') ? (inputs.length - inputIndex) : 1;
+                    const inputArguments = inputs.slice(inputIndex, inputIndex + inputCount).filter((id) => id !== '' || inputDef.option !== 'optional').map((id) => values.map(id));
                     this.inputs.push(new caffe2.Argument(inputDef.name, inputArguments));
                     inputIndex += inputCount;
                 }
             }
         } else {
             this.inputs.push(...inputs.slice(inputIndex).map((input, index) => {
-                const inputName = ((inputIndex + index) == 0) ? 'input' : (inputIndex + index).toString();
-                return new caffe2.Argument(inputName, [ values.map(input) ]);
+                const inputName = ((inputIndex + index) === 0) ? 'input' : (inputIndex + index).toString();
+                return new caffe2.Argument(inputName, [values.map(input)]);
             }));
         }
         this.outputs = [];
         let outputIndex = 0;
         if (this.type && this.type.outputs) {
             for (const outputDef of this.type.outputs) {
-                if (outputIndex < outputs.length || outputDef.option != 'optional') {
-                    const outputCount = (outputDef.option == 'variadic') ? (outputs.length - outputIndex) : 1;
+                if (outputIndex < outputs.length || outputDef.option !== 'optional') {
+                    const outputCount = (outputDef.option === 'variadic') ? (outputs.length - outputIndex) : 1;
                     const outputArguments = outputs.slice(outputIndex, outputIndex + outputCount).map((id) => values.map(id));
                     this.outputs.push(new caffe2.Argument(outputDef.name, outputArguments));
                     outputIndex += outputCount;
@@ -381,8 +381,8 @@ caffe2.Node = class {
             }
         } else {
             this.outputs.push(...outputs.slice(outputIndex).map((output, index) => {
-                const outputName = ((outputIndex + index) == 0) ? 'output' : (outputIndex + index).toString();
-                return new caffe2.Argument(outputName, [ values.map(output) ]);
+                const outputName = ((outputIndex + index) === 0) ? 'output' : (outputIndex + index).toString();
+                return new caffe2.Argument(outputName, [values.map(output)]);
             }));
         }
     }
@@ -402,7 +402,7 @@ caffe2.Attribute = class {
         } else if (arg.n) {
             this.value = new caffe2.Graph(metadata, arg.n, null);
             this.type = 'graph';
-        } else if (arg.i != 0) {
+        } else if (arg.i !== 0) {
             this.value = arg.i;
         } else {
             this.value = arg.i;
@@ -411,7 +411,7 @@ caffe2.Attribute = class {
         if (metadata) {
             if (Object.prototype.hasOwnProperty.call(metadata, 'type')) {
                 this.type = metadata.type;
-                if (this.type == 'boolean') {
+                if (this.type === 'boolean') {
                     this.value = this.value !== 0 && this.value.toString() !== '0' ? true : false;
                 }
             }
@@ -421,7 +421,7 @@ caffe2.Attribute = class {
             if (metadata.visible === false) {
                 this.visible = false;
             } else if (metadata.default !== undefined) {
-                if (this.value == metadata.default || (this.value && this.value.toString() == metadata.default.toString())) {
+                if (this.value === metadata.default || (this.value && this.value.toString() === metadata.default.toString())) {
                     this.visible = false;
                 }
             }
@@ -441,8 +441,8 @@ caffe2.Tensor = class {
         if (tensor.Y_scale !== undefined || tensor.Y_zero_point !== undefined) {
             this.quantization = {
                 type: 'linear',
-                scale: [ tensor.Y_scale ? tensor.Y_scale.f : 0 ],
-                offset: [ tensor.Y_zero_point && typeof tensor.Y_zero_point.i === 'bigint' ? Number(tensor.Y_zero_point.i) : 0 ]
+                scale: [tensor.Y_scale ? tensor.Y_scale.f : 0],
+                offset: [tensor.Y_zero_point && typeof tensor.Y_zero_point.i === 'bigint' ? Number(tensor.Y_zero_point.i) : 0]
             };
         }
         if (tensor.values) {
@@ -463,7 +463,6 @@ caffe2.TensorType = class {
         this.dataType = dataType || '?';
         this.shape = shape;
     }
-
 
     toString() {
         return this.dataType + this.shape.toString();

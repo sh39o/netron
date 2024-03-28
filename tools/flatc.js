@@ -135,7 +135,7 @@ flatc.Enum = class extends flatc.Type {
                 }
                 index = this.values.get(key) + 1;
             }
-            this.keys = new Map(Array.from(this.values).map(([key, value]) => [ value, key ]));
+            this.keys = new Map(Array.from(this.values).map(([key, value]) => [value, key]));
             super.resolve();
         }
     }
@@ -167,7 +167,6 @@ flatc.Union = class extends flatc.Type {
         }
     }
 };
-
 
 flatc.Table = class extends flatc.Type {
 
@@ -209,16 +208,16 @@ flatc.Struct = class extends flatc.Type {
                         throw new flatc.Error(`Struct '${name}' may contain only scalar or struct fields.`);
                     }
                     const size = fieldType.size;
-                    field.offset = (offset % size != 0) ? (Math.floor(offset / size) + 1) * size : offset;
+                    field.offset = (offset % size) !== 0 ? (Math.floor(offset / size) + 1) * size : offset;
                     offset = field.offset + (field.length * size);
                 } else if (fieldType instanceof flatc.PrimitiveType && field.type !== 'string') {
                     const size = fieldType.size;
-                    field.offset = (offset % size != 0) ? (Math.floor(offset / size) + 1) * size : offset;
+                    field.offset = (offset % size) !== 0 ? (Math.floor(offset / size) + 1) * size : offset;
                     offset = field.offset + size;
                 } else if (field.type instanceof flatc.Struct) {
                     field.type.resolve();
                     const align = 8;
-                    field.offset = (offset % align != 0) ? (Math.floor(offset / align) + 1) * align : offset;
+                    field.offset = (offset % align) !== 0 ? (Math.floor(offset / align) + 1) * align : offset;
                     offset += field.type.size;
                 } else {
                     throw new flatc.Error('Structs may contain only scalar or struct fields.');
@@ -285,18 +284,18 @@ flatc.PrimitiveType = class extends flatc.Type {
                     this._map.set(name, type);
                 }
             };
-            register([ 'bool' ], false, 1);
-            register([ 'int8', 'byte' ], 0, 1);
-            register([ 'uint8', 'ubyte' ], 0, 1);
-            register([ 'int16', 'short' ], 0, 2);
-            register([ 'uint16', 'ushort' ], 0, 2);
-            register([ 'int32', 'int' ], 0, 4);
-            register([ 'uint32', 'uint' ], 0, 4);
-            register([ 'int64', 'long' ], 0, 8);
-            register([ 'uint64', 'ulong' ], 0, 8);
-            register([ 'float32', 'float' ], 0.0, 4);
-            register([ 'float64', 'double' ], 0, 4);
-            register([ 'string' ], null, undefined);
+            register(['bool'], false, 1);
+            register(['int8', 'byte'], 0, 1);
+            register(['uint8', 'ubyte'], 0, 1);
+            register(['int16', 'short'], 0, 2);
+            register(['uint16', 'ushort'], 0, 2);
+            register(['int32', 'int'], 0, 4);
+            register(['uint32', 'uint'], 0, 4);
+            register(['int64', 'long'], 0n, 8);
+            register(['uint64', 'ulong'], 0n, 8);
+            register(['float32', 'float'], 0.0, 4);
+            register(['float64', 'double'], 0, 4);
+            register(['string'], null, undefined);
         }
         return this._map.get(name);
     }
@@ -1012,7 +1011,8 @@ flatc.Generator = class {
                             this._builder.add(`$.${field.name} = reader.tableArray(position, ${field.offset}, ${fieldType}.decode);`);
                         }
                     } else if (fieldType instanceof flatc.PrimitiveType) {
-                        this._builder.add(`$.${field.name} = reader.${fieldType.name}_(position, ${field.offset}, ${field.defaultValue});`);
+                        const n = fieldType.name === 'uint64' || fieldType.name === 'int64' ? 'n' : '';
+                        this._builder.add(`$.${field.name} = reader.${fieldType.name}_(position, ${field.offset}, ${field.defaultValue}${n});`);
                     } else if (fieldType instanceof flatc.Union) {
                         const unionType = `${field.type.parent.name}.${field.type.name}`;
                         this._builder.add(`$.${field.name} = reader.union(position, ${field.offset}, ${unionType}.decode);`);
@@ -1060,13 +1060,26 @@ flatc.Generator = class {
                                 this._builder.add(`$.${field.name} = reader.objectArray(json.${field.name}, ${fieldType}.decodeText);`);
                             }
                         } else if (field.type instanceof flatc.PrimitiveType) {
-                            this._builder.add(`$.${field.name} = reader.value(json.${field.name}, ${field.defaultValue});`);
+                            switch (field.type.name) {
+                                case 'int64': {
+                                    this._builder.add(`$.${field.name} = reader.int64(json.${field.name}, ${field.defaultValue}n);`);
+                                    break;
+                                }
+                                case 'uint64': {
+                                    this._builder.add(`$.${field.name} = reader.uint64(json.${field.name}, ${field.defaultValue}n);`);
+                                    break;
+                                }
+                                default: {
+                                    this._builder.add(`$.${field.name} = reader.value(json.${field.name}, ${field.defaultValue});`);
+                                    break;
+                                }
+                            }
                         } else if (field.type instanceof flatc.Enum) {
                             const enumName = `${field.type.parent.name}.${field.type.name}`;
                             this._builder.add(`$.${field.name} = ${enumName}[json.${field.name}];`);
                         } else if (field.type instanceof flatc.Union) {
                             const unionType = `${field.type.parent.name}.${field.type.name}`;
-                            this._builder.add(`$.${field.name} = ${unionType}.decodeText(reader, json.${field.name}, json.${field.name}_type` + `);`);
+                            this._builder.add(`$.${field.name} = ${unionType}.decodeText(reader, json.${field.name}, json.${field.name}_type);`);
                         } else { // struct | table
                             const fieldType = `${field.type.parent.name}.${field.type.name}`;
                             this._builder.add(`$.${field.name} = reader.object(json.${field.name}, ${fieldType}.decodeText);`);
@@ -1150,7 +1163,7 @@ flatc.Generator = class {
 
         /* eslint-disable indent */
         this._builder.add('');
-        this._builder.add(`${type.parent.name}.${type.name} = class ` + `{`);
+        this._builder.add(`${type.parent.name}.${type.name} = class {`);
 
         this._builder.indent();
             this._builder.add('');
@@ -1211,7 +1224,7 @@ flatc.Generator.StringBuilder = class {
 
     constructor() {
         this._indentation = '';
-        this._lines = [ '' ];
+        this._lines = [''];
         this._newline = true;
     }
 

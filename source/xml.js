@@ -25,7 +25,7 @@ xml.TextReader = class {
     constructor(data, callback) {
         this._data = data;
         this._callback = callback;
-        this._entities = new Map([ [ 'quot', '"' ], [ 'amp', '&' ], [ 'apos', "'" ], [ 'lt', '<' ],  [ 'gt', '>' ] ]);
+        this._entities = new Map([['quot', '"'], ['amp', '&'], ['apos', "'"], ['lt', '<'],  ['gt', '>']]);
         this._nameStartCharRegExp = /[:A-Z_a-z\xC0-\xD6\xD8-\xF6\xF8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD]/;
         this._nameCharRegExp = new RegExp(`[-.0-9\\xB7${this._nameStartCharRegExp.source.slice(1, -1)}]`);
         xml.Utility.nameStartCharRegExp = this._nameStartCharRegExp;
@@ -645,6 +645,7 @@ xml.TextReader = class {
     }
 
     _elementChildren() {
+        const skipQualifiers = () => this._match('?') || this._match('*') || this._match('+');
         let separator = undefined;
         const choice = new Set();
         for (;;) {
@@ -652,7 +653,7 @@ xml.TextReader = class {
             if (name) {
                 this._assert(separator !== '|' || !choice.has(name));
                 choice.add(name);
-                this._match('?') || this._match('*') || this._match('+');
+                skipQualifiers();
                 this._whitespace(0);
             } else if (this._match('(')) {
                 this._elementChildren();
@@ -673,7 +674,7 @@ xml.TextReader = class {
             this._next();
             this._whitespace(0);
         }
-        this._match('?') || this._match('*') || this._match('+');
+        skipQualifiers();
     }
 
     _attributeDefinition() {
@@ -968,7 +969,7 @@ xml.TextReader = class {
             this._assert(typeof this._data !== 'string', 'Invalid text declaration', this._start);
             const obj = { version: '', encoding: '', standalone: 'no' };
             for (const name of Object.keys(obj)) {
-                const expect = (name == 'version' && this._context.length === 0) || (name == 'encoding' && this._context.length > 0);
+                const expect = (name === 'version' && this._context.length === 0) || (name === 'encoding' && this._context.length > 0);
                 if ((whitespace || expect) && (expect ? this._expect(name) : this._match(name))) {
                     this._whitespace(0);
                     this._expect('=');
@@ -1107,7 +1108,7 @@ xml.TextReader = class {
                 }
             }
         }
-        if (this._char === '\uffff' || this._char === '\ufffe' || (this._version > 0 && this._char >= '\x7f' && this._char <= '\x9f' && this._char != '\x85')) {
+        if (this._char === '\uffff' || this._char === '\ufffe' || (this._version > 0 && this._char >= '\x7f' && this._char <= '\x9f' && this._char !== '\x85')) {
             this._unexpected();
         }
         if (this._char === undefined) {
@@ -1676,7 +1677,7 @@ xml.NamedNodeMap = class extends Array {
         for (let i = this.length - 1; i >= 0; i--) {
             const node = this[i];
             const key = node.prefix ? `${node.prefix}:${node.localName}` : node.localName;
-            if (qualifiedName == key) {
+            if (qualifiedName === key) {
                 return node;
             }
         }
@@ -1686,7 +1687,7 @@ xml.NamedNodeMap = class extends Array {
     getNamedItemNS(namespaceURI, localName) {
         for (let i = this.length - 1; i >= 0; i--) {
             const node = this[i];
-            if (localName === node.localName && namespaceURI == node.namespaceURI) {
+            if (localName === node.localName && namespaceURI === node.namespaceURI) {
                 return node;
             }
         }
@@ -1698,7 +1699,7 @@ xml.NamedNodeMap = class extends Array {
         for (let i = this.length - 1; i >= 0; i--) {
             const node = this[i];
             const key = node.prefix ? `${node.prefix}:${node.localName}` : node.localName;
-            if (qualifiedName == key) {
+            if (qualifiedName === key) {
                 const oldNode = this[i];
                 this[i] = node;
                 return oldNode;
@@ -1730,15 +1731,15 @@ xml.Utility = class {
     static split(name) {
         const index = name.indexOf(':');
         if (index < 0 || index === name.length - 1) {
-            return [ null, name ];
+            return [null, name];
         }
         const localName = name.substring(index + 1);
         const c = localName.codePointAt(0);
         if (localName.indexOf(':') !== -1 || !xml.Utility.nameStartCharRegExp.test(String.fromCodePoint(c)) && (c < 0x10000 || c > 0xEFFFF)) {
-            return [ null, name ];
+            return [null, name];
         }
         const prefix = name.substring(0, index);
-        return [ prefix, localName ];
+        return [prefix, localName];
     }
 };
 

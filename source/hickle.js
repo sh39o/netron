@@ -20,7 +20,7 @@ hickle.Model = class {
 
     constructor(group) {
         this.format = 'Hickle Weights';
-        this.graphs = [ new hickle.Graph(group) ];
+        this.graphs = [new hickle.Graph(group)];
     }
 };
 
@@ -36,7 +36,7 @@ hickle.Graph = class {
                     switch (type[0]) {
                         case 'hickle':
                         case 'dict_item': {
-                            if (group.groups.size == 1) {
+                            if (group.groups.size === 1) {
                                 return deserialize(group.groups.values().next().value);
                             }
                             throw new hickle.Error(`Invalid Hickle type value '${type[0]}'.`);
@@ -94,7 +94,7 @@ hickle.Value = class {
             throw new hickle.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this.name= name;
-        this.type = type ? type : initializer ? initializer.type : null;
+        this.type = !type && initializer ? initializer.type : type;
         this.initializer = initializer || null;
     }
 };

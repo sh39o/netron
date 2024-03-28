@@ -1,8 +1,6 @@
 
 // Experimental
 
-import * as base from './base.js';
-
 const barracuda = {};
 
 barracuda.ModelFactory = class {
@@ -11,7 +9,7 @@ barracuda.ModelFactory = class {
         const stream = context.stream;
         if (stream && stream.length > 12) {
             const buffer = stream.peek(12);
-            if (buffer[0] <= 0x20 && buffer.subarray(1, 8).every((value) => value == 0x00)) {
+            if (buffer[0] <= 0x20 && buffer.subarray(1, 8).every((value) => value === 0x00)) {
                 context.type = 'barracuda';
             }
         }
@@ -19,7 +17,8 @@ barracuda.ModelFactory = class {
 
     async open(context) {
         const metadata = barracuda.Metadata.open();
-        const model = new barracuda.NNModel(context.stream.peek());
+        const reader = context.read('binary');
+        const model = new barracuda.NNModel(reader);
         return new barracuda.Model(metadata, model);
     }
 };
@@ -29,7 +28,7 @@ barracuda.Model = class {
     constructor(metadata, model) {
         const version = model.version.toString();
         this.format = `Barracuda v${version}`;
-        this.graphs = [ new barracuda.Graph(metadata, model) ];
+        this.graphs = [new barracuda.Graph(metadata, model)];
     }
 };
 
@@ -63,11 +62,11 @@ barracuda.Graph = class {
         for (const input of model.inputs) {
             const shape = new barracuda.TensorShape(input.shape);
             const type = new barracuda.TensorType(4, shape);
-            const argument = new barracuda.Argument(input.name, [ values.map(input.name, type) ]);
+            const argument = new barracuda.Argument(input.name, [values.map(input.name, type)]);
             this.inputs.push(argument);
         }
         for (const output of model.outputs) {
-            const argument = new barracuda.Argument(output, [ values.map(output) ]);
+            const argument = new barracuda.Argument(output, [values.map(output)]);
             this.outputs.push(argument);
         }
         for (const layer of layers) {
@@ -94,7 +93,6 @@ barracuda.Value = class {
     }
 };
 
-
 barracuda.Node = class {
 
     constructor(metadata, layer, type, values) {
@@ -103,7 +101,7 @@ barracuda.Node = class {
         this.inputs = [];
         this.outputs = [];
         this.attributes = [];
-        const inputs = Array.prototype.slice.call(this.type.inputs || [ 'input' ]);
+        const inputs = Array.prototype.slice.call(this.type.inputs || ['input']);
         if (this.type.inputs && this.type.inputs.length === 1 && this.type.inputs[0].name === 'inputs') {
             const argument = new barracuda.Argument('inputs', layer.inputs.map((input) => values.map(input)));
             this.inputs.push(argument);
@@ -111,7 +109,7 @@ barracuda.Node = class {
             for (let i = 0; i < layer.inputs.length; i++) {
                 const input = layer.inputs[i];
                 const name = inputs.length > 0 ? inputs.shift().name : i.toString();
-                const argument = new barracuda.Argument(name, [ values.map(input) ]);
+                const argument = new barracuda.Argument(name, [values.map(input)]);
                 this.inputs.push(argument);
             }
         }
@@ -120,12 +118,12 @@ barracuda.Node = class {
                 const tensor = layer.tensors[i];
                 const initializer = new barracuda.Tensor(tensor);
                 const name = inputs.length > 0 ? inputs.shift().name : i.toString();
-                const argument = new barracuda.Argument(name, [ values.map(tensor.name, initializer.type, initializer) ]);
+                const argument = new barracuda.Argument(name, [values.map(tensor.name, initializer.type, initializer)]);
                 this.inputs.push(argument);
             }
         }
         if (layer.inputs !== undefined) {
-            const argument = new barracuda.Argument('output', [ values.map(this.name) ]);
+            const argument = new barracuda.Argument('output', [values.map(this.name)]);
             this.outputs.push(argument);
         }
         if (layer.activation !== undefined && (layer.type === 50 || layer.activation !== 0)) {
@@ -134,16 +132,16 @@ barracuda.Node = class {
                 throw new barracuda.Error(`Unsupported activation '${layer.activation}'.`);
             }
             const node = new barracuda.Node(metadata, {}, { name: type, category: 'Activation' }, values);
-            this.chain = [ node ];
+            this.chain = [node];
         }
         const attribute = (name, type, value, defaultValue) => {
             if (value === undefined) {
                 return;
             }
-            if (Array.isArray(defaultValue) && Array.isArray(value) && value.length == defaultValue.length && value.every((v, i) => v === defaultValue[i])) {
+            if (Array.isArray(defaultValue) && Array.isArray(value) && value.length === defaultValue.length && value.every((v, i) => v === defaultValue[i])) {
                 return;
             }
-            if (typeof defaultValue == 'function' && defaultValue(value)) {
+            if (typeof defaultValue === 'function' && defaultValue(value)) {
                 return;
             }
             if (defaultValue === value) {
@@ -206,9 +204,9 @@ barracuda.TensorShape = class {
 
 barracuda.NNModel = class {
 
-    constructor(buffer) {
+    constructor(reader) {
         // https://github.com/Unity-Technologies/barracuda-release/blob/release/1.3.2/Barracuda/Runtime/Core/Model.cs
-        const reader = new barracuda.BinaryReader(buffer);
+        reader = new barracuda.BinaryReader(reader);
         this.version = reader.int32();
         reader.int32();
         this.inputs = new Array(reader.int32());
@@ -249,7 +247,7 @@ barracuda.NNModel = class {
                 layer.tensors.push({
                     name: reader.string(),
                     shape: reader.shape(),
-                    offset: Number(reader.int64()),
+                    offset: reader.int64().toNumber(),
                     itemsize: reader.int32(),
                     length: reader.int32()
                 });
@@ -276,7 +274,35 @@ barracuda.Activation = {
     200: "Acos", 201: "Acosh", 202: "Asin", 203: "Asinh", 204: "Atan", 205: "Atanh", 206: "Cos", 207: "Cosh", 208: "Sin", 209: "Sinh", 210: "Tan"
 };
 
-barracuda.BinaryReader = class extends base.BinaryReader {
+barracuda.BinaryReader = class {
+
+    constructor(reader) {
+        this._reader = reader;
+    }
+
+    get position() {
+        return this._reader.position;
+    }
+
+    seek(position) {
+        this._reader.seek(position);
+    }
+
+    skip(offset) {
+        this._reader.skip(offset);
+    }
+
+    read(length) {
+        return this._reader.read(length);
+    }
+
+    byte() {
+        return this._reader.byte();
+    }
+
+    int32() {
+        return this._reader.int32();
+    }
 
     int32s() {
         const values = new Array(this.int32());
@@ -286,13 +312,20 @@ barracuda.BinaryReader = class extends base.BinaryReader {
         return values;
     }
 
+    int64() {
+        return this._reader.int64();
+    }
+
+    float32() {
+        return this._reader.float32();
+    }
+
     string() {
         let content = '';
         const size = this.int32();
-        let position = this._position;
-        this.skip(size);
         for (let i = 0; i < size; i++) {
-            content += String.fromCharCode(this._buffer[position++]);
+            const c = this.byte();
+            content += String.fromCharCode(c);
         }
         return content;
     }
@@ -326,11 +359,11 @@ barracuda.Metadata = class {
             }) });
         };
         register(0, 'Nop', '');
-        register(1, 'Dense', 'Layer', [ 'input', 'kernel', 'bias' ]);
-        register(2, 'MatMul', '', [ 'input', 'kernel', 'bias' ]);
-        register(20, 'Conv2D', 'Layer', [ 'input', 'kernel', 'bias' ]);
-        register(21, 'DepthwiseConv2D', 'Layer', [ 'input', 'kernel', 'bias' ]);
-        register(22, 'Conv2DTrans', 'Layer', [ 'input', 'kernel', 'bias' ]);
+        register(1, 'Dense', 'Layer', ['input', 'kernel', 'bias']);
+        register(2, 'MatMul', '', ['input', 'kernel', 'bias']);
+        register(20, 'Conv2D', 'Layer', ['input', 'kernel', 'bias']);
+        register(21, 'DepthwiseConv2D', 'Layer', ['input', 'kernel', 'bias']);
+        register(22, 'Conv2DTrans', 'Layer', ['input', 'kernel', 'bias']);
         register(23, 'Upsample2D', 'Data');
         register(25, 'MaxPool2D', 'Pool');
         register(26, 'AvgPool2D', 'Pool');
@@ -345,8 +378,8 @@ barracuda.Metadata = class {
         register(37, 'GlobalMaxPool3D', 'Pool');
         register(38, 'GlobalAvgPool3D', 'Pool');
         register(39, 'Border3D', '');
-        register(50, 'Activation', '', [ 'input' ]);
-        register(51, 'ScaleBias', 'Normalization', [ 'input', 'scale', 'bias' ]);
+        register(50, 'Activation', '', ['input']);
+        register(51, 'ScaleBias', 'Normalization', ['input', 'scale', 'bias']);
         register(52, 'Normalization', 'Normalization');
         register(53, 'LRN', 'Normalization');
         register(60, 'Dropout', 'Dropout');
@@ -356,24 +389,24 @@ barracuda.Metadata = class {
         register(67, 'OneHot', '');
         register(68, 'TopKIndices', '');
         register(69, 'TopKValues', '');
-        register(100, 'Add', '', [ 'inputs' ]);
-        register(101, 'Sub', '', [ 'inputs' ]);
-        register(102, 'Mul', '', [ 'inputs' ]);
-        register(103, 'RealDiv', '', [ 'inputs' ]);
-        register(104, 'Pow', '', [ 'inputs' ]);
-        register(110, 'Minimum', '', [ 'inputs' ]);
-        register(111, 'Maximum', '', [ 'inputs' ]);
-        register(112, 'Mean', '', [ 'inputs' ]);
-        register(120, 'ReduceL1', '', [ 'inputs' ]);
-        register(121, 'ReduceL2', '', [ 'inputs' ]);
-        register(122, 'ReduceLogSum', '', [ 'inputs' ]);
-        register(123, 'ReduceLogSumExp', '', [ 'inputs' ]);
-        register(124, 'ReduceMax', '', [ 'inputs' ]);
-        register(125, 'ReduceMean', '', [ 'inputs' ]);
-        register(126, 'ReduceMin', '', [ 'inputs' ]);
-        register(127, 'ReduceProd', '', [ 'inputs' ]);
-        register(128, 'ReduceSum', '', [ 'inputs' ]);
-        register(129, 'ReduceSumSquare', '', [ 'inputs' ]);
+        register(100, 'Add', '', ['inputs']);
+        register(101, 'Sub', '', ['inputs']);
+        register(102, 'Mul', '', ['inputs']);
+        register(103, 'RealDiv', '', ['inputs']);
+        register(104, 'Pow', '', ['inputs']);
+        register(110, 'Minimum', '', ['inputs']);
+        register(111, 'Maximum', '', ['inputs']);
+        register(112, 'Mean', '', ['inputs']);
+        register(120, 'ReduceL1', '', ['inputs']);
+        register(121, 'ReduceL2', '', ['inputs']);
+        register(122, 'ReduceLogSum', '', ['inputs']);
+        register(123, 'ReduceLogSumExp', '', ['inputs']);
+        register(124, 'ReduceMax', '', ['inputs']);
+        register(125, 'ReduceMean', '', ['inputs']);
+        register(126, 'ReduceMin', '', ['inputs']);
+        register(127, 'ReduceProd', '', ['inputs']);
+        register(128, 'ReduceSum', '', ['inputs']);
+        register(129, 'ReduceSumSquare', '', ['inputs']);
         register(140, 'Greater', '');
         register(141, 'GreaterEqual', '');
         register(142, 'Less', '');
@@ -396,7 +429,7 @@ barracuda.Metadata = class {
         register(207, 'SpaceToDepth', '');
         register(208, 'Expand', '');
         register(209, 'Resample2D', '');
-        register(210, 'Concat', 'Tensor', [ 'inputs' ]);
+        register(210, 'Concat', 'Tensor', ['inputs']);
         register(211, 'StridedSlice', 'Shape');
         register(212, 'Tile', '');
         register(213, 'Shape', '');

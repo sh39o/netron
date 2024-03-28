@@ -29,7 +29,7 @@ xmodel.Model = class {
         this.name = graph.graph_name || '';
         this.format = 'xmodel';
         this.producer = graph && graph.graph_attr && graph.graph_attr.origin && graph.graph_attr.origin.string_value ? graph.graph_attr.origin.string_value : '';
-        this.graphs = [ new xmodel.Graph(graph) ];
+        this.graphs = [new xmodel.Graph(graph)];
     }
 };
 
@@ -70,7 +70,7 @@ xmodel.Graph = class {
                 }
             }
             if (node.args.length === 0 && counts.get(node.op_name) === 1) {
-                if ((node.op_type === 'const-fix' || node.op_type === 'const') &&               
+                if ((node.op_type === 'const-fix' || node.op_type === 'const') &&
                     this.root_subg.subg_child.length > 0) {
                     values.map(node.op_name, node, true);
                     const_nodes.push(node);
@@ -286,7 +286,7 @@ xmodel.Node = class {
             }
         }
         if (op_node.op_name) {
-            const argument = new xmodel.Argument('output', [ values.map(op_node.op_name) ]);
+            const argument = new xmodel.Argument('output', [values.map(op_node.op_name)]);
             this.outputs.push(argument);
         }
     }
@@ -365,7 +365,7 @@ xmodel.TensorShape = class {
     }
 
     toString() {
-        if (!this.dimensions || this.dimensions.length == 0) {
+        if (!this.dimensions || this.dimensions.length === 0) {
             return '';
         }
         return `[${this.dimensions.map((dimension) => dimension.toString()).join(',')}]`;
@@ -560,7 +560,7 @@ xmodel.Metadata = class {
             [ 'data', 'Data'],
             [ 'data-fix', 'Data']
         ];
-        this._types = new Map(categories.map(([name, category]) => [ name, { name: name, category: category } ]));
+        this._types = new Map(categories.map(([name, category]) => [name, { name: name, category: category }]));
         for (const op_def of op_defs) {
             const type = this._types.get(op_def.name) || { name: op_def.name };
             if (op_def.annotation) {

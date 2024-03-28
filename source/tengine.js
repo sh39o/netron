@@ -1,14 +1,12 @@
 
 // Experimental
 
-import * as base from './base.js';
-
 const tengine = {};
 
 tengine.ModelFactory = class {
 
     match(context) {
-        const reader = tengine.Reader.open(context.stream);
+        const reader = tengine.Reader.open(context);
         if (reader) {
             context.type = 'tengine';
             context.target = reader;
@@ -27,8 +25,7 @@ tengine.Model = class {
 
     constructor(metadata, reader) {
         this.format = `Tengine v${reader.version}`;
-        this.metadata = new Map();
-        this.metadata.set('source', reader.source);
+        this.source = reader.source;
         this.graphs = reader.graphs.map((graph) => new tengine.Graph(metadata, graph));
     }
 };
@@ -98,25 +95,25 @@ tengine.Node = class {
         let inputIndex = 0;
         if (this.type && this.type.inputs) {
             for (const inputDef of this.type.inputs) {
-                if (inputIndex < inputs.length || inputDef.option != 'optional') {
-                    const inputCount = (inputDef.option == 'variadic') ? (inputs.length - inputIndex) : 1;
-                    const inputArguments = inputs.slice(inputIndex, inputIndex + inputCount).filter((id) => id != '' || inputDef.option != 'optional').map((id) => tensors[id]);
+                if (inputIndex < inputs.length || inputDef.option !== 'optional') {
+                    const inputCount = (inputDef.option === 'variadic') ? (inputs.length - inputIndex) : 1;
+                    const inputArguments = inputs.slice(inputIndex, inputIndex + inputCount).filter((id) => id !== '' || inputDef.option !== 'optional').map((id) => tensors[id]);
                     this.inputs.push(new tengine.Argument(inputDef.name, inputArguments));
                     inputIndex += inputCount;
                 }
             }
         } else {
             this.inputs.push(...inputs.slice(inputIndex).map((id, index) => {
-                const inputName = ((inputIndex + index) == 0) ? 'input' : (inputIndex + index).toString();
-                return new tengine.Argument(inputName, [ tensors[id] ]);
+                const inputName = ((inputIndex + index) === 0) ? 'input' : (inputIndex + index).toString();
+                return new tengine.Argument(inputName, [tensors[id]]);
             }));
         }
         const outputs = node.outputs;
         let outputIndex = 0;
         if (this.type && this.type.outputs) {
             for (const outputDef of this.type.outputs) {
-                if (outputIndex < outputs.length || outputDef.option != 'optional') {
-                    const outputCount = (outputDef.option == 'variadic') ? (outputs.length - outputIndex) : 1;
+                if (outputIndex < outputs.length || outputDef.option !== 'optional') {
+                    const outputCount = (outputDef.option === 'variadic') ? (outputs.length - outputIndex) : 1;
                     const outputArguments = outputs.slice(outputIndex, outputIndex + outputCount).map((id) => tensors[id]);
                     this.outputs.push(new tengine.Argument(outputDef.name, outputArguments));
                     outputIndex += outputCount;
@@ -124,8 +121,8 @@ tengine.Node = class {
             }
         } else {
             this.outputs.push(...outputs.slice(outputIndex).map((id, index) => {
-                const outputName = ((outputIndex + index) == 0) ? 'output' : (outputIndex + index).toString();
-                return new tengine.Argument(outputName, [ tensors[id] ]);
+                const outputName = ((outputIndex + index) === 0) ? 'output' : (outputIndex + index).toString();
+                return new tengine.Argument(outputName, [tensors[id]]);
             }));
         }
     }
@@ -145,7 +142,7 @@ tengine.Attribute = class {
             if (metadata.visible === false) {
                 this.visible = false;
             } else if (Object.prototype.hasOwnProperty.call(metadata, 'default')) {
-                if (this.value == metadata.default || (this.value && this.value.toString() == metadata.default.toString())) {
+                if (this.value === metadata.default || (this.value && this.value.toString() === metadata.default.toString())) {
                     this.visible = false;
                 }
             }
@@ -243,18 +240,19 @@ tengine.Metadata = class {
 
 tengine.Reader = class {
 
-    static open(stream) {
+    static open(context) {
+        const stream = context.stream;
         if (stream && stream.length > 4) {
             const buffer = stream.peek(2);
             if (buffer[0] < 4 && buffer[1] === 0) {
-                return new tengine.Reader(stream);
+                return new tengine.Reader(context);
             }
         }
         return null;
     }
 
-    constructor(stream) {
-        this.stream = stream;
+    constructor(context) {
+        this.context = context;
         // https://github.com/OAID/Tengine/wiki/The-format-of-tmfile
         // https://github.com/OAID/Tengine/blob/tengine-lite/source/serializer/tmfile/tm2_format.h
     }
@@ -282,96 +280,96 @@ tengine.Reader = class {
             return null;
         };
         register(0, 0, 'Accuracy', []);
-        register(1, 0, 'BatchNormalization', [ 'f', 'f', 'i' ]);
-        register(2, 0, 'BilinearResize', [ 'f', 'f', 'i' ]);
-        register(3, 0, 'Concat', [ 'i' ]);
+        register(1, 0, 'BatchNormalization', ['f', 'f', 'i']);
+        register(2, 0, 'BilinearResize', ['f', 'f', 'i']);
+        register(3, 0, 'Concat', ['i']);
         register(4, 0, 'Const', []);
-        register(5, 0, 'Convolution', [ 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i' ]);
-        register(6, 0, 'Deconvolution', [ 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i' ]);
-        register(7, 0, 'DetectionOutput', [ 'i', 'i', 'i', 'f', 'f' ]);
+        register(5, 0, 'Convolution', ['i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i']);
+        register(6, 0, 'Deconvolution', ['i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i']);
+        register(7, 0, 'DetectionOutput', ['i', 'i', 'i', 'f', 'f']);
         register(8, 0, 'DropOut', []);
-        register(9, 0, 'Eltwise', [ 'i', 'i' ]);
-        register(10, 0, 'Flatten', [ 'i' ]);
-        register(11, 0, 'FullyConnected', [ 'i' ]);
+        register(9, 0, 'Eltwise', ['i', 'i']);
+        register(10, 0, 'Flatten', ['i']);
+        register(11, 0, 'FullyConnected', ['i']);
         register(12, 0, 'INPUT', []);
-        register(13, 0, 'LRN', [ 'i', 'f', 'f', 'i', 'f' ]);
-        register(14, 0, 'Normalize', [ 'i', 'i' ]);
-        register(15, 0, 'Permute', [ 'i', 'i', 'i', 'i', 'i' ]);
-        register(16, 0, 'Pooling', [ 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i' ]);
+        register(13, 0, 'LRN', ['i', 'f', 'f', 'i', 'f']);
+        register(14, 0, 'Normalize', ['i', 'i']);
+        register(15, 0, 'Permute', ['i', 'i', 'i', 'i', 'i']);
+        register(16, 0, 'Pooling', ['i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i']);
         register(17, 0, 'Prelu', []);
-        register(18, 0, 'PriorBox', [ 'f[]', 'f[]', 'f[]', 'f[]', 'i', 'i', 'i', 'i', 'i', 'f', 'f', 'f', 'i', 'i' ]);
-        register(19, 0, 'Region', [ 'i', 'i', 'i', 'i', 'f', 'f', 'f[]' ]);
-        register(20, 0, 'ReLU', [ 'f' ]);
+        register(18, 0, 'PriorBox', ['f[]', 'f[]', 'f[]', 'f[]', 'i', 'i', 'i', 'i', 'i', 'f', 'f', 'f', 'i', 'i']);
+        register(19, 0, 'Region', ['i', 'i', 'i', 'i', 'f', 'f', 'f[]']);
+        register(20, 0, 'ReLU', ['f']);
         register(21, 0, 'ReLU6', []);
-        register(22, 0, 'Reorg', [ 'i' ]);
-        register(23, 0, 'Reshape', [ 'i', 'i', 'i', 'i', 'i', 'i' ]);
+        register(22, 0, 'Reorg', ['i']);
+        register(23, 0, 'Reshape', ['i', 'i', 'i', 'i', 'i', 'i']);
         // register(23, 0, 'Reshape', [ 'i', 'i', 'i[]' ]);
-        register(24, 0, 'RoiPooling', [ 'i', 'i', 'f' ]);
-        register(25, 0, 'RPN', [ 'f[]', 'f[]', 'i', 'i', 'i', 'i', 'i', 'f', 'anchors' ]);
-        register(26, 0, 'Scale', [ 'i', 'i', 'i' ]);
-        register(27, 0, 'Slice', [ 'i', 'i[]', 'i[]', 'i[]', 'i', 'i', 'i', 'i', 'i' ]);
-        register(28, 0, 'SoftMax', [ 'i' ]);
-        register(29, 0, 'Split', [ 'i', 'i', 'boolean', 'boolean', 'i[]' ]);
-        register(30, 0, 'DetectionPostProcess', [ 'i', 'i', 'f', 'f', 'i', 'f[]' ]);
-        register(31, 0, 'Gemm', [ 'f', 'f', 'i', 'i' ]);
-        register(32, 0, 'Generic', [ 'i', 'i', 'string' ]);
+        register(24, 0, 'RoiPooling', ['i', 'i', 'f']);
+        register(25, 0, 'RPN', ['f[]', 'f[]', 'i', 'i', 'i', 'i', 'i', 'f', 'anchors']);
+        register(26, 0, 'Scale', ['i', 'i', 'i']);
+        register(27, 0, 'Slice', ['i', 'i[]', 'i[]', 'i[]', 'i', 'i', 'i', 'i', 'i']);
+        register(28, 0, 'SoftMax', ['i']);
+        register(29, 0, 'Split', ['i', 'i', 'boolean', 'boolean', 'i[]']);
+        register(30, 0, 'DetectionPostProcess', ['i', 'i', 'f', 'f', 'i', 'f[]']);
+        register(31, 0, 'Gemm', ['f', 'f', 'i', 'i']);
+        register(32, 0, 'Generic', ['i', 'i', 'string']);
         register(33, 0, 'Logistic', []);
-        register(34, 0, 'LSTM', [ 'f', 'f', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i' ]);
-        register(35, 0, 'RNN', [ 'f', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i' ]);
+        register(34, 0, 'LSTM', ['f', 'f', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i']);
+        register(35, 0, 'RNN', ['f', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i']);
         register(36, 0, 'TanH', []);
         register(37, 0, 'Sigmoid', []);
-        register(38, 0, 'Squeeze', [ 'i', 'i', 'i', 'i' ]);
+        register(38, 0, 'Squeeze', ['i', 'i', 'i', 'i']);
         register(39, 0, 'FusedbnScaleRelu', []);
-        register(40, 0, 'Pad', [ 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'f' ]);
-        register(41, 0, 'StridedSlice', [ 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i' ]);
-        register(42, 0, 'ArgMax', [ 'i' ]);
-        register(43, 0, 'ArgMin', [ 'i' ]);
-        register(44, 0, 'TopKV2', [ 'i', 'i' ]);
-        register(45, 0, 'Reduction', [ 'i', 'i', 'i', 'i', 'i', 'i' ]);
+        register(40, 0, 'Pad', ['i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'f']);
+        register(41, 0, 'StridedSlice', ['i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i']);
+        register(42, 0, 'ArgMax', ['i']);
+        register(43, 0, 'ArgMin', ['i']);
+        register(44, 0, 'TopKV2', ['i', 'i']);
+        register(45, 0, 'Reduction', ['i', 'i', 'i', 'i', 'i', 'i']);
         register(46, 0, 'Max', []);
         register(47, 0, 'Min', []);
-        register(48, 0, 'GRU', [ 'f', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i' ]);
+        register(48, 0, 'GRU', ['f', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i']);
         register(49, 0, 'Addn', 'i');
-        register(50, 0, 'SwapAxis', [ 'i', 'i' ]);
-        register(51, 0, 'Upsample', [ 'f' ]);
-        register(52, 0, 'SpaceToBatchND', [ 'i', 'i', 'i', 'i', 'i', 'i' ]);
-        register(53, 0, 'BatchToSpaceND', [ 'i', 'i', 'i', 'i', 'i', 'i' ]);
-        register(54, 0, 'Resize', [ 'f', 'f', 'i' ]);
-        register(55, 0, 'ShuffleChannel', [ 'i' ]);
-        register(56, 0, 'Crop', [ 'i', 'i', 'i', 'i', 'i', 'i', 'boolean', 'i', 'i' ]);
-        register(57, 0, 'ROIAlign', [ 'i', 'i', 'f' ]);
-        register(58, 0, 'Psroipooling', [ 'i', 'i', 'f', 'i' ]);
-        register(59, 0, 'Unary', [ 'i' ]);
-        register(60, 0, 'Expanddims', [ 'i' ]);
-        register(61, 0, 'Bias', [ 'i' ]);
+        register(50, 0, 'SwapAxis', ['i', 'i']);
+        register(51, 0, 'Upsample', ['f']);
+        register(52, 0, 'SpaceToBatchND', ['i', 'i', 'i', 'i', 'i', 'i']);
+        register(53, 0, 'BatchToSpaceND', ['i', 'i', 'i', 'i', 'i', 'i']);
+        register(54, 0, 'Resize', ['f', 'f', 'i']);
+        register(55, 0, 'ShuffleChannel', ['i']);
+        register(56, 0, 'Crop', ['i', 'i', 'i', 'i', 'i', 'i', 'boolean', 'i', 'i']);
+        register(57, 0, 'ROIAlign', ['i', 'i', 'f']);
+        register(58, 0, 'Psroipooling', ['i', 'i', 'f', 'i']);
+        register(59, 0, 'Unary', ['i']);
+        register(60, 0, 'Expanddims', ['i']);
+        register(61, 0, 'Bias', ['i']);
         register(62, 0, 'Noop', []);
-        register(63, 0, 'Threshold', [ 'f' ]);
-        register(64, 0, 'Hardsigmoid', [ 'f', 'f' ]);
-        register(65, 0, 'Embed', [ 'f', 'f', 'f', 'f' ]);
-        register(66, 0, 'InstanceNorm', [ 'f' ]);
-        register(67, 0, 'MVN', [ 'i', 'i', 'f' ]);
+        register(63, 0, 'Threshold', ['f']);
+        register(64, 0, 'Hardsigmoid', ['f', 'f']);
+        register(65, 0, 'Embed', ['f', 'f', 'f', 'f']);
+        register(66, 0, 'InstanceNorm', ['f']);
+        register(67, 0, 'MVN', ['i', 'i', 'f']);
         register(68, 0, 'Absval', []);
-        register(69, 0, 'Cast', [ 'i', 'i' ]);
-        register(70, 0, 'HardSwish', [ 'f', 'f' ]);
-        register(71, 0, 'Interp', [ 'i', 'f', 'f', 'i', 'i' ]);
-        register(72, 0, 'SELU', [ 'f', 'f' ]);
-        register(73, 0, 'ELU', [ 'f' ]);
+        register(69, 0, 'Cast', ['i', 'i']);
+        register(70, 0, 'HardSwish', ['f', 'f']);
+        register(71, 0, 'Interp', ['i', 'f', 'f', 'i', 'i']);
+        register(72, 0, 'SELU', ['f', 'f']);
+        register(73, 0, 'ELU', ['f']);
         register(74, 0, 'BroadMul', []);
-        register(75, 0, 'Logical', [ 'i' ]);
-        register(76, 0, 'Gather', [ 'i', 'i' ]);
-        register(77, 0, 'Transpose', [ 'i[]' ]);
-        register(78, 0, 'Comparison', [ 'i' ]);
-        register(79, 0, 'SpaceToDepth', [ 'i' ]);
-        register(80, 0, 'DepthToSpace', [ 'i' ]);
+        register(75, 0, 'Logical', ['i']);
+        register(76, 0, 'Gather', ['i', 'i']);
+        register(77, 0, 'Transpose', ['i[]']);
+        register(78, 0, 'Comparison', ['i']);
+        register(79, 0, 'SpaceToDepth', ['i']);
+        register(80, 0, 'DepthToSpace', ['i']);
         register(81, 0, 'Reverse', []);
-        register(82, 0, 'SparseToDense', [ 'i','i','i' ]);
+        register(82, 0, 'SparseToDense', ['i','i','i']);
         register(83, 0, 'Ceil', []);
         register(84, 0, 'SquaredDifference', []);
         register(85, 0, 'Round', []);
         register(86, 0, 'ZerosLike', []);
-        register(87, 0, 'Clip', [ 'f','f' ]);
-        register(88, 0, 'Unsqueeze', [ 'i[]' ]);
-        register(89, 0, 'ReduceL2', [ 'i','i' ]);
+        register(87, 0, 'Clip', ['f','f']);
+        register(88, 0, 'Unsqueeze', ['i[]']);
+        register(89, 0, 'ReduceL2', ['i','i']);
         register(90, 0, 'Mean', []);
         register(91, 0, 'MatMul', []);
         register(92, 0, 'Expand', ['i[]']);
@@ -386,8 +384,7 @@ tengine.Reader = class {
         register(101, 0, 'L2Normalization', []);
         register(102, 0, 'PackModel', ['i','i']);
         register(103, 0, 'Num', []);
-        const buffer = this.stream.peek();
-        const reader = new tengine.BinaryReader(buffer);
+        const reader = new tengine.BinaryReader(this.context.read('binary'));
         this._majorVersion = reader.uint16();
         this._minorVersion = reader.uint16();
         if (this._majorVersion !== 2) {
@@ -407,10 +404,10 @@ tengine.Reader = class {
             subgraph.id = reader.int32();
             subgraph.graphLayout = reader.int32();
             /*
-            if (graphLayout == 0) {
+            if (graphLayout === 0) {
                 return "NCHW";
             }
-            if (graphLayout == 1) {
+            if (graphLayout === 1) {
                 return "NHWC";
             }
             */
@@ -477,7 +474,7 @@ tengine.Reader = class {
                     }
                 }
                 if (node.type === 'Slice') {
-                    node.params[6] = (this._originalFormat == 5) ? node.params[6] : 0;
+                    node.params[6] = (this._originalFormat === 5) ? node.params[6] : 0;
                 }
                 node.attributes = attributeOffsets.map((attributeOffset) => {
                     reader.seek(attributeOffset);
@@ -568,37 +565,42 @@ tengine.Reader = class {
     }
 };
 
-tengine.BinaryReader = class extends base.BinaryReader {
+tengine.BinaryReader = class {
 
-    string() {
-        const position = this.uint32();
-        let content = '';
-        if (position) {
-            const next = this._position;
-            this.seek(position);
-            const size = this.uint32();
-            this.seek(this.uint32());
-            for (let i = 0; i < size - 1; i++) {
-                content += String.fromCharCode(this._buffer[this._position++]);
-            }
-            this.seek(next);
-        }
-        return content;
+    constructor(reader) {
+        this._reader = reader;
     }
 
-    uint32s() {
-        const values = [];
-        const offset = this.uint32();
-        if (offset) {
-            const next = this.position;
-            this.seek(offset);
-            const count = this.uint32();
-            for (let i = 0; i < count; i++) {
-                values.push(this.uint32());
-            }
-            this.seek(next);
-        }
-        return values;
+    get position() {
+        return this._reader.position;
+    }
+
+    seek(offset) {
+        this._reader.seek(offset);
+    }
+
+    skip(offset) {
+        this._reader.skip(offset);
+    }
+
+    align(mod) {
+        return this._reader.align(mod);
+    }
+
+    read(length) {
+        return this._reader.read(length);
+    }
+
+    boolean() {
+        return this._reader.boolean();
+    }
+
+    byte() {
+        return this._reader.byte();
+    }
+
+    int32() {
+        return this._reader.int32();
     }
 
     int32s() {
@@ -616,6 +618,33 @@ tengine.BinaryReader = class extends base.BinaryReader {
         return values;
     }
 
+    uint16() {
+        return this._reader.uint16();
+    }
+
+    uint32() {
+        return this._reader.uint32();
+    }
+
+    uint32s() {
+        const values = [];
+        const offset = this.uint32();
+        if (offset) {
+            const next = this.position;
+            this.seek(offset);
+            const count = this.uint32();
+            for (let i = 0; i < count; i++) {
+                values.push(this.uint32());
+            }
+            this.seek(next);
+        }
+        return values;
+    }
+
+    float32() {
+        return this._reader.float32();
+    }
+
     float32s() {
         const values = [];
         const offset = this.uint32();
@@ -629,6 +658,22 @@ tengine.BinaryReader = class extends base.BinaryReader {
             this.seek(next);
         }
         return values;
+    }
+
+    string() {
+        const position = this.uint32();
+        let content = '';
+        if (position) {
+            const next = this.position;
+            this.seek(position);
+            const size = this.uint32();
+            this.seek(this.uint32());
+            for (let i = 0; i < size - 1; i++) {
+                content += String.fromCharCode(this.byte());
+            }
+            this.seek(next);
+        }
+        return content;
     }
 
     anchors(length) {

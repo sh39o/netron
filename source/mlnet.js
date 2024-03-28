@@ -10,7 +10,7 @@ mlnet.ModelFactory = class {
     match(context) {
         const entries = context.peek('zip');
         if (entries instanceof Map && entries.size > 0) {
-            const root = new Set([ 'TransformerChain', 'Predictor']);
+            const root = new Set(['TransformerChain', 'Predictor']);
             if (Array.from(entries.keys()).some((name) => root.has(name.split('\\').shift().split('/').shift()))) {
                 context.type = 'mlnet';
                 context.target = entries;
@@ -63,7 +63,7 @@ mlnet.Graph = class {
         };
         if (reader.schema && reader.schema.inputs) {
             for (const input of reader.schema.inputs) {
-                const argument = new mlnet.Argument(input.name, [ values.map(input.name, new mlnet.TensorType(input.type)) ]);
+                const argument = new mlnet.Argument(input.name, [values.map(input.name, new mlnet.TensorType(input.type))]);
                 this._inputs.push(argument);
             }
         }
@@ -187,7 +187,7 @@ mlnet.Node = class {
         if (transformer.inputs) {
             let i = 0;
             for (const input of transformer.inputs) {
-                const argument = new mlnet.Argument(i.toString(), [ values.map(input.name) ]);
+                const argument = new mlnet.Argument(i.toString(), [values.map(input.name)]);
                 this._inputs.push(argument);
                 i++;
             }
@@ -195,7 +195,7 @@ mlnet.Node = class {
         if (transformer.outputs) {
             let i = 0;
             for (const output of transformer.outputs) {
-                const argument = new mlnet.Argument(i.toString(), [ values.map(output.name) ]);
+                const argument = new mlnet.Argument(i.toString(), [values.map(output.name)]);
                 this._outputs.push(argument);
                 i++;
             }
@@ -281,26 +281,26 @@ mlnet.TensorType = class {
 
     constructor(codec) {
         mlnet.TensorType._map = mlnet.TensorType._map || new Map([
-            [ 'Byte', 'uint8' ],
-            [ 'Boolean', 'boolean' ],
-            [ 'Single', 'float32' ],
-            [ 'Double', 'float64' ],
-            [ 'UInt32', 'uint32' ],
-            [ 'Int64', 'int64' ],
-            [ 'TextSpan', 'string' ]
+            ['Byte', 'uint8'],
+            ['Boolean', 'boolean'],
+            ['Single', 'float32'],
+            ['Double', 'float64'],
+            ['UInt32', 'uint32'],
+            ['Int64', 'int64'],
+            ['TextSpan', 'string']
         ]);
         this._dataType = '?';
         this._shape = new mlnet.TensorShape(null);
         if (mlnet.TensorType._map.has(codec.name)) {
             this._dataType = mlnet.TensorType._map.get(codec.name);
-        } else if (codec.name == 'VBuffer') {
+        } else if (codec.name === 'VBuffer') {
             if (mlnet.TensorType._map.has(codec.itemType.name)) {
                 this._dataType = mlnet.TensorType._map.get(codec.itemType.name);
             } else {
                 throw new mlnet.Error(`Unsupported data type '${codec.itemType.name}'.`);
             }
             this._shape = new mlnet.TensorShape(codec.dims);
-        } else if (codec.name == 'Key2') {
+        } else if (codec.name === 'Key2') {
             this._dataType = 'key2';
         } else {
             throw new mlnet.Error(`Unsupported data type '${codec.name}'.`);
@@ -331,7 +331,7 @@ mlnet.TensorShape = class {
     }
 
     toString() {
-        if (!this._dimensions || this._dimensions.length == 0) {
+        if (!this._dimensions || this._dimensions.length === 0) {
             return '';
         }
         return `[${this._dimensions.join(',')}]`;
@@ -467,7 +467,7 @@ mlnet.ComponentCatalog = class {
             throw new mlnet.Error(`Unsupported loader signature '${signature}'.`);
         }
         const type = this._map.get(signature);
-        return Reflect.construct(type, [ context ]);
+        return Reflect.construct(type, [context]);
     }
 };
 
@@ -487,28 +487,28 @@ mlnet.ModelHeader = class {
             this.versionWritten = reader.uint32();
             this.versionReadable = reader.uint32();
 
-            const modelBlockOffset = Number(reader.uint64());
+            const modelBlockOffset = reader.uint64().toNumber();
             /* let modelBlockSize = */ reader.uint64();
-            const stringTableOffset = Number(reader.uint64());
-            const stringTableSize = Number(reader.uint64());
-            const stringCharsOffset = Number(reader.uint64());
+            const stringTableOffset = reader.uint64().toNumber();
+            const stringTableSize = reader.uint64().toNumber();
+            const stringCharsOffset = reader.uint64().toNumber();
             /* v stringCharsSize = */ reader.uint64();
             this.modelSignature = decoder.decode(reader.read(8));
             this.modelVersionWritten = reader.uint32();
             this.modelVersionReadable = reader.uint32();
-            this.loaderSignature = decoder.decode(reader.read(24).filter((c) => c != 0));
-            this.loaderSignatureAlt = decoder.decode(reader.read(24).filter((c) => c != 0));
-            const tailOffset = Number(reader.uint64());
+            this.loaderSignature = decoder.decode(reader.read(24).filter((c) => c !== 0));
+            this.loaderSignatureAlt = decoder.decode(reader.read(24).filter((c) => c !== 0));
+            const tailOffset = reader.uint64().toNumber();
             /* let tailLimit = */ reader.uint64();
-            const assemblyNameOffset = Number(reader.uint64());
+            const assemblyNameOffset = reader.uint64().toNumber();
             const assemblyNameSize = reader.uint32();
-            if (stringTableOffset != 0 && stringCharsOffset != 0) {
+            if (stringTableOffset !== 0 && stringCharsOffset !== 0) {
                 reader.seek(stringTableOffset);
                 const stringCount = stringTableSize >> 3;
                 const stringSizes = [];
                 let previousStringSize = 0;
                 for (let i = 0; i < stringCount; i++) {
-                    const stringSize = Number(reader.uint64());
+                    const stringSize = reader.uint64().toNumber();
                     stringSizes.push(stringSize - previousStringSize);
                     previousStringSize = stringSize;
                 }
@@ -523,7 +523,7 @@ mlnet.ModelHeader = class {
                     this.strings.push(sb);
                 }
             }
-            if (assemblyNameOffset != 0) {
+            if (assemblyNameOffset !== 0) {
                 reader.seek(assemblyNameOffset);
                 this.assemblyName = decoder.decode(reader.read(assemblyNameSize));
             }
@@ -590,23 +590,26 @@ mlnet.ModelHeader = class {
     }
 };
 
-mlnet.BinaryReader = class extends base.BinaryReader {
+mlnet.BinaryReader = class {
 
-    match(text) {
-        const position = this.position;
-        for (let i = 0; i < text.length; i++) {
-            if (this.byte() != text.charCodeAt(i)) {
-                this.seek(position);
-                return false;
-            }
-        }
-        return true;
+    constructor(data) {
+        this._reader = base.BinaryReader.open(data);
     }
 
-    assert(text) {
-        if (!this.match(text)) {
-            throw new mlnet.Error(`Invalid '${text.split('\0').join('')}' signature.`);
-        }
+    seek(position) {
+        this._reader.seek(position);
+    }
+
+    skip(offset) {
+        this._reader.skip(offset);
+    }
+
+    read(length) {
+        return this._reader.read(length);
+    }
+
+    boolean() {
+        return this._reader.boolean();
     }
 
     booleans(count) {
@@ -617,12 +620,36 @@ mlnet.BinaryReader = class extends base.BinaryReader {
         return values;
     }
 
+    byte() {
+        return this._reader.byte();
+    }
+
+    int16() {
+        return this._reader.int16();
+    }
+
+    int32() {
+        return this._reader.int32();
+    }
+
     int32s(count) {
         const values = [];
         for (let i = 0; i < count; i++) {
             values.push(this.int32());
         }
         return values;
+    }
+
+    int64() {
+        return this._reader.int64();
+    }
+
+    uint16() {
+        return this._reader.uint16();
+    }
+
+    uint32() {
+        return this._reader.uint32();
     }
 
     uint32s(count) {
@@ -633,19 +660,12 @@ mlnet.BinaryReader = class extends base.BinaryReader {
         return values;
     }
 
-    int64() {
-        const low = this.uint32();
-        const hi = this.uint32();
-        if (low == 0xffffffff && hi == 0x7fffffff) {
-            return Number.MAX_SAFE_INTEGER;
-        }
-        if (hi === 0xffffffff) {
-            return -low;
-        }
-        if (hi !== 0) {
-            throw new mlnet.Error('Value not in 32-bit range.');
-        }
-        return low;
+    uint64() {
+        return this._reader.uint64();
+    }
+
+    float32() {
+        return this._reader.float32();
     }
 
     float32s(count) {
@@ -654,6 +674,10 @@ mlnet.BinaryReader = class extends base.BinaryReader {
             values.push(this.float32());
         }
         return values;
+    }
+
+    float64() {
+        return this._reader.float64();
     }
 
     float64s(count) {
@@ -678,8 +702,25 @@ mlnet.BinaryReader = class extends base.BinaryReader {
             value = this.byte();
             result |= (value & 0x7F) << shift;
             shift += 7;
-        } while ((value & 0x80) != 0);
+        } while ((value & 0x80) !== 0);
         return result;
+    }
+
+    match(text) {
+        const position = this.position;
+        for (let i = 0; i < text.length; i++) {
+            if (this.byte() !== text.charCodeAt(i)) {
+                this.seek(position);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    assert(text) {
+        if (!this.match(text)) {
+            throw new mlnet.Error(`Invalid '${text.split('\0').join('')}' signature.`);
+        }
     }
 };
 
@@ -698,8 +739,8 @@ mlnet.BinaryLoader = class { // 'BINLOADR'
         reader.assert('CML\0DVB\0');
         reader.skip(8); // version
         reader.skip(8); // compatibleVersion
-        const tableOfContentsOffset = Number(reader.uint64());
-        const tailOffset = Number(reader.int64());
+        const tableOfContentsOffset = reader.uint64().toNumber();
+        const tailOffset = reader.int64().toNumber();
         reader.int64(); // rowCount
         const columnCount = reader.int32();
         reader.seek(tailOffset);
@@ -713,8 +754,8 @@ mlnet.BinaryLoader = class { // 'BINLOADR'
             input.type = new mlnet.Codec(reader);
             input.compression = reader.byte(); // None = 0, Deflate = 1
             input.rowsPerBlock = reader.leb128();
-            input.lookupOffset = Number(reader.int64());
-            input.metadataTocOffset = Number(reader.int64());
+            input.lookupOffset = reader.int64();
+            input.metadataTocOffset = reader.int64();
             this.schema.inputs.push(input);
         }
     }
@@ -832,13 +873,13 @@ mlnet.ColumnConcatenatingTransformer = class {
             const aliases = [];
             if (context.modelVersionReadable >= 0x00010002) {
                 for (let i = 0; i < n; i++) {
-                    /* let length = */ inputs[i].length;
+                    /* let length = inputs[i].length; */
                     const alias = {};
                     aliases.push(alias);
                     if (context.modelVersionReadable >= 0x00010002) {
                         for (;;) {
                             const j = reader.int32();
-                            if (j == -1) {
+                            if (j === -1) {
                                 break;
                             }
                             alias[j] = context.string();
@@ -868,7 +909,8 @@ mlnet.PredictionTransformerBase = class {
         this.Model = context.open('Model');
         const trainSchemaReader = context.openBinary('TrainSchema');
         if (trainSchemaReader) {
-            new mlnet.BinaryLoader(null, trainSchemaReader).schema;
+            new mlnet.BinaryLoader(null, trainSchemaReader);
+            // new mlnet.BinaryLoader(null, trainSchemaReader).schema;
         }
     }
 };
@@ -953,7 +995,7 @@ mlnet.AffineNormSerializationUtils = class {
         /* cbFloat = */ reader.int32();
         this.NumFeatures = reader.int32();
         const morphCount = reader.int32();
-        if (morphCount == -1) {
+        if (morphCount === -1) {
             this.ScalesSparse = reader.float32s(reader.int32());
             this.OffsetsSparse = reader.float32s(reader.int32());
         } else {
@@ -1005,7 +1047,7 @@ mlnet.PredictorBase = class {
 
     constructor(context) {
         const reader = context.reader;
-        if (reader.int32() != 4) {
+        if (reader.int32() !== 4) {
             throw new mlnet.Error('Invalid float type size.');
         }
     }
@@ -1084,7 +1126,7 @@ mlnet.ModelStatisticsBase = class {
     constructor(context) {
         const reader = context.reader;
         this.ParametersCount = reader.int32();
-        this.TrainingExampleCount = Number(reader.int64());
+        this.TrainingExampleCount = reader.int64().toNumber();
         this.Deviance = reader.float32();
         this.NullDeviance = reader.float32();
 
@@ -1103,7 +1145,7 @@ mlnet.LinearModelParameterStatistics = class extends mlnet.ModelStatisticsBase {
         }
         const stdErrorValues = reader.float32s(this.ParametersCount);
         const length = reader.int32();
-        if (length == this.ParametersCount) {
+        if (length === this.ParametersCount) {
             this._coeffStdError = stdErrorValues;
         } else {
             this.stdErrorIndices = reader.int32s(this.ParametersCount);
@@ -1131,7 +1173,7 @@ mlnet.LinearMulticlassModelParametersBase = class extends mlnet.ModelParametersB
         const numberOfClasses = reader.int32();
         this.Biases = reader.float32s(numberOfClasses);
         const numStarts = reader.int32();
-        if (numStarts == 0) {
+        if (numStarts === 0) {
             /* let numIndices = */ reader.int32();
             /* let numWeights = */ reader.int32();
             this.Weights = [];
@@ -1230,7 +1272,7 @@ mlnet.NgramExtractingTransformer = class extends mlnet.OneToOneTransformerBase {
     constructor(context) {
         super(context);
         const reader = context.reader;
-        if (this.inputs.length == 1) {
+        if (this.inputs.length === 1) {
             this._option(context, reader, this);
         } else {
             // debugger;
@@ -1290,7 +1332,7 @@ mlnet.WordTokenizingTransformer = class extends mlnet.OneToOneTransformerBase {
     constructor(context) {
         super(context);
         const reader = context.reader;
-        if (this.inputs.length == 1) {
+        if (this.inputs.length === 1) {
             this.Separators = [];
             const count = reader.int32();
             for (let i = 0; i < count; i++) {
@@ -1355,7 +1397,7 @@ mlnet.LpNormNormalizingTransformer = class extends mlnet.OneToOneTransformerBase
             /* cbFloat */ reader.int32();
         }
         // let normKindSerialized = context.modelVersionWritten >= 0x00010002;
-        if (this.inputs.length == 1) {
+        if (this.inputs.length === 1) {
             this.EnsureZeroMean = reader.boolean();
             this.Norm = reader.byte();
             this.Scale = reader.float32();
@@ -1370,7 +1412,7 @@ mlnet.KeyToVectorMappingTransformer = class extends mlnet.OneToOneTransformerBas
     constructor(context) {
         super(context);
         const reader = context.reader;
-        if (context.modelVersionWritten == 0x00010001) {
+        if (context.modelVersionWritten === 0x00010001) {
             /* cbFloat = */ reader.int32();
         }
         const columnsLength = this.inputs.length;
@@ -1399,7 +1441,7 @@ mlnet.ImageResizingTransformer = class extends mlnet.OneToOneTransformerBase {
     constructor(context) {
         super(context);
         const reader = context.reader;
-        if (this.inputs.length == 1) {
+        if (this.inputs.length === 1) {
             this._option(reader, this);
         } else {
             this.Options = [];
@@ -1438,7 +1480,7 @@ mlnet.ImagePixelExtractingTransformer = class extends mlnet.OneToOneTransformerB
     constructor(context) {
         super(context);
         const reader = context.reader;
-        if (this.inputs.length == 1) {
+        if (this.inputs.length === 1) {
             this._option(context, reader, this);
         } else {
             this.Options = [];
@@ -1494,7 +1536,7 @@ mlnet.NormalizingTransformer = class extends mlnet.OneToOneTransformerBase {
             let itemKind = '';
             if (context.modelVersionWritten < 0x00010002) {
                 isVector = reader.boolean();
-                shape = [ reader.int32() ];
+                shape = [reader.int32()];
                 itemKind = reader.byte();
             } else {
                 isVector = reader.boolean();
@@ -1590,7 +1632,6 @@ mlnet.TermManager = class {
     }
 };
 
-
 mlnet.ValueMappingTransformer = class extends mlnet.OneToOneTransformerBase {
 
     constructor(context) {
@@ -1631,7 +1672,7 @@ mlnet.CompositeDataLoader = class {
                 tag = context.string();
                 args = context.string(null);
             }
-            tagData.push([ tag, args ]);
+            tagData.push([tag, args]);
         }
         this.chain = [];
         for (let j = 0; j < cxf; j++) {
@@ -1791,7 +1832,7 @@ mlnet.TextLoader = class {
     constructor(context) {
         const reader = context.reader;
         reader.int32(); // floatSize
-        this.MaxRows = Number(reader.int64());
+        this.MaxRows = reader.int64();
         this.Flags = reader.uint32();
         this.InputSize = reader.int32();
         const separatorCount = reader.int32();
@@ -2170,7 +2211,7 @@ mlnet.Codec = class {
             case 'Key':
             case 'Key2':
                 this.itemType = new mlnet.Codec(reader);
-                this.count = Number(reader.uint64());
+                this.count = reader.uint64().toNumber();
                 break;
             default:
                 throw new mlnet.Error(`Unsupported codec '${this.name}'.`);

@@ -17,7 +17,7 @@ torch.ModelFactory = class {
         const metadata = await context.metadata('torch-metadata.json');
         const reader = context.target;
         reader.callback = (name) => {
-            if (name && name != 'nn.JointTrainModule' && !name.startsWith('nn.MSDNet_') && !name.startsWith('onmt.')) {
+            if (name && name !== 'nn.JointTrainModule' && !name.startsWith('nn.MSDNet_') && !name.startsWith('onmt.')) {
                 context.exception(new torch.Error(`Unsupported type '${name}'.`));
             }
             return null;
@@ -29,7 +29,7 @@ torch.ModelFactory = class {
             !obj[obj.length - 1].__class__) {
             graphs = obj.slice(0, obj.length - 1);
         } else {
-            graphs = [ obj ];
+            graphs = [obj];
         }
         return new torch.Model(metadata, graphs);
     }
@@ -79,7 +79,7 @@ torch.Graph = class {
                     const length = module.modules.length;
                     let index = 0;
                     for (const subModule of module.modules) {
-                        if (index == length - 1) {
+                        if (index === length - 1) {
                             subOutputs = outputs;
                         }
                         loadModule(metadata, subModule, groups, index.toString(), subInputs, subOutputs);
@@ -101,10 +101,10 @@ torch.Graph = class {
                         const subInputs = [].concat(inputs);
                         const subOutputs = [].concat(outputs);
                         loadModule(metadata, subModule, groups, index.toString(), subInputs, subOutputs);
-                        if (inputs.length == 0) {
+                        if (inputs.length === 0) {
                             newInputs = newInputs.concat(subInputs);
                         }
-                        if (outputs.length == 0) {
+                        if (outputs.length === 0) {
                             newOutputs = newOutputs.concat(subOutputs);
                         }
                         index++;
@@ -119,7 +119,7 @@ torch.Graph = class {
                 case 'nn.Concat':
                 case 'nn.ConcatTable': {
                     const prefix = key;
-                    if (inputs.length == 0) {
+                    if (inputs.length === 0) {
                         inputs.push(values.map(`${groups.join('/')}:${key}:in`, null, null));
                     }
                     let concatInputs = [];
@@ -170,10 +170,10 @@ torch.Graph = class {
         const outputs = [];
         loadModule(metadata, root, [], '', inputs, outputs);
         this.inputs = this.inputs.concat(inputs.map((input, index) => {
-            return new torch.Argument(`input${index != 0 ? (index + 1).toString() : ''}`, [ input ]);
+            return new torch.Argument(`input${index !== 0 ? (index + 1).toString() : ''}`, [input]);
         }));
         this.outputs = this.outputs.concat(outputs.map((output, index) => {
-            return new torch.Argument(`output${index != 0 ? (index + 1).toString() : ''}`, [ output ]);
+            return new torch.Argument(`output${index !== 0 ? (index + 1).toString() : ''}`, [output]);
         }));
     }
 };
@@ -307,20 +307,20 @@ torch.Node = class {
         this.attributes = [];
         if (module.__class__) {
             for (const [key, obj] of Object.entries(module)) {
-                if (key == '_type') {
+                if (key === '_type') {
                     continue;
                 }
                 if (Array.isArray(obj) && obj.every(((item) => item && item.__class__ && item.__class__.__module__ === 'nn'))) {
                     continue;
                 }
                 if (obj.__class__ && obj.__class__.__module__ === 'torch' && obj.__class__.__name__.endsWith('Tensor')) {
-                    initializers.push(new torch.Argument(key, [ values.map('', null, new torch.Tensor(obj)) ]));
+                    initializers.push(new torch.Argument(key, [values.map('', null, new torch.Tensor(obj))]));
                     continue;
                 }
-                if (key == 'modules') {
+                if (key === 'modules') {
                     continue;
                 }
-                if (obj.__class__ && obj.__class__.__module__ !== '' && obj.__class__.__name__ != 'LuaFunction') {
+                if (obj.__class__ && obj.__class__.__module__ !== '' && obj.__class__.__name__ !== 'LuaFunction') {
                     continue;
                 }
                 const attribute = new torch.Attribute(metadata, type, key, obj);
@@ -328,24 +328,24 @@ torch.Node = class {
             }
         }
         this.inputs = [];
-        if (inputs.length == 0 && this.name) {
+        if (inputs.length === 0 && this.name) {
             inputs.push(values.map(`${this.name}:in`));
         }
         this.inputs.push(new torch.Argument('input', inputs));
-        if (outputs.length == 0 && this.name) {
+        if (outputs.length === 0 && this.name) {
             outputs.push(values.map(this.name));
         }
         this.outputs = [];
         this.outputs.push(new torch.Argument('output', outputs));
         initializers = initializers.filter((argument) => {
-            if (argument.name == 'weight') {
+            if (argument.name === 'weight') {
                 this.inputs.push(argument);
                 return false;
             }
             return true;
         });
         initializers = initializers.filter((argument) => {
-            if (argument.name == 'bias') {
+            if (argument.name === 'bias') {
                 this.inputs.push(argument);
                 return false;
             }
@@ -357,7 +357,7 @@ torch.Node = class {
     _updateSize(module, name) {
         if (Object.prototype.hasOwnProperty.call(module, `${name}W`) &&
             Object.prototype.hasOwnProperty.call(module, `${name}H`)) {
-            module[name] = [ module[`${name}W`], module[`${name}H`] ];
+            module[name] = [module[`${name}W`], module[`${name}H`]];
             delete module[`${name}W`];
             delete module[`${name}H`];
         }
@@ -368,7 +368,7 @@ torch.Node = class {
             Object.prototype.hasOwnProperty.call(module, `${name}_r`) &&
             Object.prototype.hasOwnProperty.call(module, `${name}_b`) &&
             Object.prototype.hasOwnProperty.call(module, `${name}_l`)) {
-            module[name] = [ module[`${name}_t`], module[`${name}_r`], module[`${name}_b`], module[`${name}_l`] ];
+            module[name] = [module[`${name}_t`], module[`${name}_r`], module[`${name}_b`], module[`${name}_l`]];
             delete module[`${name}_t`];
             delete module[`${name}_r`];
             delete module[`${name}_b`];
@@ -382,7 +382,7 @@ torch.Attribute = class {
     constructor(metadata, type, name, value) {
         this.name = name;
         this.value = value;
-        if (name == 'train') {
+        if (name === 'train') {
             this.visible = false;
         }
         metadata = metadata.attribute(type, name);
@@ -390,7 +390,7 @@ torch.Attribute = class {
             if (metadata.visible === false) {
                 this.visible = false;
             } else if (Object.prototype.hasOwnProperty.call(metadata, 'default')) {
-                if (JSON.stringify(metadata.default) == JSON.stringify(this.value)) {
+                if (JSON.stringify(metadata.default) === JSON.stringify(this.value)) {
                     this.visible = false;
                 }
             }
@@ -442,7 +442,7 @@ torch.TensorShape = class {
 
     toString() {
         if (this.dimensions) {
-            if (this.dimensions.length == 0) {
+            if (this.dimensions.length === 0) {
                 return '';
             }
             return `[${this.dimensions.map((dimension) => dimension.toString()).join(',')}]`;
@@ -463,7 +463,7 @@ torch.T7Reader = class {
 
     static open(context) {
         const stream = context.stream;
-        if (stream && stream.length >= 4 && stream.peek(4).every((value, index) => value === 0x00 || (index == 0 && value <= 0x08))) {
+        if (stream && stream.length >= 4 && stream.peek(4).every((value, index) => value === 0x00 || (index === 0 && value <= 0x08))) {
             const reader = new torch.BinaryReader(stream);
             return new torch.T7Reader(reader);
         }
@@ -488,7 +488,7 @@ torch.T7Reader = class {
                 this.itemSize = itemSize;
             }
             read(reader) {
-                this.size = Number(reader.int64());
+                this.size = reader.int64();
                 this.reader = reader.storage(this.size, this.itemSize, this.dataType);
             }
             data() {
@@ -513,7 +513,7 @@ torch.T7Reader = class {
                                 array[i] = reader.int32();
                                 break;
                             case 'int64':
-                                array[i] = Number(reader.int64());
+                                array[i] = reader.int64();
                                 break;
                             case 'float32':
                                 array[i] = reader.float32();
@@ -539,7 +539,7 @@ torch.T7Reader = class {
                 const dim = reader.int32();
                 this.size = reader.int64s(dim);
                 this.stride = reader.int64s(dim);
-                this.storage_offset = Number(reader.int64()) - 1;
+                this.storage_offset = reader.int64() - 1;
                 this.storage = reader.read();
             }
         };
@@ -890,7 +890,7 @@ torch.T7Reader = class {
         let name = null;
         if (version.startsWith('V ')) {
             name = this.string();
-            version = Number(version.split(' ')[1]);
+            version = parseInt(version.split(' ')[1], 10);
         } else {
             name = version;
             version = 0;
@@ -907,7 +907,7 @@ torch.T7Reader = class {
             obj.read(this, version);
         } else {
             const attributes = this.read();
-            if (attributes != null) {
+            if (attributes !== null) {
                 for (const [key, value] of Object.entries(attributes)) {
                     obj[key] = value;
                 }
@@ -937,11 +937,11 @@ torch.T7Reader = class {
             }
         }
         const n = Object.keys(table).length;
-        if (convert && (n * (n + 1)) == (2 * sum)) {
+        if (convert && (n * (n + 1)) === (2 * sum)) {
             const list = [];
             for (let j = 0; j < n; j++) {
                 let item = table[j + 1];
-                if (item == table) {
+                if (item === table) {
                     item = list;
                 }
                 list.push(item);
@@ -961,7 +961,7 @@ torch.T7Reader = class {
         const dumped = this._reader.read(size);
         const upvalues = this.read();
         const type = this._types.get('LuaFunction');
-        const obj = Reflect.construct(type, [ size, dumped, upvalues ]);
+        const obj = Reflect.construct(type, [size, dumped, upvalues]);
         this._memo.set(index, obj);
         return obj;
     }
@@ -971,21 +971,35 @@ torch.T7Reader = class {
     }
 };
 
-torch.BinaryReader = class extends base.BinaryReader {
+torch.BinaryReader = class {
 
     constructor(data) {
-        super(data instanceof Uint8Array ? data : data.peek(), true);
+        this._reader = base.BinaryReader.open(data);
         this._textDecoder = new TextDecoder('ascii');
     }
 
-    boolean() {
-        return this.int32() == 1;
+    seek(position) {
+        this._reader.seek(position);
+    }
+
+    skip(offset) {
+        this._reader.skip(offset);
     }
 
     read(length) {
-        const position = this._position;
-        this.skip(length);
-        return this._buffer.subarray(position, this._position);
+        return this._reader.read(length);
+    }
+
+    boolean() {
+        return this.int32() === 1;
+    }
+
+    int32() {
+        return this._reader.int32();
+    }
+
+    int64() {
+        return this._reader.int64().toNumber();
     }
 
     int64s(size) {
@@ -994,6 +1008,14 @@ torch.BinaryReader = class extends base.BinaryReader {
             array.push(this.int64());
         }
         return array;
+    }
+
+    float32() {
+        return this._reader.float32();
+    }
+
+    float64() {
+        return this._reader.float64();
     }
 
     string() {
@@ -1026,9 +1048,9 @@ torch.TextReader = class {
         const start = this._position;
         while (this._position < this._buffer.length && size > -1) {
             const c = this._buffer[this._position++];
-            if (c == this._separator) {
+            if (c === this._separator) {
                 return this._buffer.slice(start, this._position - 1);
-            } else if (this._position == this._buffer.length) {
+            } else if (this._position === this._buffer.length) {
                 return this._buffer.slice(start, this._position);
             }
             size--;
@@ -1037,7 +1059,7 @@ torch.TextReader = class {
     }
 
     boolean() {
-        return this.int32() == 1;
+        return this.int32() === 1;
     }
 
     read(size) {
@@ -1107,12 +1129,12 @@ torch.TextReader = class {
 
     string() {
         const size = this.int32();
-        if (size == 0) {
+        if (size === 0) {
             return '';
         }
         const data = this.line(size);
         const content = this._textDecoder.decode(data);
-        if (size != content.length) {
+        if (size !== content.length) {
             throw new torch.Error('Invalid string length.');
         }
         return content;

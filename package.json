@@ -6,8 +6,8 @@
         "email": "lutzroeder@users.noreply.github.com",
         "url": "https://www.lutzroeder.com"
     },
-    "version": "7.4.5",
-    "date": "2024-02-11 15:49:36",
+    "version": "7.5.6",
+    "date": "2024-03-23 02:27:35",
     "description": "Visualizer for neural network, deep learning, and machine learning models",
     "license": "MIT",
     "repository": "sun/netron",
@@ -31,13 +31,13 @@
         "pull": "node package.js pull"
     },
     "dependencies": {
-        "electron-updater": "6.1.7"
+        "electron-updater": "6.1.8"
     },
     "devDependencies": {
-        "electron": "28.2.2",
-        "electron-builder": "24.9.1",
-        "@electron/notarize": "2.2.1",
-        "eslint": "8.56.0"
+        "electron": "29.1.6",
+        "electron-builder": "24.13.3",
+        "@electron/notarize": "2.3.0",
+        "eslint": "8.57.0"
     },
     "eslintConfig": {
         "env": {
@@ -50,13 +50,16 @@
             "sourceType": "module"
         },
         "rules": {
+            "array-bracket-spacing": "error",
             "array-callback-return": "error",
             "arrow-parens": "error",
             "brace-style": "error",
             "curly": "error",
+            "computed-property-spacing": "error",
             "consistent-return": "error",
             "default-case": "error",
             "default-case-last": "error",
+            "eqeqeq": "error",
             "indent": [ "error", 4, { "SwitchCase": 1 } ],
             "keyword-spacing": "error",
             "no-array-constructor": "error",
@@ -69,10 +72,14 @@
             "no-global-assign": "error",
             "no-invalid-this": "error",
             "no-iterator": "error",
+            "no-implicit-coercion": "error",
+            "no-implicit-globals": "error",
             "no-import-assign": "error",
             "no-labels": "error",
             "no-lone-blocks": "error",
             "no-lonely-if": "error",
+            "no-multiple-empty-lines": [ "error", { "max": 1 } ],
+            "no-nested-ternary": "error",
             "no-promise-executor-return": "error",
             "no-proto": "error",
             "no-self-compare": "error",
@@ -81,18 +88,28 @@
             "no-trailing-spaces": "error",
             "no-unmodified-loop-condition": "error",
             "no-unreachable-loop": "error",
+            "no-unused-expressions": "error",
+            "no-unused-labels": "error",
             "no-unused-private-class-members": "error",
+            "no-unused-vars": "error",
             "no-use-before-define": "error",
+            "no-useless-catch": "error",
+            "no-useless-concat": "error",
             "no-var": "error",
             "object-curly-spacing": [ "error", "always" ],
+            "prefer-arrow-callback": "error",
             "prefer-const": [ "error" ],
             "prefer-destructuring": [ "error", { "array": true } ],
+            "prefer-rest-params": "error",
+            "prefer-spread": "error",
             "prefer-template": "error",
+            "radix": "error",
             "require-atomic-updates": "error",
             "semi": [ "error", "always" ],
             "space-before-blocks": "error",
             "space-in-parens": "error",
-            "template-curly-spacing": "error"
+            "template-curly-spacing": "error",
+            "yoda": "error"
         },
         "globals": {
             "flatbuffers": "readonly",
@@ -173,7 +190,6 @@
             { "ext": "uff",         "name": "UFF Model"                },
             { "ext": "xmodel",      "name": "Vitis AI Model"           }
         ],
-        "afterSign": "./publish/notarize.cjs",
         "publish": [
             { "provider": "github", "releaseType": "release" }
         ],
@@ -186,6 +202,7 @@
             "darkModeSupport": true,
             "gatekeeperAssess": false,
             "hardenedRuntime": true,
+            "notarize": true,
             "target": [ "dmg", "zip" ]
         },
         "win": {

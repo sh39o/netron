@@ -124,7 +124,7 @@ host.BrowserHost = class {
                     return obj;
                 });
             };
-            const capabilities = filter([ 'fetch', 'DataView.prototype.getBigInt64', 'Worker' ]);
+            const capabilities = filter(['fetch', 'DataView.prototype.getBigInt64', 'Worker']);
             this.event('browser_open', {
                 browser_capabilities: capabilities.map((capability) => capability.split('.').pop()).join(',')
             });
@@ -137,9 +137,6 @@ host.BrowserHost = class {
     }
 
     async start() {
-        const hash = this.window.location.hash ? this.window.location.hash.replace(/^#/, '') : '';
-        const search = this.window.location.search;
-        const params = new URLSearchParams(search + (hash ? `&${hash}` : ''));
         if (this._meta.file) {
             const [url] = this._meta.file;
             if (this._view.accept(url)) {
@@ -150,7 +147,10 @@ host.BrowserHost = class {
                 return;
             }
         }
-        const url = params.get('url');
+        const search = this.window.location.search;
+        const params = new Map(search ? new URLSearchParams(this.window.location.search) : []);
+        const hash = this.window.location.hash ? this.window.location.hash.replace(/^#/, '') : '';
+        const url = hash ? hash : params.get('url');
         if (url) {
             const identifier = params.get('identifier') || null;
             const location = url
@@ -215,7 +215,7 @@ host.BrowserHost = class {
     }
 
     async error(message, detail /*, cancel */) {
-        alert((message == 'Error' ? '' : `${message} `) + detail);
+        alert((message === 'Error' ? '' : `${message} `) + detail);
         return 0;
     }
 
@@ -353,8 +353,8 @@ host.BrowserHost = class {
             };
             request.onload = () => {
                 progress(0);
-                if (request.status == 200) {
-                    if (request.responseType == 'arraybuffer') {
+                if (request.status === 200) {
+                    if (request.responseType === 'arraybuffer') {
                         const buffer = new Uint8Array(request.response);
                         const stream = new base.BinaryStream(buffer);
                         resolve(stream);
@@ -395,7 +395,11 @@ host.BrowserHost = class {
     }
 
     _url(file) {
-        file = file.startsWith('./') ? file.substring(2) : file.startsWith('/') ? file.substring(1) : file;
+        if (file.startsWith('./')) {
+            file = file.substring(2);
+        } else if (file.startsWith('/')) {
+            file = file.substring(1);
+        }
         const location = this.window.location;
         const pathname = location.pathname.endsWith('/') ?
             location.pathname :
@@ -721,11 +725,6 @@ host.BrowserHost.FileStream = class {
         return buffer;
     }
 
-    byte() {
-        const position = this._fill(1);
-        return this._buffer[position];
-    }
-
     _fill(length) {
         if (this._position + length > this._length) {
             throw new Error(`Expected ${this._position + length - this._length} more bytes. The file might be corrupted. Unexpected end of file.`);
@@ -796,11 +795,12 @@ host.BrowserHost.Context = class {
 
 if (!('scrollBehavior' in window.document.documentElement.style)) {
     const __scrollTo__ = Element.prototype.scrollTo;
-    Element.prototype.scrollTo = function(options) {
+    Element.prototype.scrollTo = function(...args) {
+        const [options] = args;
         if (options !== undefined) {
-            if (options === null || typeof options !== 'object' || options.behavior === undefined || arguments[0].behavior === 'auto' || options.behavior === 'instant') {
+            if (options === null || typeof options !== 'object' || options.behavior === undefined || options.behavior === 'auto' || options.behavior === 'instant') {
                 if (__scrollTo__) {
-                    __scrollTo__.apply(this, arguments);
+                    __scrollTo__.apply(this, args);
                 }
             } else {
                 const now = () =>  window.performance && window.performance.now ? window.performance.now() : Date.now();

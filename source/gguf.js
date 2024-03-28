@@ -1,12 +1,10 @@
 
-import * as base from './base.js';
-
 const gguf = {};
 
 gguf.ModelFactory = class {
 
     match(context) {
-        const reader = gguf.Reader.open(context.stream);
+        const reader = gguf.Reader.open(context);
         if (reader) {
             context.type = 'gguf';
             context.target = reader;
@@ -24,7 +22,7 @@ gguf.Model = class {
 
     constructor(target) {
         this.format = target.format;
-        this.metadata = new Map();
+        this.metadata = [];
         const layers = new Map();
         for (const [name, tensor] of target.tensors) {
             const [key, param] = name.match(/^(.*)\.(.*?)$/).slice(1);
@@ -41,8 +39,8 @@ gguf.Model = class {
                 case 'general.name': this.name = value; break;
                 case 'general.architecture': architecture = value; break;
                 case 'general.description': this.description = value; break;
-                case 'general.author': this.metadata.set('author', value); break;
-                case 'general.license': this.metadata.set('license', value); break;
+                case 'general.author': this.metadata.push(new gguf.Argument('author', value)); break;
+                case 'general.license': this.metadata.push(new gguf.Argument('license', value)); break;
                 case 'general.file_type':
                 case 'general.quantization_version':
                     break;
@@ -60,14 +58,14 @@ gguf.Model = class {
             } else if (architecture && name.startsWith(`${architecture}.`)) {
                 model.metadata.set(name, value);
             } else {
-                this.metadata.set(name, value);
+                this.metadata.push(new gguf.Argument(name, value));
             }
         }
-        const graph = { layers: [ model ] };
+        const graph = { layers: [model] };
         if (tokenizer.metadata.size > 0) {
             graph.layers.push(tokenizer);
         }
-        this.graphs = [ new gguf.Graph(graph) ];
+        this.graphs = [new gguf.Graph(graph)];
     }
 };
 
@@ -115,7 +113,7 @@ gguf.Node = class {
             for (const [name, weight] of layer.weights) {
                 const tensor = new gguf.Tensor(weight);
                 const value = new gguf.Value(weight.name, tensor);
-                const argument = new gguf.Argument(name, [ value ]);
+                const argument = new gguf.Argument(name, [value]);
                 this.inputs.push(argument);
             }
         }
@@ -184,45 +182,45 @@ gguf.Tensor = class {
     }
 };
 
-
 gguf.Reader = class {
 
-    static open(stream) {
+    static open(context) {
+        const stream = context.stream;
         if (stream && stream.length > 4) {
             const signature = String.fromCharCode.apply(null, stream.peek(4));
             if (signature === 'GGUF') {
-                return new gguf.Reader(stream);
+                return new gguf.Reader(context);
             }
         }
         return null;
     }
 
-    constructor(stream) {
-        this.stream = stream;
+    constructor(context) {
+        this.context = context;
         const QK_K = 256;
         gguf.Reader.GGML_QUANT_SIZES = gguf.Reader.GGML_QUANT_SIZES || new Map([
-            [ gguf.QuantizationType.F32,  [ 1, 4, 'float32' ] ],
-            [ gguf.QuantizationType.F16,  [ 1, 2, 'float16' ] ],
-            [ gguf.QuantizationType.Q4_0, [ 32, 2 + 16, '' ] ],
-            [ gguf.QuantizationType.Q4_1, [ 32, 2 + 2 + 16, '' ] ],
-            [ gguf.QuantizationType.Q5_0, [ 32, 2 + 4 + 16, '' ] ],
-            [ gguf.QuantizationType.Q5_1, [ 32, 2 + 2 + 4 + 16, '' ] ],
-            [ gguf.QuantizationType.Q8_0, [ 32, 2 + 32, ''] ],
-            [ gguf.QuantizationType.Q8_1, [ 32, 4 + 4 + 32, ''] ],
-            [ gguf.QuantizationType.Q2_K, [ 256, 2 + 2 + Math.floor(QK_K / 16) + Math.floor(QK_K / 4), '' ] ],
-            [ gguf.QuantizationType.Q3_K, [ 256, 2 + Math.floor(QK_K / 4) + Math.floor(QK_K / 8) + 12, '' ] ],
-            [ gguf.QuantizationType.Q4_K, [ 256, 2 + 2 + Math.floor(QK_K / 2) + 12, '' ] ],
-            [ gguf.QuantizationType.Q5_K, [ 256, 2 + 2 + Math.floor(QK_K / 2) + Math.floor(QK_K / 8) + 12, '' ] ],
-            [ gguf.QuantizationType.Q6_K, [ 256, 2 + Math.floor(QK_K / 2) + Math.floor(QK_K / 4) + Math.floor(QK_K / 16), '' ] ],
-            [ gguf.QuantizationType.Q8_K, [ 256, 4 + QK_K + Math.floor(QK_K / 8), '' ] ],
-            [ gguf.QuantizationType.I8,   [ 1, 4, 'int8' ] ],
-            [ gguf.QuantizationType.I16,  [ 1, 2, 'int16' ] ],
-            [ gguf.QuantizationType.I32,  [ 1, 4, 'int32' ] ]
+            [gguf.QuantizationType.F32,  [1, 4, 'float32']],
+            [gguf.QuantizationType.F16,  [1, 2, 'float16']],
+            [gguf.QuantizationType.Q4_0, [32, 2 + 16, '']],
+            [gguf.QuantizationType.Q4_1, [32, 2 + 2 + 16, '']],
+            [gguf.QuantizationType.Q5_0, [32, 2 + 4 + 16, '']],
+            [gguf.QuantizationType.Q5_1, [32, 2 + 2 + 4 + 16, '']],
+            [gguf.QuantizationType.Q8_0, [32, 2 + 32, '']],
+            [gguf.QuantizationType.Q8_1, [32, 4 + 4 + 32, '']],
+            [gguf.QuantizationType.Q2_K, [256, 2 + 2 + Math.floor(QK_K / 16) + Math.floor(QK_K / 4), '']],
+            [gguf.QuantizationType.Q3_K, [256, 2 + Math.floor(QK_K / 4) + Math.floor(QK_K / 8) + 12, '']],
+            [gguf.QuantizationType.Q4_K, [256, 2 + 2 + Math.floor(QK_K / 2) + 12, '']],
+            [gguf.QuantizationType.Q5_K, [256, 2 + 2 + Math.floor(QK_K / 2) + Math.floor(QK_K / 8) + 12, '']],
+            [gguf.QuantizationType.Q6_K, [256, 2 + Math.floor(QK_K / 2) + Math.floor(QK_K / 4) + Math.floor(QK_K / 16), '']],
+            [gguf.QuantizationType.Q8_K, [256, 4 + QK_K + Math.floor(QK_K / 8), '']],
+            [gguf.QuantizationType.I8,   [1, 4, 'int8']],
+            [gguf.QuantizationType.I16,  [1, 2, 'int16']],
+            [gguf.QuantizationType.I32,  [1, 4, 'int32']]
         ]);
     }
 
     read() {
-        const reader = new gguf.StreamReader(this.stream);
+        const reader = new gguf.BinaryReader(this.context.read('binary'));
         this.tensors = new Map();
         this.metadata = new Map();
         const context = {};
@@ -231,8 +229,8 @@ gguf.Reader = class {
         context.header.version = reader.uint32();
         this.format = `GGUF v${context.header.version}`;
         if (context.header.version >= 2) {
-            context.header.n_tensors = Number(reader.uint64());
-            context.header.n_kv = Number(reader.uint64());
+            context.header.n_tensors = reader.uint64().toNumber();
+            context.header.n_kv = reader.uint64().toNumber();
             for (let i = 0; i < context.header.n_kv; i++) {
                 const entry = reader.entry();
                 this.metadata.set(entry.name, entry.value);
@@ -245,11 +243,11 @@ gguf.Reader = class {
                 }
                 context.alignment = this.metadata.get('general.alignment') || 32;
                 const offset_pad = reader.position % context.alignment;
-                if (offset_pad != 0) {
+                if (offset_pad !== 0) {
                     reader.skip(context.alignment - offset_pad);
                 }
                 context.offset = reader.position;
-                if (context.offset < this.stream.length) {
+                if (context.offset < reader.length) {
                     for (const tensor of this.tensors.values()) {
                         reader.seek(context.offset + tensor.offset);
                         if (!gguf.Reader.GGML_QUANT_SIZES.has(tensor.type)) {
@@ -264,15 +262,43 @@ gguf.Reader = class {
                 }
             }
         }
-        this.stream.seek(0);
-        delete this.stream;
+        this.context.stream.seek(0);
+        delete this.context;
     }
 };
 
-gguf.StreamReader = class extends base.StreamReader {
+gguf.BinaryReader = class {
 
-    constructor(stream) {
-        super(stream);
+    constructor(reader) {
+        this._reader = reader;
+    }
+
+    skip(offset) {
+        this._reader.skip(offset);
+    }
+
+    read(length) {
+        return this._reader.read(length);
+    }
+
+    byte() {
+        return this._reader.byte();
+    }
+
+    int32() {
+        return this._reader.int32();
+    }
+
+    uint32() {
+        return this._reader.uint32();
+    }
+
+    uint64() {
+        return this._reader.uint64();
+    }
+
+    float32() {
+        return this._reader.float32();
     }
 
     string() {
@@ -375,7 +401,7 @@ gguf.Utility = class {
     static enum(type, value) {
         gguf.Utility._enums = gguf.Utility._enums || new Map();
         if (!gguf.Utility._enums.has(type)) {
-            const entries = new Map(Object.entries(type).map(([key, value]) => [ value, key ]));
+            const entries = new Map(Object.entries(type).map(([key, value]) => [value, key]));
             gguf.Utility._enums.set(type, entries);
         }
         const entires = gguf.Utility._enums.get(type);

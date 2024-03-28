@@ -207,7 +207,14 @@ json.TextReader = class {
                         break;
                     }
                     default: {
-                        const value = c === '"' ? this._string() : c >= '0' && c <= '9' ? this._number() : this._literal();
+                        let value;
+                        if (c === '"') {
+                            value = this._string();
+                        } else if (c >= '0' && c <= '9') {
+                            value = this._number();
+                        } else {
+                            value = this._literal();
+                        }
                         this._whitespace();
                         if (this._char !== undefined) {
                             this._unexpected();
@@ -307,13 +314,13 @@ json.TextReader = class {
                 this._next();
             }
         }
-        return +value;
+        return Number(value);
     }
 
     _string() {
         let value = '';
         this._next();
-        while (this._char != '"') {
+        while (this._char !== '"') {
             if (this._char === '\\') {
                 this._next();
                 if (this._char === 'u') {
@@ -421,7 +428,7 @@ json.BinaryReader = class {
             const start = position;
             skip(4);
             const size = view.getInt32(start, 4);
-            if (size < 5 || start + size > length || buffer[start + size - 1] != 0x00) {
+            if (size < 5 || start + size > length || buffer[start + size - 1] !== 0x00) {
                 throw new bson.Error('Invalid file size.');
             }
         };
@@ -431,7 +438,7 @@ json.BinaryReader = class {
         for (;;) {
             skip(1);
             const type = buffer[position - 1];
-            if (type == 0x00) {
+            if (type === 0x00) {
                 if (stack.length === 0) {
                     break;
                 }
@@ -455,7 +462,7 @@ json.BinaryReader = class {
                     const start = position;
                     skip(size);
                     value = utf8Decoder.decode(buffer.subarray(start, position - 1));
-                    if (buffer[position - 1] != '0x00') {
+                    if (buffer[position - 1] !== 0) {
                         throw new bson.Error('String missing terminal 0.');
                     }
                     break;

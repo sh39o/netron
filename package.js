@@ -96,7 +96,7 @@ const exec = async (command, encoding, cwd) => {
     if (encoding) {
         return child_process.execSync(command, { cwd: cwd, encoding: encoding });
     }
-    child_process.execSync(command, { cwd: cwd, stdio: [ 0,1,2 ] });
+    child_process.execSync(command, { cwd: cwd, stdio: [0,1,2] });
     return '';
     /*
     return new Promise((resolve, reject) => {
@@ -193,7 +193,7 @@ const fork = async (organization, repository) => {
     await sleep(4000);
     await rm('dist', repository);
     writeLine(`github clone ${repository}`);
-    await exec(`git clone --depth=2 https://x-access-token:${process.env.GITHUB_TOKEN}@github.com/${process.env.GITHUB_USER}/${repository}.git ` + `dist/${repository}`);
+    await exec(`git clone --depth=2 https://x-access-token:${process.env.GITHUB_TOKEN}@github.com/${process.env.GITHUB_USER}/${repository}.git dist/${repository}`);
 };
 
 const pullrequest = async (organization, repository, body) => {
@@ -264,7 +264,7 @@ const build = async (target) => {
             writeLine('cp source/dir dist/dir');
             const source_dir = dirname('source');
             const dist_dir = dirname('dist', 'web');
-            const extensions = new Set([ 'html', 'css', 'js', 'json', 'ico', 'png' ]);
+            const extensions = new Set(['html', 'css', 'js', 'json', 'ico', 'png']);
             await copy(source_dir, dist_dir, (file) => extensions.has(file.split('.').pop()));
             await rm('dist', 'web', 'app.js');
             await rm('dist', 'web', 'electron.js');
@@ -364,7 +364,7 @@ const publish = async (target) => {
                 '',
                 `  url "${url}"`,
                 `  name "${configuration.productName}"`,
-                `  desc "${configuration.description}"`,
+                `  desc "${configuration.description.replace('Visualizer', 'Visualiser')}"`,
                 `  homepage "${repository}"`,
                 '',
                 '  auto_updates true',
@@ -381,9 +381,9 @@ const publish = async (target) => {
             ].join('\n'));
             writeLine('git push homebrew-cask');
             await exec('git -C dist/homebrew-cask add --all');
-            await exec(`git -C dist/homebrew-cask commit -m "Update ${configuration.name} to ${configuration.version}"`);
+            await exec(`git -C dist/homebrew-cask commit -m "${configuration.name} ${configuration.version}"`);
             await pullrequest('Homebrew', 'homebrew-cask', {
-                title: `Update ${configuration.name} to ${configuration.version}`,
+                title: `${configuration.name} ${configuration.version}`,
                 body: 'Update version and sha256',
                 head: `${process.env.GITHUB_USER}:master`,
                 base: 'master'
@@ -405,21 +405,21 @@ const publish = async (target) => {
             const extensions = configuration.build.fileAssociations.map((entry) => `- ${entry.ext}`).sort().join('\n');
             writeLine(`download ${url}`);
             const sha256 = await hash(url, 'sha256');
-            const paths = [ 'dist', 'winget-pkgs', 'manifests', publisher[0].toLowerCase(), publisher.replace(' ', ''), product, version ];
+            const paths = ['dist', 'winget-pkgs', 'manifests', publisher[0].toLowerCase(), publisher.replace(' ', ''), product, version];
             await mkdir(...paths);
             writeLine('update manifest');
             const manifestFile = dirname(...paths, identifier);
             await fs.writeFile(`${manifestFile}.yaml`, [
-                '# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.2.0.schema.json',
+                '# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.6.0.schema.json',
                 `PackageIdentifier: ${identifier}`,
                 `PackageVersion: ${version}`,
                 'DefaultLocale: en-US',
                 'ManifestType: version',
-                'ManifestVersion: 1.2.0',
+                'ManifestVersion: 1.6.0',
                 ''
             ].join('\n'));
             await fs.writeFile(`${manifestFile}.installer.yaml`, [
-                '# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.2.0.schema.json',
+                '# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json',
                 `PackageIdentifier: ${identifier}`,
                 `PackageVersion: ${version}`,
                 'Platform:',
@@ -449,11 +449,11 @@ const publish = async (target) => {
                 'FileExtensions:',
                 extensions,
                 'ManifestType: installer',
-                'ManifestVersion: 1.2.0',
+                'ManifestVersion: 1.6.0',
                 ''
             ].join('\n'));
             await fs.writeFile(`${manifestFile}.locale.en-US.yaml`, [
-                '# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.2.0.schema.json',
+                '# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json',
                 `PackageIdentifier: ${identifier}`,
                 `PackageVersion: ${version}`,
                 `PackageName: ${product}`,
@@ -474,7 +474,7 @@ const publish = async (target) => {
                 '- deep-learning',
                 '- neural-network',
                 'ManifestType: defaultLocale',
-                'ManifestVersion: 1.2.0',
+                'ManifestVersion: 1.6.0',
                 ''
             ].join('\n'));
             writeLine('git push winget-pkgs');
@@ -585,14 +585,14 @@ const forge = async() => {
     const command = read();
     switch (command) {
         case 'install': {
-            await exec('npm install @electron-forge/cli@7.2.0');
-            await exec('npm install @electron-forge/core@7.2.0');
-            await exec('npm install @electron-forge/maker-snap@7.2.0');
-            await exec('npm install @electron-forge/maker-dmg@7.2.0');
-            await exec('npm install @electron-forge/maker-zip@7.2.0');
+            await exec('npm install @electron-forge/cli@7.3.0');
+            await exec('npm install @electron-forge/core@7.3.0');
+            await exec('npm install @electron-forge/maker-snap@7.3.0');
+            await exec('npm install @electron-forge/maker-dmg@7.3.0');
+            await exec('npm install @electron-forge/maker-zip@7.3.0');
             break;
         }
-        case 'build': {
+        case 'update': {
             const cwd = path.join(dirname(), '..', 'forge');
             const node_modules = path.join(cwd, 'node_modules');
             const links = path.join(cwd, '.links');
@@ -603,6 +603,10 @@ const forge = async() => {
             await exec('yarn build', null, cwd);
             await exec('yarn link:prepare', null, cwd);
             await exec(`yarn link @electron-forge/core --link-folder=${links}`);
+            break;
+        }
+        case 'build': {
+            await exec('npx electron-forge make');
             break;
         }
         default: {

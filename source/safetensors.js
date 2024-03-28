@@ -58,7 +58,7 @@ safetensors.Model = class {
 
     constructor(entries) {
         this.format = 'Safetensors';
-        this.graphs = [ new safetensors.Graph(entries) ];
+        this.graphs = [new safetensors.Graph(entries)];
     }
 };
 
@@ -79,7 +79,7 @@ safetensors.Graph = class {
             if (!layers.has(layer)) {
                 layers.set(layer, []);
             }
-            layers.get(layer).push([ name, key, value]);
+            layers.get(layer).push([name, key, value]);
         }
         for (const [name, values] of layers) {
             const node = new safetensors.Node(name, values);
@@ -119,7 +119,7 @@ safetensors.Node = class {
         for (const [name, identifier, obj] of values) {
             const tensor = new safetensors.Tensor(obj);
             const value = new safetensors.Value(identifier, tensor);
-            const argument = new safetensors.Argument(name, [ value ]);
+            const argument = new safetensors.Argument(name, [value]);
             this.inputs.push(argument);
         }
     }
@@ -129,18 +129,21 @@ safetensors.TensorType = class {
 
     constructor(dtype, shape) {
         switch (dtype) {
-            case 'I8':   this.dataType = 'int8'; break;
-            case 'I16':  this.dataType = 'int16'; break;
-            case 'I32':  this.dataType = 'int32'; break;
-            case 'I64':  this.dataType = 'int64'; break;
-            case 'U8':   this.dataType = 'uint8'; break;
-            case 'U16':  this.dataType = 'uint16'; break;
-            case 'U32':  this.dataType = 'uint32'; break;
-            case 'U64':  this.dataType = 'uint64'; break;
-            case 'BF16': this.dataType = 'bfloat16'; break;
-            case 'F16':  this.dataType = 'float16'; break;
-            case 'F32':  this.dataType = 'float32'; break;
-            case 'F64':  this.dataType = 'float64'; break;
+            case 'I8':      this.dataType = 'int8'; break;
+            case 'I16':     this.dataType = 'int16'; break;
+            case 'I32':     this.dataType = 'int32'; break;
+            case 'I64':     this.dataType = 'int64'; break;
+            case 'U8':      this.dataType = 'uint8'; break;
+            case 'U16':     this.dataType = 'uint16'; break;
+            case 'U32':     this.dataType = 'uint32'; break;
+            case 'U64':     this.dataType = 'uint64'; break;
+            case 'BF16':    this.dataType = 'bfloat16'; break;
+            case 'F16':     this.dataType = 'float16'; break;
+            case 'F32':     this.dataType = 'float32'; break;
+            case 'F64':     this.dataType = 'float64'; break;
+            case 'BOOL':    this.dataType = 'boolean'; break;
+            case 'F8_E4M3': this.dataType = 'float8e4m3fn'; break;
+            case 'F8_E5M2': this.dataType = 'float8e5m2'; break;
             default: throw new safetensors.Error(`Unsupported data type '${dtype}'.`);
         }
         this.shape = shape;

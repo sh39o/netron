@@ -235,7 +235,7 @@ host.ElectronHost = class {
             type: 'error',
             message: message,
             detail: detail,
-            buttons: cancel ? [ 'Report', 'Cancel' ] : [ 'Report' ]
+            buttons: cancel ? ['Report', 'Cancel'] : ['Report']
         };
         return electron.ipcRenderer.sendSync('show-message-box', options);
         // return await this._message(message + ': ' + detail, 'Report');
@@ -262,7 +262,7 @@ host.ElectronHost = class {
             title: 'Export Tensor',
             defaultPath: defaultPath,
             buttonLabel: 'Export',
-            filters: [ { name: name, extensions: [ extension ] } ]
+            filters: [{ name: name, extensions: [extension] }]
         });
         if (selectedFile) {
             callback(selectedFile);
@@ -650,11 +650,6 @@ host.ElectronHost.FileStream = class {
         return buffer;
     }
 
-    byte() {
-        const position = this._fill(1);
-        return this._buffer[position];
-    }
-
     _fill(length) {
         if (this._position + length > this._length) {
             const offset = this._position + length - this._length;
@@ -676,7 +671,7 @@ host.ElectronHost.FileStream = class {
     _read(buffer, offset) {
         const descriptor = fs.openSync(this._file, 'r');
         const stat = fs.statSync(this._file);
-        if (stat.mtimeMs != this._mtime) {
+        if (stat.mtimeMs !== this._mtime) {
             throw new Error(`File '${this._file}' last modified time changed.`);
         }
         try {

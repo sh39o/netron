@@ -61,7 +61,7 @@ const main = async () => {
         }
     }
     const root = new flatc.Root('megengine');
-    await root.load([], [ schema ]);
+    await root.load([], [schema]);
     const namespace = root.find('mgb.serialization.fbs.param', flatc.Namespace);
     const operatorParams = namespace.children;
     for (const [key, op] of operatorParams) {
@@ -75,8 +75,8 @@ const main = async () => {
                 json.push(operator);
             }
             const operator = operators.get(key);
-            if (category[ key.replace(/V(\d+)$/, '') ]) {
-                operator.category = category[ key.replace(/V(\d+)$/, '') ];
+            if (category[key.replace(/V(\d+)$/, '')]) {
+                operator.category = category[key.replace(/V(\d+)$/, '')];
             }
             operator.attributes = operator.attributes || [];
             for (const [field_name, field] of op.fields) {

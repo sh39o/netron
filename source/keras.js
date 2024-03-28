@@ -147,15 +147,15 @@ keras.ModelFactory = class {
         };
         const read_weights_hdf5 = (group) => {
             const weights_store = new Map();
-            const stack = [ [ group, '' ] ];
+            const stack = [[group, '']];
             while (stack.length > 0) {
-                const [ group, path ] = stack.pop();
+                const [group, path] = stack.pop();
                 if (group.groups instanceof Map) {
                     const checkpoint = group.groups.get('layers') || group.groups.get('_layer_checkpoint_dependencies');
                     if (checkpoint) {
                         for (const [key, layer] of checkpoint.groups) {
                             const name = `${path ? `${path}/` : ''}layers/${key}`;
-                            stack.push([ layer, name ]);
+                            stack.push([layer, name]);
                             const values = [];
                             for (const vars of layer.groups) {
                                 for (const [name, group] of vars[1].groups) {
@@ -186,8 +186,8 @@ keras.ModelFactory = class {
                         const values = Object.values(array.data[0]).map((array) => {
                             const stride = array.strides.map((stride) => stride / array.itemsize);
                             const dataType = array.dtype.__name__;
-                            const values = dataType == 'string' || dataType == 'object' ? array.flatten().tolist() : array.tobytes();
-                            const encoding = dataType == 'string' || dataType == 'object' ? '|' : array.dtype.byteorder;
+                            const values = dataType === 'string' || dataType === 'object' ? array.flatten().tolist() : array.tobytes();
+                            const encoding = dataType === 'string' || dataType === 'object' ? '|' : array.dtype.byteorder;
                             return new keras.Tensor('', array.shape, dataType, stride, null, encoding, values);
                         });
                         if (values.length > 0) {
@@ -201,8 +201,8 @@ keras.ModelFactory = class {
         };
         const request_weights = async (context) => {
             const formats = [
-                [ 'model.weights.h5', 'hdf5', read_weights_hdf5 ],
-                [ 'model.weights.npz', 'npz', read_weights_numpy ],
+                ['model.weights.h5', 'hdf5', read_weights_hdf5],
+                ['model.weights.npz', 'npz', read_weights_numpy],
             ];
             for (const [name, type, callback] of formats) {
                 let content = null;
@@ -373,7 +373,7 @@ keras.ModelFactory = class {
                                         const variable = weight.value;
                                         const components = weight_name.split('/');
                                         components.pop();
-                                        const name = (components.length == 0 || components[0] !== layer_name) ? [ layer_name ].concat(components).join('/') : components.join('/');
+                                        const name = (components.length === 0 || components[0] !== layer_name) ? [layer_name].concat(components).join('/') : components.join('/');
                                         const encoding = variable.littleEndian ? '<' : '>';
                                         const tensor = new keras.Tensor(weight_name, variable.shape, variable.type, null, null, encoding, variable.data);
                                         weights.add(name, tensor);
@@ -391,15 +391,15 @@ keras.ModelFactory = class {
                 }
                 const format = 'HDF5 Weights';
                 let weights_group = root_group;
-                if (root_group.attributes.size === 0 && root_group.value === null && root_group.groups.size == 1) {
+                if (root_group.attributes.size === 0 && root_group.value === null && root_group.groups.size === 1) {
                     const group = root_group.groups.values().next().value;
                     if (group.attributes.size === 0 && group.value === null) {
                         weights_group = group;
                     }
                 }
-                const tensorKeys = new Set([ 'name', 'shape', 'quantization' ]);
+                const tensorKeys = new Set(['name', 'shape', 'quantization']);
                 const groups = Array.from(weights_group.groups.values());
-                if (groups.every((group) => group.attributes.size === 0 && group.groups.length == 0 && group.value !== null)) {
+                if (groups.every((group) => group.attributes.size === 0 && group.groups.length === 0 && group.value !== null)) {
                     for (const group of groups) {
                         const variable = group.value;
                         const layout = variable.littleEndian ? '<' : '>';
@@ -419,7 +419,7 @@ keras.ModelFactory = class {
                             if (!variable) {
                                 throw new keras.Error('Variable value is not HDF5 Weights.');
                             }
-                            const name = moduleName ? [ moduleName, variableGroup.name ].join('/') : moduleName.name;
+                            const name = moduleName ? [moduleName, variableGroup.name].join('/') : moduleName.name;
                             const layout = variable.littleEndian ? '<' : '>';
                             const tensor = new keras.Tensor(name, variable.shape, variable.type, null, null, layout, variable.type === 'string' ? variable.value : variable.data);
                             weights.add(moduleName, tensor);
@@ -434,7 +434,7 @@ keras.ModelFactory = class {
                         }
                         return;
                     }
-                    const subKeys = new Set([ 'index', 'need_grad' ]);
+                    const subKeys = new Set(['index', 'need_grad']);
                     const attribtues = Array.from(group.attributes.keys());
                     const match = attribtues.filter((key) => !subKeys.has(key)).length === 0;
                     if (match && group.value !== null && group.groups.size === 0) {
@@ -480,7 +480,7 @@ keras.ModelFactory = class {
                             if (Array.isArray(weight_names) && weight_names.length > 0) {
                                 for (const weight_name of weight_names) {
                                     const buffer = layer_weights[weight_name];
-                                    const unpickler = execution.invoke('pickle.Unpickler', [ buffer ]);
+                                    const unpickler = execution.invoke('pickle.Unpickler', [buffer]);
                                     const variable = unpickler.load();
                                     const tensor = new keras.Tensor(weight_name, variable.shape, variable.dtype.__name__, null, null, '<', variable.data);
                                     weights.add(layer_name, tensor);
@@ -523,7 +523,7 @@ keras.Model = class {
         this._backend = backend;
         this._producer = producer;
         metadata = new keras.GraphMetadata(metadata);
-        this._graphs = [ new keras.Graph(metadata, config, weights) ];
+        this._graphs = [new keras.Graph(metadata, config, weights)];
     }
 
     get format() {
@@ -574,12 +574,12 @@ keras.Graph = class {
                         delete config.dtype;
                     }
                     if (Array.isArray(config.batch_input_shape)) {
-                        shape = config.batch_input_shape.map((s) => s == null ? '?' : s);
+                        shape = config.batch_input_shape.map((s) => s === null ? '?' : s);
                         delete config.batch_input_shape;
                     } else if (config.batch_input_shape &&
                         config.batch_input_shape.class_name === '__tuple__' &&
                         Array.isArray(config.batch_input_shape.items)) {
-                        shape = config.batch_input_shape.items.map((s) => s == null ? '?' : s);
+                        shape = config.batch_input_shape.items.map((s) => s === null ? '?' : s);
                         delete config.batch_input_shape;
                     }
                     return new keras.TensorType(dataType, new keras.TensorShape(shape));
@@ -599,7 +599,7 @@ keras.Graph = class {
                         const layer = layers.shift();
                         let current = index.toString();
                         index++;
-                        if (index == 0) {
+                        if (index === 0) {
                             const type = getInputType(layer);
                             let remove = false;
                             if (layer.class_name === 'InputLayer' && layer.config && layer.config.name) {
@@ -607,21 +607,21 @@ keras.Graph = class {
                                 remove = true;
                             }
                             const value = values.map(name, type);
-                            const argument = new keras.Argument(name, true, [ value ]);
+                            const argument = new keras.Argument(name, true, [value]);
                             this._inputs.push(argument);
                             if (remove) {
                                 continue;
                             }
                         }
-                        const nodeInputs = [ { name: name } ];
+                        const nodeInputs = [{ name: name }];
                         if (layer.config && layer.config.name) {
                             current = layer.config.name;
                         }
                         name = current;
-                        let nodeOutputs = [ name ];
-                        if (index == layers.length) {
+                        let nodeOutputs = [name];
+                        if (index === layers.length) {
                             if (outputs && outputs.length > 0) {
-                                nodeOutputs = [ outputs[0] ];
+                                nodeOutputs = [outputs[0]];
                                 name = null;
                             }
                         }
@@ -632,7 +632,7 @@ keras.Graph = class {
                     }
                     if (name) {
                         const value = values.map(name);
-                        const argument = new keras.Argument(name, true, [ value ]);
+                        const argument = new keras.Argument(name, true, [value]);
                         this._outputs.push(argument);
                     }
                     break;
@@ -672,9 +672,9 @@ keras.Graph = class {
                                             }
                                         }
                                     }
-                                    return [ value.length ].concat(dim);
+                                    return [value.length].concat(dim);
                                 }
-                                return [ value.length ];
+                                return [value.length];
                             };
                             const shape = transform(input_data);
                             const flatten = (input) => input.reduce((a, b) => a.concat(Array.isArray(b) ? flatten(b) : b), []);
@@ -760,7 +760,7 @@ keras.Graph = class {
                                 if (legacy_format) {
                                     const keys = new Set(Object.keys(layer.config));
                                     const is_functional_config = keys.has('name') && keys.has('layers') && keys.has('input_layers') && keys.has('output_layers');
-                                    if (class_name == 'Sequential' ||
+                                    if (class_name === 'Sequential' ||
                                         (is_functional_config && Array.isArray(layer.config.layers) && layer.config.layers.length > 0 && layer.config.layers[0].class_name === 'InputLayer')) {
                                         first_index++;
                                     }
@@ -792,7 +792,7 @@ keras.Graph = class {
                                             config.class_name = '__Function__';
                                             config.name = layer.name;
                                             config.config = {};
-                                            config.config.layers = [ Object.assign({}, layer) ];
+                                            config.config.layers = [Object.assign({}, layer)];
                                             delete config.config.layers[0].inbound_nodes;
                                             delete config.config.layers[0].input_layers;
                                             delete config.config.layers[0].output_layers;
@@ -836,7 +836,7 @@ keras.Graph = class {
                                         nodes.delete(inbound_node_key);
                                     }
                                     const value = values.map(name, type);
-                                    const argument = new keras.Argument(node_name, true, [ value ]);
+                                    const argument = new keras.Argument(node_name, true, [value]);
                                     this._inputs.push(argument);
                                 }
                             }
@@ -846,7 +846,7 @@ keras.Graph = class {
                                     const [name] = output_data;
                                     const key = read_connection(output_data);
                                     const value = values.map(key);
-                                    const argument = new keras.Argument(name, true, [ value ]);
+                                    const argument = new keras.Argument(name, true, [value]);
                                     this._outputs.push(argument);
                                 }
                             }
@@ -925,7 +925,7 @@ keras.Value = class {
             throw new keras.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this.name= name;
-        this.type = type ? type : initializer && initializer.type ? initializer.type : null;
+        this.type = !type && initializer ? initializer.type  : type;
         this.quantization = initializer && initializer.quantization ? initializer.quantization : null;
         this.initializer = initializer || null;
     }
@@ -945,7 +945,7 @@ keras.Node = class {
         this._outputs = [];
         this._attributes = [];
         this._chain = [];
-        let names = [ name ];
+        let names = [name];
         let class_name = layer.class_name;
         let model = false;
         switch (class_name) {
@@ -965,8 +965,8 @@ keras.Node = class {
                     delete config.input_layers;
                     delete config.output_layers;
                 }
-                this._inputs = [ new keras.Argument('inputs', true, inputs.map((input) => values.map(input.name))) ];
-                this._outputs = [ new keras.Argument('outputs', true, outputs.map((name) => values.map(name))) ];
+                this._inputs = [new keras.Argument('inputs', true, inputs.map((input) => values.map(input.name)))];
+                this._outputs = [new keras.Argument('outputs', true, outputs.map((name) => values.map(name)))];
                 inputs = [];
                 outputs = [];
                 break;
@@ -978,8 +978,8 @@ keras.Node = class {
                     const inner = config.layer;
                     delete config.layer;
                     this._inner = new keras.Node(metadata, inner, null, null, values);
-                    if (class_name == 'Bidirectional' && inner.config.name) {
-                        names = [ `${name}/forward_${inner.config.name}`, `${name}/backward_${inner.config.name}` ];
+                    if (class_name === 'Bidirectional' && inner.config.name) {
+                        names = [`${name}/forward_${inner.config.name}`, `${name}/backward_${inner.config.name}`];
                         if (!group) {
                             group = name;
                         }
@@ -1057,7 +1057,7 @@ keras.Node = class {
             let list = false;
             let name = null;
             let visible = true;
-            if (!innerMetadata || inputIndex == 0) {
+            if (!innerMetadata || inputIndex === 0) {
                 if (this._type && this._type.inputs && inputIndex < this._type.inputs.length) {
                     const input = this._type.inputs[inputIndex];
                     name = input.name;
@@ -1065,7 +1065,7 @@ keras.Node = class {
                         inputIndex++;
                         continue;
                     }
-                    visible = input.visible == false ? false : true;
+                    visible = input.visible === false ? false : true;
                     if (this._type.inputs[inputIndex].list) {
                         list = true;
                     }
@@ -1096,7 +1096,7 @@ keras.Node = class {
                         break;
                 }
             }
-            const input = !list ? [ inputs.shift() ] : inputs.splice(0, inputs.length);
+            const input = !list ? [inputs.shift()] : inputs.splice(0, inputs.length);
             const inputArguments = input.map((input) => {
                 if (input.name) {
                     return values.map(input.name, null, input.initializer);
@@ -1110,14 +1110,14 @@ keras.Node = class {
                 }
                 throw new keras.Error(`Invalid argument '${JSON.stringify(input.name)}'.`);
             });
-            if (!name && inputArguments.length == 1 && inputArguments[0].initializer && inputArguments[0].initializer.name) {
+            if (!name && inputArguments.length === 1 && inputArguments[0].initializer && inputArguments[0].initializer.name) {
                 if (names.length === 1 && names[0] === '') {
                     name = inputArguments[0].initializer.name;
                 } else {
                     const parts = inputArguments[0].initializer.name.split('/').pop().split(':').shift().split('_');
                     const inputName1 = parts.pop();
-                    const inputName2 = parts.length > 0 ? [ parts.pop(), inputName1 ].join('_') : '';
-                    const inputNames = new Set([ 'recurrent_kernel', 'running_mean', 'running_std', 'moving_mean', 'moving_variance', 'depthwise_filter', 'pointwise_filter' ]);
+                    const inputName2 = parts.length > 0 ? [parts.pop(), inputName1].join('_') : '';
+                    const inputNames = new Set(['recurrent_kernel', 'running_mean', 'running_std', 'moving_mean', 'moving_variance', 'depthwise_filter', 'pointwise_filter']);
                     name = inputNames.has(inputName2) ? inputName2 : inputName1;
                 }
             }
@@ -1129,22 +1129,22 @@ keras.Node = class {
         for (let i = 0; i < outputs.length; i++) {
             const output = outputs[i];
             const name = this._type && this._type.outputs && i < this._type.outputs.length && this._type.outputs[i] && this._type.outputs[i].name ? this._type.outputs[i].name : i.toString();
-            const argument = new keras.Argument(name, true, output === undefined || output.length === 0 ? [] : [ values.map(output) ]);
+            const argument = new keras.Argument(name, true, output === undefined || output.length === 0 ? [] : [values.map(output)]);
             this._outputs.push(argument);
         }
 
-        const inputTypes = new Map((this._type.inputs || []).map((input) => [ input.name, input.type ]));
+        const inputTypes = new Map((this._type.inputs || []).map((input) => [input.name, input.type]));
         for (const [name, arg] of Object.entries(args)) {
             if (name !== 'name') {
                 if ((arg && arg.name) || (inputTypes.has(name) && inputTypes.get(name) === 'Tensor' && arg)) {
                     if (arg.name) {
                         const value = values.map(arg.name);
-                        const argument = new keras.Argument(name, true, [ value ]);
+                        const argument = new keras.Argument(name, true, [value]);
                         this._inputs.push(argument);
                     } else {
                         const tensor = new keras.Tensor('', arg.shape, config.dtype || '?', null, null, '|', arg.value);
                         const value = values.map('', null, tensor);
-                        const argument = new keras.Argument(name, true, [ value ]);
+                        const argument = new keras.Argument(name, true, [value]);
                         this._inputs.push(argument);
                     }
                 } else {
@@ -1193,7 +1193,7 @@ keras.Attribute = class {
     constructor(metadata, name, value) {
         this._name = name;
         this._value = value;
-        if (value && typeof value == 'object' && value.class_name && value.config) {
+        if (value && typeof value === 'object' && value.class_name && value.config) {
             this._value = keras.Attribute._convert(value);
         }
         switch (name) {
@@ -1214,9 +1214,9 @@ keras.Attribute = class {
                     } else if (metadata.default !== undefined) {
                         if (Array.isArray(value)) {
                             if (Array.isArray(metadata.default)) {
-                                this._visible = value.length !== metadata.default || !this.value.every((item, index) => item == metadata.default[index]);
+                                this._visible = value.length !== metadata.default || !this.value.every((item, index) => item === metadata.default[index]);
                             } else {
-                                this._visible = !this.value.every((item) => item == metadata.default);
+                                this._visible = !this.value.every((item) => item === metadata.default);
                             }
                         } else {
                             this._visible = this.value !== metadata.default;
@@ -1241,7 +1241,7 @@ keras.Attribute = class {
     }
 
     get visible() {
-        return this._visible == false ? false : true;
+        return this._visible === false ? false : true;
     }
 
     static _convert(value) {
@@ -1273,8 +1273,8 @@ keras.Tensor = class {
         if (quantization && (quantization.scale !== 0 || quantization.min !== 0)) {
             this.quantization = {
                 type: 'linear',
-                scale: [ quantization.scale ],
-                min: [ quantization.min ]
+                scale: [quantization.scale],
+                min: [quantization.min]
             };
         }
     }
@@ -1484,9 +1484,9 @@ tfjs.Container = class {
     _openShards(manifests, shards) {
         this._weights = new keras.Weights();
         const dtype_size_map = new Map([
-            [ 'float16', 2 ], [ 'float32', 4 ], [ 'float64', 8 ],
-            [ 'int8', 1 ], [ 'int16', 2 ], [ 'int32', 4 ], [ 'int64', 8 ],
-            [ 'uint8', 1 ], [ 'uint16', 2 ], [ 'uint32', 4 ], [ 'uint64', 8 ]
+            ['float16', 2], ['float32', 4], ['float64', 8],
+            ['int8', 1], ['int16', 2], ['int32', 4], ['int64', 8],
+            ['uint8', 1], ['uint16', 2], ['uint32', 4], ['uint64', 8]
         ]);
         for (const manifest of manifests) {
             let buffer = null;

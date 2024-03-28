@@ -25,14 +25,21 @@ base.Complex128 = class Complex {
     }
 };
 
+BigInt.prototype.toNumber = function() {
+    if (this > Number.MAX_SAFE_INTEGER || this < Number.MIN_SAFE_INTEGER) {
+        throw new Error('64-bit value exceeds safe integer.');
+    }
+    return Number(this);
+};
+
 if (!DataView.prototype.getFloat16) {
     DataView.prototype.getFloat16 = function(byteOffset, littleEndian) {
         const value = this.getUint16(byteOffset, littleEndian);
         const e = (value & 0x7C00) >> 10;
         let f = value & 0x03FF;
-        if (e == 0) {
+        if (e === 0) {
             f = 0.00006103515625 * (f / 1024);
-        } else if (e == 0x1F) {
+        } else if (e === 0x1F) {
             f = f ? NaN : Infinity;
         } else {
             f = DataView.__float16_pow[e] * (1 + (f / 1024));
@@ -104,7 +111,7 @@ DataView.prototype.getFloat8e4m3 = function(byteOffset, fn, uz) {
     let exponent_bias = 7;
     if (uz) {
         exponent_bias = 8;
-        if (value == 0x80) {
+        if (value === 0x80) {
             return NaN;
         }
     } else if (value === 255) {
@@ -116,15 +123,15 @@ DataView.prototype.getFloat8e4m3 = function(byteOffset, fn, uz) {
     let mant = value & 0x07;
     const sign = value & 0x80;
     let res = sign << 24;
-    if (expo == 0) {
+    if (expo === 0) {
         if (mant > 0) {
             expo = 0x7F - exponent_bias;
-            if (mant & 0x4 == 0) {
+            if (mant & 0x4 === 0) {
                 mant &= 0x3;
                 mant <<= 1;
                 expo -= 1;
             }
-            if (mant & 0x4 == 0) {
+            if (mant & 0x4 === 0) {
                 mant &= 0x3;
                 mant <<= 1;
                 expo -= 1;
@@ -147,7 +154,7 @@ DataView.prototype.getFloat8e5m2 = function(byteOffset, fn, uz) {
     const value = this.getUint8(byteOffset);
     let exponent_bias = NaN;
     if (fn && uz) {
-        if (value == 0x80) {
+        if (value === 0x80) {
             return NaN;
         }
         exponent_bias = 16;
@@ -169,10 +176,10 @@ DataView.prototype.getFloat8e5m2 = function(byteOffset, fn, uz) {
     let expo = (value & 0x7C) >> 2;
     let mant = value & 0x03;
     let res = (value & 0x80) << 24;
-    if (expo == 0) {
+    if (expo === 0) {
         if (mant > 0) {
             expo = 0x7F - exponent_bias;
-            if (mant & 0x2 == 0) {
+            if (mant & 0x2 === 0) {
                 mant &= 0x1;
                 mant <<= 1;
                 expo -= 1;
@@ -193,9 +200,12 @@ DataView.prototype.getIntBits = DataView.prototype.getUintBits || function(offse
     offset = offset * bits;
     const position = Math.floor(offset / 8);
     const remainder = offset % 8;
-    let value = (remainder + bits) <= 8 ?
-        littleEndian ? this.getUint8(position) >> remainder /* TODO */ : this.getUint8(position) >> (8 - remainder - bits) :
-        littleEndian ? this.getUint16(position, true) >> remainder /* TODO */ : this.getUint16(position, false) >> (16 - remainder - bits);
+    let value;
+    if ((remainder + bits) <= 8) {
+        value = littleEndian ? this.getUint8(position) >> remainder /* TODO */ : this.getUint8(position) >> (8 - remainder - bits);
+    } else {
+        value = littleEndian ? this.getUint16(position, true) >> remainder /* TODO */ : this.getUint16(position, false) >> (16 - remainder - bits);
+    }
     value &= (1 << bits) - 1;
     if (value & (1 << (bits - 1))) {
         value -= 1 << bits;
@@ -207,9 +217,12 @@ DataView.prototype.getUintBits = DataView.prototype.getUintBits || function(offs
     offset = offset * bits;
     const position = Math.floor(offset / 8);
     const remainder = offset % 8;
-    const value = (remainder + bits) <= 8 ?
-        littleEndian ? this.getUint8(position) >> remainder /* TODO */ : this.getUint8(position) >> (8 - remainder - bits) :
-        littleEndian ? this.getUint16(position, true) >> remainder /* TODO */ : this.getUint16(position, false) >> (16 - remainder - bits);
+    let value;
+    if ((remainder + bits) <= 8) {
+        value = littleEndian ? this.getUint8(position) >> remainder /* TODO */ : this.getUint8(position) >> (8 - remainder - bits);
+    } else {
+        value = littleEndian ? this.getUint16(position, true) >> remainder /* TODO */ : this.getUint16(position, false) >> (16 - remainder - bits);
+    }
     return value & ((1 << bits) - 1);
 };
 
@@ -300,15 +313,19 @@ base.BinaryStream = class {
         this.skip(length !== undefined ? length : this._length - this._position);
         return this._buffer.subarray(position, this._position);
     }
-
-    byte() {
-        const position = this._position;
-        this.skip(1);
-        return this._buffer[position];
-    }
 };
 
 base.BinaryReader = class {
+
+    static open(data, littleEndian) {
+        if (data instanceof Uint8Array || data.length <= 0x20000000) {
+            return new base.BufferReader(data, littleEndian);
+        }
+        return new base.StreamReader(data, littleEndian);
+    }
+};
+
+base.BufferReader = class {
 
     constructor(data, littleEndian) {
         this._buffer = data instanceof Uint8Array ? data : data.peek();
@@ -341,8 +358,9 @@ base.BinaryReader = class {
     }
 
     align(mod) {
-        if (this._position % mod != 0) {
-            this.skip(mod - (this._position % mod));
+        const remainder = this.position % mod;
+        if (remainder !== 0) {
+            this.skip(mod - remainder);
         }
     }
 
@@ -462,20 +480,37 @@ base.StreamReader = class {
         this._stream.seek(position);
     }
 
-    skip(position) {
-        this._stream.skip(position);
+    skip(offset) {
+        this._stream.skip(offset);
+    }
+
+    align(mod) {
+        const remainder = this.position % mod;
+        if (remainder !== 0) {
+            this.skip(mod - remainder);
+        }
     }
 
     stream(length) {
         return this._stream.stream(length);
     }
 
+    peek(length) {
+        return this._stream.peek(length).slice(0);
+    }
+
     read(length) {
-        return this._stream.read(length);
+        return this._stream.read(length).slice(0);
     }
 
     byte() {
-        return this._stream.byte();
+        return this._stream.read(1)[0];
+    }
+
+    int8() {
+        const buffer = this._stream.read(1);
+        this._buffer.set(buffer, 0);
+        return this._view.getInt8(0);
     }
 
     int16() {
@@ -488,6 +523,12 @@ base.StreamReader = class {
         const buffer = this._stream.read(4);
         this._buffer.set(buffer, 0);
         return this._view.getInt32(0, this._littleEndian);
+    }
+
+    int64() {
+        const buffer = this._stream.read(8);
+        this._buffer.set(buffer, 0);
+        return this._view.getBigInt64(0, this._littleEndian);
     }
 
     uint16() {
@@ -513,6 +554,16 @@ base.StreamReader = class {
         this._buffer.set(buffer, 0);
         return this._view.getFloat32(0, this._littleEndian);
     }
+
+    float64() {
+        const buffer = this._stream.read(8);
+        this._buffer.set(buffer, 0);
+        return this._view.getFloat64(0, this._littleEndian);
+    }
+
+    boolean() {
+        return this.byte() !== 0 ? true : false;
+    }
 };
 
 base.Telemetry = class {
@@ -523,40 +574,40 @@ base.Telemetry = class {
         this._config = new Map();
         this._metadata = {};
         this._schema = new Map([
-            [ 'protocol_version', 'v' ],
-            [ 'tracking_id', 'tid' ],
-            [ 'hash_info', 'gtm' ],
-            [ '_page_id', '_p'],
-            [ 'client_id', 'cid' ],
-            [ 'language', 'ul' ],
-            [ 'screen_resolution', 'sr' ],
-            [ '_user_agent_architecture', 'uaa' ],
-            [ '_user_agent_bitness', 'uab' ],
-            [ '_user_agent_full_version_list', 'uafvl' ],
-            [ '_user_agent_mobile', 'uamb' ],
-            [ '_user_agent_model', 'uam' ],
-            [ '_user_agent_platform', 'uap' ],
-            [ '_user_agent_platform_version', 'uapv' ],
-            [ '_user_agent_wow64', 'uaw' ],
-            [ 'hit_count', '_s' ],
-            [ 'session_id', 'sid' ],
-            [ 'session_number', 'sct' ],
-            [ 'session_engaged', 'seg' ],
-            [ 'engagement_time_msec', '_et' ],
-            [ 'page_location', 'dl' ],
-            [ 'page_title', 'dt' ],
-            [ 'page_referrer', 'dr' ],
-            [ 'is_first_visit', '_fv' ],
-            [ 'is_external_event', '_ee' ],
-            [ 'is_new_to_site', '_nsi' ],
-            [ 'is_session_start', '_ss' ],
-            [ 'event_name', 'en' ]
+            ['protocol_version', 'v'],
+            ['tracking_id', 'tid'],
+            ['hash_info', 'gtm'],
+            ['_page_id', '_p'],
+            ['client_id', 'cid'],
+            ['language', 'ul'],
+            ['screen_resolution', 'sr'],
+            ['_user_agent_architecture', 'uaa'],
+            ['_user_agent_bitness', 'uab'],
+            ['_user_agent_full_version_list', 'uafvl'],
+            ['_user_agent_mobile', 'uamb'],
+            ['_user_agent_model', 'uam'],
+            ['_user_agent_platform', 'uap'],
+            ['_user_agent_platform_version', 'uapv'],
+            ['_user_agent_wow64', 'uaw'],
+            ['hit_count', '_s'],
+            ['session_id', 'sid'],
+            ['session_number', 'sct'],
+            ['session_engaged', 'seg'],
+            ['engagement_time_msec', '_et'],
+            ['page_location', 'dl'],
+            ['page_title', 'dt'],
+            ['page_referrer', 'dr'],
+            ['is_first_visit', '_fv'],
+            ['is_external_event', '_ee'],
+            ['is_new_to_site', '_nsi'],
+            ['is_session_start', '_ss'],
+            ['event_name', 'en']
         ]);
     }
 
     async start(measurement_id, client_id, session) {
         this._session = session && typeof session === 'string' ? session.replace(/^GS1\.1\./, '').split('.') : null;
-        this._session = Array.isArray(this._session) && this._session.length >= 7 ? this._session : [ '0', '0', '0', '0', '0', '0', '0' ];
+        this._session = Array.isArray(this._session) && this._session.length >= 7 ? this._session : ['0', '0', '0', '0', '0', '0', '0'];
         this._session[0] = Date.now();
         this._session[1] = parseInt(this._session[1], 10) + 1;
         this._engagement_time_msec = 0;
@@ -573,7 +624,7 @@ base.Telemetry = class {
         } else {
             const random = String(Math.round(0x7FFFFFFF * Math.random()));
             const time = Date.now();
-            const value = [ random, Math.round(time / 1e3) ].join('.');
+            const value = [random, Math.round(time / 1e3)].join('.');
             this.set('client_id', value);
             this._metadata.is_first_visit = 1;
             this._metadata.is_new_to_site = 1;
@@ -581,7 +632,7 @@ base.Telemetry = class {
         this.set('language', ((this._navigator && (this._navigator.language || this._navigator.browserLanguage)) || '').toLowerCase());
         this.set('screen_resolution', `${window.screen ? window.screen.width : 0}x${window.screen ? window.screen.height : 0}`);
         if (this._navigator && this._navigator.userAgentData && this._navigator.userAgentData.getHighEntropyValues) {
-            const values = await this._navigator.userAgentData.getHighEntropyValues([ 'platform', 'platformVersion', 'architecture', 'model', 'uaFullVersion', 'bitness', 'fullVersionList', 'wow64' ]);
+            const values = await this._navigator.userAgentData.getHighEntropyValues(['platform', 'platformVersion', 'architecture', 'model', 'uaFullVersion', 'bitness', 'fullVersionList', 'wow64']);
             if (values) {
                 this.set('_user_agent_architecture', values.architecture);
                 this.set('_user_agent_bitness', values.bitness);
@@ -637,8 +688,8 @@ base.Telemetry = class {
                 }
                 const build = (entries) => entries.map(([name, value]) => `${name}=${encodeURIComponent(value)}`).join('&');
                 this._cache = this._cache || build(Array.from(this._config));
-                const key = (name, value) => this._schema.get(name) || ('number' === typeof value && !isNaN(value) ? 'epn.' : 'ep.') + name;
-                const body = build(Object.entries(params).map(([name, value]) => [ key(name, value), value ]));
+                const key = (name, value) => this._schema.get(name) || (typeof value === 'number' && !isNaN(value) ? 'epn.' : 'ep.') + name;
+                const body = build(Object.entries(params).map(([name, value]) => [key(name, value), value]));
                 const url = `https://analytics.google.com/g/collect?${this._cache}`;
                 this._navigator.sendBeacon(url, body);
                 this._session[2] = this.get('session_engaged') || '0';
@@ -692,6 +743,5 @@ export const Complex64 = base.Complex64;
 export const Complex128 = base.Complex128;
 export const BinaryStream = base.BinaryStream;
 export const BinaryReader = base.BinaryReader;
-export const StreamReader = base.StreamReader;
 export const Telemetry = base.Telemetry;
 export const Metadata = base.Metadata;

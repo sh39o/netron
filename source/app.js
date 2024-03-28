@@ -167,12 +167,12 @@ app.Application = class {
     }
 
     _open(path) {
-        let paths = path ? [ path ] : [];
+        let paths = path ? [path] : [];
         if (paths.length === 0) {
             const extensions = new base.Metadata().extensions;
             const showOpenDialogOptions = {
-                properties: [ 'openFile' ],
-                filters: [ { name: 'All Model Files', extensions: extensions } ]
+                properties: ['openFile'],
+                filters: [{ name: 'All Model Files', extensions: extensions }]
             };
             paths = electron.dialog.showOpenDialogSync(showOpenDialogOptions);
         }
@@ -197,11 +197,11 @@ app.Application = class {
                     // find existing view for this file
                     let view = views.find((view) => view.match(path));
                     // find empty welcome window
-                    if (view == null) {
+                    if (!view) {
                         view = views.find((view) => view.match(null));
                     }
                     // create new window
-                    if (view == null) {
+                    if (!view) {
                         view = this._views.openView();
                     }
                     view.open(path);
@@ -240,8 +240,8 @@ app.Application = class {
                 defaultPath: defaultPath,
                 buttonLabel: 'Export',
                 filters: [
-                    { name: 'PNG', extensions: [ 'png' ] },
-                    { name: 'SVG', extensions: [ 'svg' ] }
+                    { name: 'PNG', extensions: ['png'] },
+                    { name: 'SVG', extensions: ['svg'] }
                 ]
             };
             const selectedFile = electron.dialog.showSaveDialogSync(owner, showSaveDialogOptions);
@@ -299,7 +299,7 @@ app.Application = class {
 
     _about() {
         let view = this._views.activeView;
-        if (view == null) {
+        if (!view) {
             view = this._views.openView();
         }
         view.execute('about');
@@ -657,7 +657,7 @@ app.View = class {
             options.thickFrame = true;
             options.titleBarStyle = 'hiddenInset';
         }
-        if (!this._owner.empty && app.View._position && app.View._position.length == 2) {
+        if (!this._owner.empty && app.View._position && app.View._position.length === 2) {
             options.x = app.View._position[0] + 30;
             options.y = app.View._position[1] + 30;
             if (options.x + options.width > size.width) {
@@ -811,10 +811,16 @@ app.View = class {
     }
 
     state(event) {
+        let fullscreen;
+        switch (event) {
+            case 'enter-full-screen': fullscreen = true; break;
+            case 'leave-full-screen': fullscreen = false; break;
+            default: fullscreen = this._window.isFullScreen(); break;
+        }
         this.execute('window-state', {
             minimized: this._window.isMinimized(),
             maximized: this._window.isMaximized(),
-            fullscreen: event === 'enter-full-screen' ? true : event === 'leave-full-screen' ? false : this._window.isFullScreen()
+            fullscreen: fullscreen
         });
         if (this._dispatch) {
             const dispatch = this._dispatch;
@@ -956,7 +962,7 @@ app.ConfigurationService = class {
                 try {
                     this._data = JSON.parse(data);
                     if (Array.isArray(this._data.recents)) {
-                        this._data.recents = this._data.recents.map((recent) => typeof recent === 'string' ? recent : (recent && recent.path ? recent.path : recent));
+                        this._data.recents = this._data.recents.map((recent) => typeof recent !== 'string' && recent && recent.path ? recent.path : recent);
                     }
                 } catch (error) {
                     // continue regardless of error

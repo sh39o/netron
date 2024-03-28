@@ -23,7 +23,7 @@ onednn.Model = class {
         const version = symbol.version;
         this._format = `oneDNN Graph${version ? ` v${version}` : ''}`;
         this._runtime = `${symbol.engine_kind} ${symbol.fpmath_mode}`;
-        this._graphs = [ new onednn.Graph(metadata, symbol) ];
+        this._graphs = [new onednn.Graph(metadata, symbol)];
     }
 
     get format() {
@@ -53,7 +53,7 @@ onednn.Graph = class {
         const nodes = [];
         const tensors = new Set();
         for (const node of symbol.graph) {
-            if (node.kind == 'Wildcard' && node.inputs.length == 0) {
+            if (node.kind === 'Wildcard' && node.inputs.length === 0) {
                 for (const output of node.outputs) {
                     tensors.add(output.id);
                 }
@@ -91,7 +91,7 @@ onednn.Graph = class {
             const id = inputs[i];
             const value = values.get(id);
             if (value) {
-                this._inputs.push(new onednn.Argument(id.toString(), [ value ]));
+                this._inputs.push(new onednn.Argument(id.toString(), [value]));
             }
         }
         const outputs = symbol.output_ports || [];
@@ -99,7 +99,7 @@ onednn.Graph = class {
             const id = outputs[i];
             const value = values.get(id);
             if (value) {
-                this._outputs.push(new onednn.Argument(id.toString(), [ value ]));
+                this._outputs.push(new onednn.Argument(id.toString(), [value]));
             }
         }
     }
@@ -147,7 +147,7 @@ onednn.Node = class {
             if (this._type && this._type.inputs && this._type.inputs.length > 0) {
                 name = this._type.inputs[i].name;
             }
-            this._inputs.push(new onednn.Argument(name, [ value(inputs[i]) ]));
+            this._inputs.push(new onednn.Argument(name, [value(inputs[i])]));
         }
         const outputs = node.outputs || [];
         for (let i = 0; i < outputs.length; i++) {
@@ -155,7 +155,7 @@ onednn.Node = class {
             if (this._type && this._type.outputs && this._type.outputs.length > 0) {
                 name = this._type.outputs[i].name;
             }
-            this._outputs.push(new onednn.Argument(name, [ value(outputs[i]) ]));
+            this._outputs.push(new onednn.Argument(name, [value(outputs[i])]));
         }
     }
 
@@ -219,11 +219,11 @@ onednn.Attribute = class {
                         number = Number.parseInt(item, 10);
                         if (Number.isNaN(item - number)) {
                             array = null;
-                        } else if (array != null) {
+                        } else if (array !== null) {
                             array.push(number);
                         }
                     }
-                    if (array != null) {
+                    if (array !== null) {
                         this._value = array;
                     }
                 }
@@ -244,11 +244,11 @@ onednn.Attribute = class {
                         number = Number.parseFloat(item);
                         if (Number.isNaN(item - number)) {
                             array = null;
-                        } else if (array != null) {
+                        } else if (array !== null) {
                             array.push(number);
                         }
                     }
-                    if (array != null) {
+                    if (array !== null) {
                         this._value = array;
                     }
                 }
@@ -275,7 +275,7 @@ onednn.Attribute = class {
     }
 
     get visible() {
-        return this._visible == false ? false : true;
+        return this._visible === false ? false : true;
     }
 };
 

@@ -48,7 +48,7 @@ grapher.Graph = class {
         if (!this._isCompound) {
             throw new Error("Cannot set parent in a non-compound graph");
         }
-        parent += "";
+        parent = String(parent);
         for (let ancestor = parent; ancestor; ancestor = this.parent(ancestor)) {
             if (ancestor === node) {
                 throw new Error(`Setting ${parent} as parent of ${node} would create a cycle`);
@@ -152,7 +152,7 @@ grapher.Graph = class {
         for (const nodeId of this.nodes.keys()) {
             const entry = this.node(nodeId);
             const node = entry.label;
-            if (this.children(nodeId).length == 0) {
+            if (this.children(nodeId).length === 0) {
                 node.build(document, nodeGroup);
             } else {
                 // cluster
@@ -181,7 +181,7 @@ grapher.Graph = class {
     measure() {
         for (const key of this.nodes.keys()) {
             const entry = this.node(key);
-            if (this.children(key).length == 0) {
+            if (this.children(key).length === 0) {
                 const node = entry.label;
                 node.measure();
             }
@@ -192,7 +192,7 @@ grapher.Graph = class {
         dagre.layout(this, this._layout);
         for (const key of this.nodes.keys()) {
             const entry = this.node(key);
-            if (this.children(key).length == 0) {
+            if (this.children(key).length === 0) {
                 const node = entry.label;
                 node.layout();
             }
@@ -201,7 +201,7 @@ grapher.Graph = class {
 
     update() {
         for (const nodeId of this.nodes.keys()) {
-            if (this.children(nodeId).length == 0) {
+            if (this.children(nodeId).length === 0) {
                 // node
                 const entry = this.node(nodeId);
                 const node = entry.label;
@@ -338,7 +338,7 @@ grapher.Node = class {
     select() {
         if (this.element) {
             this.element.classList.add('select');
-            return [ this.element ];
+            return [this.element];
         }
         return [];
     }
@@ -391,7 +391,7 @@ grapher.Node.Header = class {
         }
         for (let i = 0; i < this._entries.length; i++) {
             const entry = this._entries[i];
-            if (i != 0) {
+            if (i !== 0) {
                 entry.line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                 parent.appendChild(entry.line);
             }
@@ -426,10 +426,10 @@ grapher.Node.Header = class {
         for (let i = 0; i < this._entries.length; i++) {
             const entry = this._entries[i];
             entry.element.setAttribute('transform', `translate(${entry.x},${this.y})`);
-            const r1 = i == 0 && this.first;
-            const r2 = i == this._entries.length - 1 && this.first;
-            const r3 = i == this._entries.length - 1 && this.last;
-            const r4 = i == 0 && this.last;
+            const r1 = i === 0 && this.first;
+            const r2 = i === this._entries.length - 1 && this.first;
+            const r3 = i === this._entries.length - 1 && this.last;
+            const r4 = i === 0 && this.last;
             entry.path.setAttribute('d', grapher.Node.roundedRect(0, 0, entry.width, entry.height, r1, r2, r3, r4));
             entry.text.setAttribute('x', 6);
             entry.text.setAttribute('y', entry.ty);
@@ -484,7 +484,7 @@ grapher.Node.Header.Entry = class {
         this.text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         this.element.appendChild(this.path);
         this.element.appendChild(this.text);
-        const classList = [ 'node-item' ];
+        const classList = ['node-item'];
         if (this.classList) {
             classList.push(...this.classList);
         }
@@ -807,7 +807,7 @@ grapher.Edge = class {
                 this.element = path.cloneNode(true);
                 path.parentNode.replaceChild(this.element, path);
             }
-            return [ this.element ];
+            return [this.element];
         }
         return [];
     }
@@ -859,8 +859,8 @@ grapher.Edge.Curve = class {
     }
 
     point(x, y) {
-        x = +x;
-        y = +y;
+        x = Number(x);
+        y = Number(y);
         switch (this._state) {
             case 0:
                 this._state = 1;
@@ -911,15 +911,15 @@ grapher.Edge.Path = class {
     }
 
     moveTo(x, y) {
-        this._data += `M${this._x0 = this._x1 = +x},${this._y0 = this._y1 = +y}`;
+        this._data += `M${this._x0 = this._x1 = Number(x)},${this._y0 = this._y1 = Number(y)}`;
     }
 
     lineTo(x, y) {
-        this._data += `L${this._x1 = +x},${this._y1 = +y}`;
+        this._data += `L${this._x1 = Number(x)},${this._y1 = Number(y)}`;
     }
 
     bezierCurveTo(x1, y1, x2, y2, x, y) {
-        this._data += `C${+x1},${+y1},${+x2},${+y2},${this._x1 = +x},${this._y1 = +y}`;
+        this._data += `C${Number(x1)},${Number(y1)},${Number(x2)},${Number(y2)},${this._x1 = Number(x)},${this._y1 = Number(y)}`;
     }
 
     closePath() {

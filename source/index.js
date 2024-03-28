@@ -1,16 +1,19 @@
 
 /* eslint-env es2015 */
 /* eslint-disable no-var */
+/* eslint-disable prefer-arrow-callback */
 /* eslint-disable prefer-template */
-
-if (window.location.hostname.endsWith('.github.io')) {
-    window.location.replace('https://netron.app');
-}
+/* eslint-disable prefer-destructuring */
 
 window.exports = {};
 
 window.exports.require = function(id, callback) {
-    var url = window.location.href + id + '.js';
+    let base = window.location.href || '';
+    base = base.split('?')[0].split('#')[0];
+    const index = base.lastIndexOf('/');
+    base = index > 0 ? base.substring(0, index + 1) : base;
+    base = base.lastIndexOf('/') === base.length - 1 ? base : base + '/';
+    var url = base + id + '.js';
     var scripts = document.head.getElementsByTagName('script');
     for (var i = 0; i < scripts.length; i++) {
         if (url === scripts[i].getAttribute('src')) {
@@ -40,9 +43,9 @@ window.exports.require = function(id, callback) {
 
 window.exports.preload = function(callback) {
     var modules = [
-        [ 'view' ],
-        [ 'json', 'xml', 'protobuf', 'hdf5', 'grapher', 'browser' ],
-        [ 'base', 'text', 'flatbuffers', 'flexbuffers', 'zip',  'tar', 'python', 'dagre' ]
+        ['view'],
+        ['json', 'xml', 'protobuf', 'hdf5', 'grapher', 'browser'],
+        ['base', 'text', 'flatbuffers', 'flexbuffers', 'zip',  'tar', 'python', 'dagre']
     ];
     var next = function() {
         if (modules.length === 0) {

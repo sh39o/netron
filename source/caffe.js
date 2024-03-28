@@ -6,11 +6,11 @@ caffe.ModelFactory = class {
     match(context) {
         const identifier = context.identifier;
         const extension = identifier.split('.').pop().toLowerCase();
-        if (extension == 'caffemodel') {
+        if (extension === 'caffemodel') {
             context.type = 'caffe.pb';
             return;
         }
-        if (identifier == 'saved_model.pbtxt' || identifier == 'saved_model.prototxt' ||
+        if (identifier === 'saved_model.pbtxt' || identifier === 'saved_model.prototxt' ||
             identifier.endsWith('predict_net.pbtxt') || identifier.endsWith('predict_net.prototxt') ||
             identifier.endsWith('init_net.pbtxt') || identifier.endsWith('init_net.prototxt')) {
             return;
@@ -39,13 +39,13 @@ caffe.ModelFactory = class {
                 const reader = content.read('protobuf.text');
                 reader.field = function(tag, message) {
                     const type = message.constructor.name;
-                    if (tag.endsWith('_param') && (type == 'LayerParameter' || type == 'V1LayerParameter' || type == 'V0LayerParameter')) {
+                    if (tag.endsWith('_param') && (type === 'LayerParameter' || type === 'V1LayerParameter' || type === 'V0LayerParameter')) {
                         message[tag] = caffe.ModelFactory._decodeText(reader);
                         return;
                     } else if (message.constructor.name.endsWith('Parameter') || message.constructor.name === 'ParamSpec') {
                         if (message[tag]) {
                             if (!Array.isArray(message[tag])) {
-                                message[tag] = [ message[tag] ];
+                                message[tag] = [message[tag]];
                             }
                             message[tag].push(this.read());
                         } else {
@@ -141,7 +141,7 @@ caffe.ModelFactory = class {
                 message[tag] = value;
             } else {
                 if (!Array.isArray(message[tag])) {
-                    message[tag] = [ message[tag] ];
+                    message[tag] = [message[tag]];
                 }
                 message[tag].push(value);
             }
@@ -259,20 +259,20 @@ caffe.Graph = class {
         let lastTop = null;
         while (layers.length > 0) {
             let layer = layers.shift();
-            if (layer.output.length == 1 && layer.input.length == 1 &&
-                layer.output[0].split('\n').shift() == layer.input[0].split('\n').shift() &&
+            if (layer.output.length === 1 && layer.input.length === 1 &&
+                layer.output[0].split('\n').shift() === layer.input[0].split('\n').shift() &&
                 lastLayer &&
-                lastTop == layer.output[0].split('\n').shift()) {
+                lastTop === layer.output[0].split('\n').shift()) {
                 lastLayer.chain = lastLayer.chain || [];
                 lastLayer.chain.push(layer);
             } else {
-                if (layer.type == 'Input' || layer.type == 'Data') {
-                    if (layer.input.length == 0 && layer.output.length == 1 &&
+                if (layer.type === 'Input' || layer.type === 'Data') {
+                    if (layer.input.length === 0 && layer.output.length === 1 &&
                         layer.input_param && layer.input_param.shape &&
-                        layer.input_param.shape.length == 1 && layer.input_param.shape[0].dim) {
-                        const shape = new caffe.TensorShape(layer.input_param.shape[0].dim.map((dim) => Number(dim)));
+                        layer.input_param.shape.length === 1 && layer.input_param.shape[0].dim) {
+                        const shape = new caffe.TensorShape(layer.input_param.shape[0].dim.map((dim) => dim.toNumber()));
                         const type = new caffe.TensorType(null, shape);
-                        this._inputs.push(new caffe.Argument(layer.output[0], [ value(layer.output[0], type) ]));
+                        this._inputs.push(new caffe.Argument(layer.output[0], [value(layer.output[0], type)]));
                         layer = null;
                     }
                 }
@@ -280,7 +280,7 @@ caffe.Graph = class {
                     nodes.push(layer);
                     lastLayer = null;
                     lastTop = null;
-                    if (layer.output.length == 1) {
+                    if (layer.output.length === 1) {
                         lastLayer = layer;
                         lastTop = layer.output[0].split('\n').shift();
                     }
@@ -297,7 +297,7 @@ caffe.Graph = class {
                 if (net.input_shape && i < net.input_shape.length) {
                     const blobShape = net.input_shape[i];
                     if (blobShape && blobShape.dim) {
-                        const shape = new caffe.TensorShape(blobShape.dim.map((dim) => Number(dim)));
+                        const shape = new caffe.TensorShape(blobShape.dim.map((dim) => dim.toNumber()));
                         inputType = new caffe.TensorType(null, shape);
                     }
                 }
@@ -306,7 +306,7 @@ caffe.Graph = class {
                     const shape = new caffe.TensorShape(net.input_dim.slice(dim, dim + 4));
                     inputType = new caffe.TensorType(null, shape);
                 }
-                this._inputs.push(new caffe.Argument(input, [ value(input, inputType, null) ]));
+                this._inputs.push(new caffe.Argument(input, [value(input, inputType, null)]));
             }
         }
 
@@ -321,7 +321,7 @@ caffe.Graph = class {
         }
 
         if (this._inputs.length === 0 && unusedInputs.length === 1) {
-            this._inputs.push(new caffe.Argument(unusedInputs[0], [ value(unusedInputs[0], null) ]));
+            this._inputs.push(new caffe.Argument(unusedInputs[0], [value(unusedInputs[0], null)]));
         }
     }
 
@@ -418,7 +418,7 @@ caffe.Node = class {
         switch (version) {
             case 0: {
                 for (const name of Object.keys(layer.layer)) {
-                    if (name != 'type' && name != 'name' && name != 'blobs' && name != 'blobs_lr') {
+                    if (name !== 'type' && name !== 'name' && name !== 'blobs' && name !== 'blobs_lr') {
                         const value = layer.layer[name];
                         const attribute = new caffe.Attribute(metadata.attribute(type, name), name, value);
                         this._attributes.push(attribute);
@@ -430,9 +430,9 @@ caffe.Node = class {
             case 1:
             case 2: {
                 for (const layer_kind of Object.keys(layer)) {
-                    if (layer_kind.endsWith('_param') || layer_kind == 'transform_param') {
+                    if (layer_kind.endsWith('_param') || layer_kind === 'transform_param') {
                         const param = layer[layer_kind];
-                        if (type == 'Deconvolution') {
+                        if (type === 'Deconvolution') {
                             type = 'Convolution';
                         }
                         const prototype = Object.getPrototypeOf(param);
@@ -452,7 +452,7 @@ caffe.Node = class {
                     const attribute = new caffe.Attribute(metadata.attribute(type, 'exclude'), 'exclude', layer.exclude);
                     this._attributes.push(attribute);
                 }
-                if (this._type == 'Data' && layer.input_param && layer.input_param.shape) {
+                if (this._type === 'Data' && layer.input_param && layer.input_param.shape) {
                     const attribute = new caffe.Attribute(metadata.attribute(type, 'shape'), 'shape', layer.input_param.shape);
                     this._attributes.push(attribute);
                 }
@@ -468,9 +468,9 @@ caffe.Node = class {
         let inputIndex = 0;
         if (this._type && this._type.inputs) {
             for (const inputDef of this._type.inputs) {
-                if (inputIndex < inputs.length || inputDef.option != 'optional') {
-                    const count = inputDef.option == 'variadic' ? inputs.length - inputIndex : 1;
-                    const values = inputs.slice(inputIndex, inputIndex + count).filter((input) => input !== '' || inputDef.option != 'optional').map((input) => {
+                if (inputIndex < inputs.length || inputDef.option !== 'optional') {
+                    const count = inputDef.option === 'variadic' ? inputs.length - inputIndex : 1;
+                    const values = inputs.slice(inputIndex, inputIndex + count).filter((input) => input !== '' || inputDef.option !== 'optional').map((input) => {
                         return input instanceof caffe.Tensor ? new caffe.Value('', input.type, input) : value(input, null, null);
                     });
                     const argument = new caffe.Argument(inputDef.name, values);
@@ -491,7 +491,7 @@ caffe.Node = class {
         if (this._type && this._type.outputs) {
             for (const outputDef of this._type.outputs) {
                 if (outputIndex < outputs.length) {
-                    const count = (outputDef.option == 'variadic') ? (outputs.length - outputIndex) : 1;
+                    const count = (outputDef.option === 'variadic') ? (outputs.length - outputIndex) : 1;
                     const values = outputs.slice(outputIndex, outputIndex + count).map((output) => value(output, null, null));
                     const argument = new caffe.Argument(outputDef.name, values);
                     this._outputs.push(argument);
@@ -500,7 +500,7 @@ caffe.Node = class {
             }
         }
         this._outputs.push(...outputs.slice(outputIndex).map((output, index) => {
-            return new caffe.Argument((outputIndex + index).toString(), [ value(output, null, null) ]);
+            return new caffe.Argument((outputIndex + index).toString(), [value(output, null, null)]);
         }));
     }
 
@@ -548,12 +548,12 @@ caffe.Attribute = class {
             defaultValue = metadata.default;
         }
         if (defaultValue !== undefined) {
-            if (this._value == defaultValue) {
+            if (this._value === defaultValue) {
                 this._visible = false;
             } else if (Array.isArray(this._value) && Array.isArray(defaultValue)) {
-                if (this._value.length == defaultValue.length &&
+                if (this._value.length === defaultValue.length &&
                     this._value.every((item, index) => {
-                        return item == defaultValue[index];
+                        return item === defaultValue[index];
                     })) {
                     this._visible = false;
                 }
@@ -577,7 +577,7 @@ caffe.Attribute = class {
     }
 
     get visible() {
-        return this._visible == false ? false : true;
+        return this._visible === false ? false : true;
     }
 };
 
@@ -589,16 +589,16 @@ caffe.Tensor = class {
             Object.prototype.hasOwnProperty.call(blob, 'channels') &&
             Object.prototype.hasOwnProperty.call(blob, 'width') &&
             Object.prototype.hasOwnProperty.call(blob, 'height')) {
-            if (blob.num != 1) {
+            if (blob.num !== 1) {
                 shape.push(blob.num);
             }
-            if (blob.channels != 1) {
+            if (blob.channels !== 1) {
                 shape.push(blob.channels);
             }
-            if (blob.height != 1) {
+            if (blob.height !== 1) {
                 shape.push(blob.height);
             }
-            if (blob.width != 1) {
+            if (blob.width !== 1) {
                 shape.push(blob.width);
             }
         } else if (Object.prototype.hasOwnProperty.call(blob, 'shape')) {
@@ -693,7 +693,7 @@ caffe.Utility = class {
         if (type) {
             caffe.Utility._enumKeyMap = caffe.Utility._enumKeyMap || new Map();
             if (!caffe.Utility._enumKeyMap.has(name)) {
-                const map = new Map(Object.entries(type).map(([name, value]) => [ value, name ]));
+                const map = new Map(Object.entries(type).map(([name, value]) => [value, name]));
                 caffe.Utility._enumKeyMap.set(name, map);
             }
             const map = caffe.Utility._enumKeyMap.get(name);

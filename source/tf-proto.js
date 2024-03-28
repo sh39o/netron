@@ -232,8 +232,8 @@ tensorflow.CollectionDef = class CollectionDef {
     }
 
     get kind() {
-        tensorflow.CollectionDef.kindSet = tensorflow.CollectionDef.kindSet || new Set([ "node_list", "bytes_list", "int64_list", "float_list", "any_list"]);
-        return Object.keys(this).find((key) => tensorflow.CollectionDef.kindSet.has(key) && this[key] != null);
+        tensorflow.CollectionDef.kindSet = tensorflow.CollectionDef.kindSet || new Set(["node_list", "bytes_list", "int64_list", "float_list", "any_list"]);
+        return Object.keys(this).find((key) => tensorflow.CollectionDef.kindSet.has(key) && this[key] !== null);
     }
 
     static decode(reader, length) {
@@ -506,8 +506,8 @@ tensorflow.TensorInfo = class TensorInfo {
     }
 
     get encoding() {
-        tensorflow.TensorInfo.encodingSet = tensorflow.TensorInfo.encodingSet || new Set([ "name", "coo_sparse", "composite_tensor"]);
-        return Object.keys(this).find((key) => tensorflow.TensorInfo.encodingSet.has(key) && this[key] != null);
+        tensorflow.TensorInfo.encodingSet = tensorflow.TensorInfo.encodingSet || new Set(["name", "coo_sparse", "composite_tensor"]);
+        return Object.keys(this).find((key) => tensorflow.TensorInfo.encodingSet.has(key) && this[key] !== null);
     }
 
     static decode(reader, length) {
@@ -1143,8 +1143,8 @@ tensorflow.AttrValue = class AttrValue {
     }
 
     get value() {
-        tensorflow.AttrValue.valueSet = tensorflow.AttrValue.valueSet || new Set([ "s", "i", "f", "b", "type", "shape", "tensor", "list", "func", "placeholder"]);
-        return Object.keys(this).find((key) => tensorflow.AttrValue.valueSet.has(key) && this[key] != null);
+        tensorflow.AttrValue.valueSet = tensorflow.AttrValue.valueSet || new Set(["s", "i", "f", "b", "type", "shape", "tensor", "list", "func", "placeholder"]);
+        return Object.keys(this).find((key) => tensorflow.AttrValue.valueSet.has(key) && this[key] !== null);
     }
 
     static decode(reader, length) {
@@ -2092,8 +2092,8 @@ tensorflow.FullTypeDef = class FullTypeDef {
     }
 
     get attr() {
-        tensorflow.FullTypeDef.attrSet = tensorflow.FullTypeDef.attrSet || new Set([ "s", "i"]);
-        return Object.keys(this).find((key) => tensorflow.FullTypeDef.attrSet.has(key) && this[key] != null);
+        tensorflow.FullTypeDef.attrSet = tensorflow.FullTypeDef.attrSet || new Set(["s", "i"]);
+        return Object.keys(this).find((key) => tensorflow.FullTypeDef.attrSet.has(key) && this[key] !== null);
     }
 
     static decode(reader, length) {
@@ -2850,8 +2850,8 @@ tensorflow.SavedObject = class SavedObject {
     }
 
     get kind() {
-        tensorflow.SavedObject.kindSet = tensorflow.SavedObject.kindSet || new Set([ "user_object", "asset", "function", "variable", "bare_concrete_function", "constant", "resource", "captured_tensor"]);
-        return Object.keys(this).find((key) => tensorflow.SavedObject.kindSet.has(key) && this[key] != null);
+        tensorflow.SavedObject.kindSet = tensorflow.SavedObject.kindSet || new Set(["user_object", "asset", "function", "variable", "bare_concrete_function", "constant", "resource", "captured_tensor"]);
+        return Object.keys(this).find((key) => tensorflow.SavedObject.kindSet.has(key) && this[key] !== null);
     }
 
     static decode(reader, length) {
@@ -3766,8 +3766,8 @@ tensorflow.StructuredValue = class StructuredValue {
     }
 
     get kind() {
-        tensorflow.StructuredValue.kindSet = tensorflow.StructuredValue.kindSet || new Set([ "none_value", "float64_value", "int64_value", "string_value", "bool_value", "tensor_shape_value", "tensor_dtype_value", "tensor_spec_value", "type_spec_value", "bounded_tensor_spec_value", "list_value", "tuple_value", "dict_value", "named_tuple_value", "tensor_value", "numpy_value"]);
-        return Object.keys(this).find((key) => tensorflow.StructuredValue.kindSet.has(key) && this[key] != null);
+        tensorflow.StructuredValue.kindSet = tensorflow.StructuredValue.kindSet || new Set(["none_value", "float64_value", "int64_value", "string_value", "bool_value", "tensor_shape_value", "tensor_dtype_value", "tensor_spec_value", "type_spec_value", "bounded_tensor_spec_value", "list_value", "tuple_value", "dict_value", "named_tuple_value", "tensor_value", "numpy_value"]);
+        return Object.keys(this).find((key) => tensorflow.StructuredValue.kindSet.has(key) && this[key] !== null);
     }
 
     static decode(reader, length) {
@@ -4958,8 +4958,8 @@ tensorflow.TensorSliceProto.Extent = class Extent {
     }
 
     get has_length() {
-        tensorflow.TensorSliceProto.Extent.has_lengthSet = tensorflow.TensorSliceProto.Extent.has_lengthSet || new Set([ "length"]);
-        return Object.keys(this).find((key) => tensorflow.TensorSliceProto.Extent.has_lengthSet.has(key) && this[key] != null);
+        tensorflow.TensorSliceProto.Extent.has_lengthSet = tensorflow.TensorSliceProto.Extent.has_lengthSet || new Set(["length"]);
+        return Object.keys(this).find((key) => tensorflow.TensorSliceProto.Extent.has_lengthSet.has(key) && this[key] !== null);
     }
 
     static decode(reader, length) {
@@ -5228,8 +5228,8 @@ tensorflow.Event = class Event {
     }
 
     get what() {
-        tensorflow.Event.whatSet = tensorflow.Event.whatSet || new Set([ "file_version", "graph_def", "summary", "log_message", "session_log", "tagged_run_metadata", "meta_graph_def"]);
-        return Object.keys(this).find((key) => tensorflow.Event.whatSet.has(key) && this[key] != null);
+        tensorflow.Event.whatSet = tensorflow.Event.whatSet || new Set(["file_version", "graph_def", "summary", "log_message", "session_log", "tagged_run_metadata", "meta_graph_def"]);
+        return Object.keys(this).find((key) => tensorflow.Event.whatSet.has(key) && this[key] !== null);
     }
 
     static decode(reader, length) {
@@ -6088,8 +6088,8 @@ tensorflow.Summary.Value = class Value {
     }
 
     get value() {
-        tensorflow.Summary.Value.valueSet = tensorflow.Summary.Value.valueSet || new Set([ "simple_value", "obsolete_old_style_histogram", "image", "histo", "audio", "tensor"]);
-        return Object.keys(this).find((key) => tensorflow.Summary.Value.valueSet.has(key) && this[key] != null);
+        tensorflow.Summary.Value.valueSet = tensorflow.Summary.Value.valueSet || new Set(["simple_value", "obsolete_old_style_histogram", "image", "histo", "audio", "tensor"]);
+        return Object.keys(this).find((key) => tensorflow.Summary.Value.valueSet.has(key) && this[key] !== null);
     }
 
     static decode(reader, length) {
@@ -6418,6 +6418,12 @@ tensorflow.GPUOptions.Experimental = class Experimental {
                 case 16:
                     message.gpu_system_memory_size_in_mb = reader.int32();
                     break;
+                case 17:
+                    message.populate_pjrt_gpu_client_creation_info = reader.bool();
+                    break;
+                case 18:
+                    message.node_id = reader.int32();
+                    break;
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -6477,6 +6483,12 @@ tensorflow.GPUOptions.Experimental = class Experimental {
                 case "gpu_system_memory_size_in_mb":
                     message.gpu_system_memory_size_in_mb = reader.int32();
                     break;
+                case "populate_pjrt_gpu_client_creation_info":
+                    message.populate_pjrt_gpu_client_creation_info = reader.bool();
+                    break;
+                case "node_id":
+                    message.node_id = reader.int32();
+                    break;
                 default:
                     reader.field(tag, message);
                     break;
@@ -6500,6 +6512,8 @@ tensorflow.GPUOptions.Experimental.prototype.disallow_retry_on_allocation_failur
 tensorflow.GPUOptions.Experimental.prototype.gpu_host_mem_limit_in_mb = 0;
 tensorflow.GPUOptions.Experimental.prototype.gpu_host_mem_disallow_growth = false;
 tensorflow.GPUOptions.Experimental.prototype.gpu_system_memory_size_in_mb = 0;
+tensorflow.GPUOptions.Experimental.prototype.populate_pjrt_gpu_client_creation_info = false;
+tensorflow.GPUOptions.Experimental.prototype.node_id = 0;
 
 tensorflow.GPUOptions.Experimental.VirtualDevices = class VirtualDevices {
 
