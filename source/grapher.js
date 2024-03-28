@@ -238,7 +238,8 @@ grapher.Graph = class {
                         label_name = "tile " + tiling_idx.value.value;
                         font_size = "11px";
                     } else if (pdi) {
-                        label_name = "PDI";
+                        const pdi_name = this._isCompound.get(nodeId).attributes.find((attr) => attr.name === "name");
+                        label_name = pdi_name.value.value;
                         font_size = "11px";
                     }
                     if (label_name) {
