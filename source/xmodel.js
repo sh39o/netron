@@ -255,6 +255,14 @@ xmodel.Node = class {
                         case "UINT32":
                             np_value = new Uint32Array(data.buffer);
                             break;
+                        case "XINT64":
+                        case "INT64":
+                            np_value = new BigInt64Array(data.buffer);
+                            break;
+                        case "XUINT64":
+                        case "INT64":
+                            np_value = new BigUint64Array(data.buffer);
+                            break;
                         case "FLOAT32":
                             np_value = new Float32Array(data.buffer);
                             break;
