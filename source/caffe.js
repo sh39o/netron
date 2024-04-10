@@ -18,11 +18,8 @@ caffe.ModelFactory = class {
         const tags = context.tags('pbtxt');
         if (tags.has('layer') || tags.has('layers')) {
             context.type = 'caffe.pbtxt';
-            return;
-        }
-        if (tags.has('net') || tags.has('train_net') || tags.has('net_param')) {
+        } else if (tags.has('net') || tags.has('train_net') || tags.has('net_param')) {
             context.type = 'caffe.pbtxt.solver';
-            return;
         }
     }
 
@@ -137,13 +134,13 @@ caffe.ModelFactory = class {
         while (!reader.end()) {
             const tag = reader.tag();
             const value = reader.read();
-            if (!message[tag]) {
-                message[tag] = value;
-            } else {
+            if (message[tag]) {
                 if (!Array.isArray(message[tag])) {
                     message[tag] = [message[tag]];
                 }
                 message[tag].push(value);
+            } else {
+                message[tag] = value;
             }
         }
         return message;
@@ -391,7 +388,7 @@ caffe.Node = class {
     constructor(metadata, layer, version, value) {
         this._chain = [];
         this._attributes = [];
-        let type;
+        let type = '';
         switch (version) {
             case 0: {
                 this._name = layer.layer.name;
@@ -577,7 +574,7 @@ caffe.Attribute = class {
     }
 
     get visible() {
-        return this._visible === false ? false : true;
+        return this._visible !== false;
     }
 };
 

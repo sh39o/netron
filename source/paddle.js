@@ -46,7 +46,6 @@ paddle.ModelFactory = class {
         if (naive) {
             context.target = naive;
             context.type = context.target.name;
-            return;
         }
     }
 
@@ -173,14 +172,14 @@ paddle.ModelFactory = class {
                         return new paddle.Model(metadata, target.format, null, target.weights);
                     }
                     case 'paddle.params': {
-                        const file = identifier !== 'params' ? `${base}.pdmodel` : 'model';
+                        const file = identifier === 'params' ? 'model' : `${base}.pdmodel`;
                         const params = loadParams(context.stream);
                         try {
                             const content = await context.fetch(file);
                             const program = openProgram(content, 'paddle.pb');
                             const weights = mapParams(params, program);
                             return new paddle.Model(metadata, program.format, program.desc, weights);
-                        } catch (error) {
+                        } catch {
                             const weights = new Map(params.map((param, index) => [index.toString(), param]));
                             return new paddle.Model(metadata, 'PaddlePaddle Inference Weights', null, weights);
                         }
@@ -209,7 +208,7 @@ paddle.ModelFactory = class {
                                 const params = loadParams(content.stream);
                                 const weights = mapParams(params, program);
                                 return new paddle.Model(metadata, program.format, program.desc, weights);
-                            } catch (error) {
+                            } catch {
                                 try {
                                     const name = `${base}.pdparams`;
                                     const content = await context.fetch(name);
@@ -223,16 +222,16 @@ paddle.ModelFactory = class {
                                             }
                                         }
                                         return new paddle.Model(metadata, program.format, program.desc, weights);
-                                    } catch (error) {
+                                    } catch {
                                         return new paddle.Model(metadata, program.format, program.desc, weights);
                                     }
-                                } catch (error) {
+                                } catch {
                                     try {
                                         const name = `${base}.pdopt`;
                                         const content = await context.fetch(name);
                                         const weights = openNumPyArrayPickle(content.stream);
                                         return new paddle.Model(metadata, program.format, program.desc, weights);
-                                    } catch (error) {
+                                    } catch {
                                         return loadEntries(context, program);
                                     }
                                 }
@@ -244,7 +243,7 @@ paddle.ModelFactory = class {
                                 const params = loadParams(content.stream);
                                 const weights = mapParams(params, program);
                                 return new paddle.Model(metadata, program.format, program.desc, weights);
-                            } catch (error) {
+                            } catch {
                                 return loadEntries(context, program);
                             }
                         }
@@ -350,9 +349,9 @@ paddle.Graph = class {
             const ops = new Map();
             for (const [name, tensor] of tensors) {
                 values.set(name, new paddle.Value(name, tensor.type, tensor));
-                const separator = name.indexOf('.') !== -1 ? '.' : '_';
+                const separator = name.indexOf('.') === -1 ? '_' : '.';
                 const regex = /(.*)_((w_attr|scale|weights|offset|b|w|b_attr)_(moment|beta|velocity|mean_square|mean_grad).*)/;
-                let parts;
+                let parts = [];
                 if (separator === '.') {
                     parts = name.split(separator);
                 } else if (regex.test(name)) {
@@ -558,7 +557,7 @@ paddle.TensorShape = class {
     constructor(dimensions) {
         dimensions = dimensions.map((dim) => typeof dim === 'bigint' ? dim.toNumber() : dim);
         this.dimensions = dimensions.map((dimension) => {
-            return dimension !== -1 ? dimension : '?';
+            return dimension === -1 ? '?' : dimension;
         });
     }
 

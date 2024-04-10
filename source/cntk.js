@@ -15,7 +15,6 @@ cntk.ModelFactory = class {
         const tags = context.tags('pb');
         if (tags.get(1) === 0 && tags.get(2) === 2) {
             context.type = 'cntk.v2';
-            return;
         }
     }
 
@@ -130,7 +129,7 @@ cntk.Graph = class {
             if (!values.has(name)) {
                 switch (version) {
                     case 1:
-                        values.set(name, new cntk.Value(version, obj ? obj : { name: name }));
+                        values.set(name, new cntk.Value(version, obj ? obj : { name }));
                         break;
                     case 2:
                         values.set(name, new cntk.Value(version, obj ? obj : { uid: name }));
@@ -597,7 +596,7 @@ cntk.ComputationNetwork = class {
     constructor(reader) {
         reader = new cntk.BinaryReader(reader);
         const shape = (dims) => {
-            return { __type__: 'shape', dims: dims };
+            return { __type__: 'shape', dims };
         };
         reader.assert('BCN');
         reader.assert('BVersion');
@@ -754,10 +753,10 @@ cntk.ComputationNetwork = class {
                 this.blendTimeConstant = reader.float64();
                 this.imageLayoutKind = reader.int32();
                 if (version >= 13) {
-                    if (version !== 19) {
-                        this.runCountUntied = reader.uint64().toNumber();
+                    if (version === 19) {
+                        this.runCountUntied = reader.boolean() ? 0 : 'SIZE_MAX';
                     } else {
-                        this.runCountUntied = reader.boolean() ? 0 : 'SIZE_MAX'; // TODO
+                        this.runCountUntied = reader.uint64().toNumber();
                     }
                 } else {
                     mbCount = reader.uint64().toNumber();
@@ -907,7 +906,7 @@ cntk.ComputationNetwork = class {
                     __type__: 'LearnableParameter',
                     name: `${nodeName}.run_sample_count`,
                     precision: node.precision,
-                    sampleLayout: shape([1]), // TODO set value = 0
+                    sampleLayout: shape([1]),
                     learningRateMultiplier: 0
                 };
                 nodes.push(runSampleCount);
@@ -1106,7 +1105,7 @@ cntk.BinaryReader = class {
             dims.push(rank);
             dims.push(dim);
         }
-        return { __type__: 'shape', dims: dims };
+        return { __type__: 'shape', dims };
     }
 };
 

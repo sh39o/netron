@@ -199,7 +199,7 @@ tengine.Metadata = class {
             const data = await context.request('tengine-metadata.json');
             tengine.Metadata._metadata = new tengine.Metadata(data);
             return tengine.Metadata._metadata;
-        } catch (error) {
+        } catch {
             tengine.Metadata._metadata = new tengine.Metadata(null);
             return tengine.Metadata._metadata;
         }
@@ -260,7 +260,7 @@ tengine.Reader = class {
     read() {
         const types = new Map();
         const register = (index, version, name, params) => {
-            types.set(`${index}:${version}`, { name: name, params: params });
+            types.set(`${index}:${version}`, { name, params });
         };
         const operator = (index, version) => {
             let current = version;
@@ -481,7 +481,7 @@ tengine.Reader = class {
                     const name = reader.string();
                     const value = reader.string();
                     const type = reader.int32();
-                    return { name: name, value: value, type: type };
+                    return { name, value, type };
                 });
                 subgraph.nodes.push(node);
             }

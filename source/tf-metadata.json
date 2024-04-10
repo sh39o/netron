@@ -2823,11 +2823,12 @@
     "inputs": [
       {
         "name": "resource",
-        "description": "Resource variable for concatenated input tensors across all dimensions.\n  }\n  in_arg {\n    name: \"inputs\"\n    description: <<END\nInput tensor slices in row-major order to merge across all dimensions. All\ninputs must have the same shape.\n  }\n  out_arg {\n    name: \"output\"\n    description: <<END\nOutput tensor formed from merging input slices based on num_concats defined.",
+        "description": "Resource variable for concatenated input tensors across all dimensions.",
         "type": 20
       },
       {
         "name": "inputs",
+        "description": "Input tensor slices in row-major order to merge across all dimensions. All\ninputs must have the same shape.",
         "numberAttr": "N",
         "typeAttr": "T"
       }
@@ -3836,6 +3837,12 @@
         "name": "low_priority_max_enqueued_batches",
         "type": "int64",
         "default": 0
+      },
+      {
+        "name": "mixed_priority_policy",
+        "type": "string",
+        "description": "Must be one of the following: `low_priority_padding_with_max_batch_size`, `low_priority_padding_with_next_allowed_batch_size`, `priority_isolation`.",
+        "default": "low_priority_padding_with_max_batch_size"
       },
       {
         "name": "Tin",
@@ -22632,6 +22639,64 @@
     ]
   },
   {
+    "name": "IndexFlatMapDataset",
+    "attributes": [
+      {
+        "name": "map_func",
+        "type": "function"
+      },
+      {
+        "name": "index_map_func",
+        "type": "function"
+      },
+      {
+        "name": "Tmap_func_args",
+        "type": "type[]",
+        "minimum": 0
+      },
+      {
+        "name": "Tindex_map_func_args",
+        "type": "type[]",
+        "minimum": 0
+      },
+      {
+        "name": "output_types",
+        "type": "type[]",
+        "minimum": 1
+      },
+      {
+        "name": "output_shapes",
+        "type": "shape[]",
+        "minimum": 1
+      },
+      {
+        "name": "metadata",
+        "type": "string",
+        "default": ""
+      }
+    ],
+    "inputs": [
+      {
+        "name": "input_dataset",
+        "type": 21
+      },
+      {
+        "name": "map_func_other_args",
+        "typeListAttr": "Tmap_func_args"
+      },
+      {
+        "name": "index_map_func_other_args",
+        "typeListAttr": "Tindex_map_func_args"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "handle",
+        "type": 21
+      }
+    ]
+  },
+  {
     "name": "InfeedDequeue",
     "summary": "A placeholder op for a value that will be fed into the computation.",
     "attributes": [
@@ -39284,13 +39349,14 @@
     "inputs": [
       {
         "name": "resource",
-        "description": "Resource variable of input tensor to split across all dimensions.\n  }\n  out_arg {\n    name: \"outputs\"\n    description: <<END\nOutput slices based on input and num_splits defined, in row-major order.",
+        "description": "Resource variable of input tensor to split across all dimensions.",
         "type": 20
       }
     ],
     "outputs": [
       {
         "name": "outputs",
+        "description": "Output slices based on input and num_splits defined, in row-major order.",
         "numberAttr": "N",
         "typeAttr": "T"
       }
@@ -64164,7 +64230,7 @@
     "inputs": [
       {
         "name": "inputs",
-        "description": "Input tensor slices in row-major order to merge across all dimensions. All\ninputs must have the same shape.\n  }\n  out_arg {\n    name: \"output\"\n    description: <<END\nOutput tensor formed from merging input slices based on num_concats defined.",
+        "description": "Input tensor slices in row-major order to merge across all dimensions. All\ninputs must have the same shape.",
         "numberAttr": "N",
         "typeAttr": "T"
       }
@@ -64172,6 +64238,7 @@
     "outputs": [
       {
         "name": "output",
+        "description": "Output tensor formed from merging input slices based on num_concats defined.",
         "typeAttr": "T"
       }
     ]
@@ -65369,13 +65436,14 @@
     "inputs": [
       {
         "name": "input",
-        "description": "Input tensor to split across all dimensions.\n  }\n  out_arg {\n    name: \"outputs\"\n    description: <<END\nOutput slices based on input and num_splits defined, in row-major order.",
+        "description": "Input tensor to split across all dimensions.",
         "typeAttr": "T"
       }
     ],
     "outputs": [
       {
         "name": "outputs",
+        "description": "Output slices based on input and num_splits defined, in row-major order.",
         "numberAttr": "N",
         "typeAttr": "T"
       }

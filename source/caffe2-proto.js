@@ -14,7 +14,7 @@ caffe2.TensorProto = class TensorProto {
 
     static decode(reader, length) {
         const message = new caffe2.TensorProto();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -152,12 +152,9 @@ caffe2.TensorProto.SerializationFormat = {
 
 caffe2.TensorProto.Segment = class Segment {
 
-    constructor() {
-    }
-
     static decode(reader, length) {
         const message = new caffe2.TensorProto.Segment();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -222,7 +219,7 @@ caffe2.QTensorProto = class QTensorProto {
 
     static decode(reader, length) {
         const message = new caffe2.QTensorProto();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -362,7 +359,7 @@ caffe2.TensorProtos = class TensorProtos {
 
     static decode(reader, length) {
         const message = new caffe2.TensorProtos();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -404,7 +401,7 @@ caffe2.TensorShape = class TensorShape {
 
     static decode(reader, length) {
         const message = new caffe2.TensorShape();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -473,7 +470,7 @@ caffe2.TensorShapes = class TensorShapes {
 
     static decode(reader, length) {
         const message = new caffe2.TensorShapes();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -514,7 +511,7 @@ caffe2.TensorBoundShape = class TensorBoundShape {
 
     static decode(reader, length) {
         const message = new caffe2.TensorBoundShape();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -587,7 +584,7 @@ caffe2.TensorBoundShapes = class TensorBoundShapes {
 
     static decode(reader, length) {
         const message = new caffe2.TensorBoundShapes();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -637,12 +634,9 @@ caffe2.TensorBoundShapes.prototype.max_feature_len = 0n;
 
 caffe2.AOTConfig = class AOTConfig {
 
-    constructor() {
-    }
-
     static decode(reader, length) {
         const message = new caffe2.AOTConfig();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -736,7 +730,7 @@ caffe2.Argument = class Argument {
 
     static decode(reader, length) {
         const message = new caffe2.Argument();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -865,7 +859,7 @@ caffe2.DeviceOption = class DeviceOption {
 
     static decode(reader, length) {
         const message = new caffe2.DeviceOption();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -945,7 +939,7 @@ caffe2.OperatorDef = class OperatorDef {
 
     static decode(reader, length) {
         const message = new caffe2.OperatorDef();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -1055,12 +1049,9 @@ caffe2.OperatorDef.prototype.op_version = 0n;
 
 caffe2.MapFieldEntry = class MapFieldEntry {
 
-    constructor() {
-    }
-
     static decode(reader, length) {
         const message = new caffe2.MapFieldEntry();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -1122,7 +1113,7 @@ caffe2.BackendOptions = class BackendOptions {
 
     static decode(reader, length) {
         const message = new caffe2.BackendOptions();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -1178,7 +1169,7 @@ caffe2.PartitionInfo = class PartitionInfo {
 
     static decode(reader, length) {
         const message = new caffe2.PartitionInfo();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -1250,7 +1241,7 @@ caffe2.NetDef = class NetDef {
 
     static decode(reader, length) {
         const message = new caffe2.NetDef();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -1345,7 +1336,7 @@ caffe2.ExecutionStep = class ExecutionStep {
 
     static decode(reader, length) {
         const message = new caffe2.ExecutionStep();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -1471,7 +1462,7 @@ caffe2.PlanDef = class PlanDef {
 
     static decode(reader, length) {
         const message = new caffe2.PlanDef();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -1520,12 +1511,9 @@ caffe2.PlanDef.prototype.name = "";
 
 caffe2.BlobProto = class BlobProto {
 
-    constructor() {
-    }
-
     static decode(reader, length) {
         const message = new caffe2.BlobProto();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -1604,12 +1592,9 @@ caffe2.BlobProto.prototype.content_chunk_id = 0;
 
 caffe2.DBReaderProto = class DBReaderProto {
 
-    constructor() {
-    }
-
     static decode(reader, length) {
         const message = new caffe2.DBReaderProto();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -1667,12 +1652,9 @@ caffe2.DBReaderProto.prototype.key = "";
 
 caffe2.BlobSerializationOptions = class BlobSerializationOptions {
 
-    constructor() {
-    }
-
     static decode(reader, length) {
         const message = new caffe2.BlobSerializationOptions();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {
@@ -1735,7 +1717,7 @@ caffe2.SerializationOptions = class SerializationOptions {
 
     static decode(reader, length) {
         const message = new caffe2.SerializationOptions();
-        const end = length !== undefined ? reader.position + length : reader.length;
+        const end = length === undefined ? reader.length : reader.position + length;
         while (reader.position < end) {
             const tag = reader.uint32();
             switch (tag >>> 3) {

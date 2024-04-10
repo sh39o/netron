@@ -111,7 +111,7 @@ flatbuffers.BinaryReader = class {
         }
         let text = '';
         for (let i = 0; i < length;) {
-            let codePoint;
+            let codePoint = 0;
             const a = this.uint8(offset + i++);
             if (a < 0xC0) {
                 codePoint = a;
@@ -201,24 +201,24 @@ flatbuffers.BinaryReader = class {
         return [];
     }
 
-    struct(position, offset, decode) {
+    struct(position, offset, type) {
         offset = this.__offset(position, offset);
-        return offset ? decode(this, position + offset) : null;
+        return offset ? type.decode(this, position + offset) : null;
     }
 
-    table(position, offset, decode) {
+    table(position, offset, type) {
         offset = this.__offset(position, offset);
-        return offset ? decode(this, this.__indirect(position + offset)) : null;
+        return offset ? type.decode(this, this.__indirect(position + offset)) : null;
     }
 
-    union(position, offset, decode) {
+    union(position, offset, type) {
         const type_offset = this.__offset(position, offset);
-        const type = type_offset ? this.uint8(position + type_offset) : 0;
+        const union_type = type_offset ? this.uint8(position + type_offset) : 0;
         offset = this.__offset(position, offset + 2);
-        return offset ? decode(this, this.__union(position + offset), type) : null;
+        return offset ? type.decode(this, this.__union(position + offset), union_type) : null;
     }
 
-    typedArray(position, offset, type) {
+    array(position, offset, type) {
         offset = this.__offset(position, offset);
         if (offset) {
             const length = this.__vector_len(position + offset);
@@ -229,26 +229,26 @@ flatbuffers.BinaryReader = class {
         return new type(0);
     }
 
-    unionArray(/* position, offset, decode */) {
+    unions(/* position, offset, decode */) {
         return new flatbuffers.Error('Not implemented.');
     }
 
-    structArray(position, offset, decode) {
+    structs(position, offset, type) {
         offset = this.__offset(position, offset);
         const length = offset ? this.__vector_len(position + offset) : 0;
         const list = new Array(length);
         for (let i = 0; i < length; i++) {
-            list[i] = decode(this, this.__vector(position + offset) + i * 8);
+            list[i] = type.decode(this, this.__vector(position + offset) + i * 8);
         }
         return list;
     }
 
-    tableArray(position, offset, decode) {
+    tables(position, offset, type) {
         offset = this.__offset(position, offset);
         const length = offset ? this.__vector_len(position + offset) : 0;
         const list = new Array(length);
         for (let i = 0; i < length; i++) {
-            list[i] = decode(this, this.__indirect(this.__vector(position + offset) + i * 4));
+            list[i] = type.decode(this, this.__indirect(this.__vector(position + offset) + i * 4));
         }
         return list;
     }
@@ -329,14 +329,25 @@ flatbuffers.StreamReader = class extends flatbuffers.BinaryReader {
 
     constructor(stream) {
         super();
-        this.length = stream.length;
+        this._length = stream.length;
         this._stream = stream;
-        this._fill(0, Math.min(0x100000, stream.length));
+        this._size = 0x10000000;
+        this._offset = 0;
+        this._window = Math.min(0x1000, stream.length);
+        const buffer = this._stream.peek(this._window);
+        this._buffer = buffer;
+        this._view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+        this._chunk = -1;
+    }
+
+    get length() {
+        return this._length;
     }
 
     read(offset, length) {
-        this._stream.seek(offset);
-        return this._stream.read(length);
+        const buffer = new Uint8Array(length);
+        this._read(buffer, offset);
+        return buffer;
     }
 
     uint8(offset) {
@@ -388,14 +399,51 @@ flatbuffers.StreamReader = class extends flatbuffers.BinaryReader {
         if (offset + length > this._length) {
             throw new Error(`Expected ${offset + length - this._length} more bytes. The file might be corrupted. Unexpected end of file.`);
         }
-        if (!this._buffer || offset < this._offset || offset + length > this._offset + this._buffer.length) {
-            this._offset = offset;
-            this._stream.seek(this._offset);
-            const size = Math.min(0x10000000, this.length - this._offset);
-            this._buffer = this._stream.read(size);
-            this._view = new DataView(this._buffer.buffer, this._buffer.byteOffset, this._buffer.byteLength);
+        if (offset < this._offset || offset + length > this._offset + this._window) {
+            const remainder = offset % this. _size;
+            const last = this._last;
+            if (this._chunk !== -1) {
+                this._last = [this._chunk, this._buffer, this._view];
+            }
+            if (remainder + length > this._size) {
+                const buffer = new Uint8Array(length);
+                this._read(buffer, length);
+                this._chunk = -1;
+                this._offset = offset;
+                this._window = length;
+                this._buffer = buffer;
+                this._view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+            } else {
+                const chunk = Math.floor(offset / this._size);
+                this._offset = chunk * this._size;
+                this._window = Math.min(this._length - this._offset, this._size);
+                if (last && last[0] === chunk) {
+                    [this._chunk, this._buffer, this._view] = last;
+                } else {
+                    this._chunk = chunk;
+                    this._stream.seek(this._offset);
+                    const buffer = this._stream.read(this._window);
+                    this._buffer = buffer;
+                    this._view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+                    this._stream.seek(0);
+                }
+            }
         }
         return offset - this._offset;
+    }
+
+    _read(buffer, offset) {
+        const length = buffer.length;
+        if (offset < this._offset || offset + length > this._offset + this._window) {
+            this._stream.seek(offset);
+            const data = this._stream.read(length);
+            buffer.set(data, 0);
+            this._stream.seek(0);
+        } else {
+            offset -= this._offset;
+            const data = this._buffer.subarray(offset, offset + length);
+            buffer.set(data, 0);
+        }
     }
 };
 
@@ -414,54 +462,42 @@ flatbuffers.TextReader = class {
     }
 
     int64(obj, defaultValue) {
-        return obj !== undefined ? BigInt(obj) : defaultValue;
+        return obj === undefined ? defaultValue : BigInt(obj);
     }
 
     uint64(obj, defaultValue) {
-        return obj !== undefined ? BigInt(obj) : defaultValue;
+        return obj === undefined ? defaultValue : BigInt(obj);
     }
 
     value(obj, defaultValue) {
-        return obj !== undefined ? obj : defaultValue;
+        return obj === undefined ? defaultValue : obj;
     }
 
-    object(obj, decode) {
-        return obj !== undefined ? decode(this, obj) : obj;
+    object(obj, type) {
+        return obj === undefined ? obj : type.decodeText(this, obj);
     }
 
-    array(obj) {
+    array(obj, type) {
+        type = type || Array;
         if (Array.isArray(obj)) {
-            const target = new Array(obj.length);
-            for (let i = 0; i < obj.length; i++) {
+            const length = obj.length;
+            const target = new type(length);
+            for (let i = 0; i < length; i++) {
                 target[i] = obj[i];
             }
             return target;
         }
-        if (!obj) {
-            return [];
+        if (obj) {
+            throw new flatbuffers.Error('Inalid value array.');
         }
-        throw new flatbuffers.Error('Inalid value array.');
+        return new type(0);
     }
 
-    typedArray(obj, type) {
-        if (Array.isArray(obj)) {
-            const target = new type(obj.length);
-            for (let i = 0; i < obj.length; i++) {
-                target[i] = obj[i];
-            }
-            return target;
-        }
-        if (!obj) {
-            return new type(0);
-        }
-        throw new flatbuffers.Error('Inalid typed array.');
-    }
-
-    objectArray(obj, decode) {
+    objects(obj, type) {
         if (Array.isArray(obj)) {
             const target = new Array(obj.length);
             for (let i = 0; i < obj.length; i++) {
-                target[i] = decode(this, obj[i]);
+                target[i] = type.decodeText(this, obj[i]);
             }
             return target;
         }

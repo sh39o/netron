@@ -166,7 +166,7 @@ grapher.Graph = class {
                 node.element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
                 node.element.setAttribute('class', 'cluster');
                 node.element.addEventListener("click", () =>
-                  this.emit("click", node.name)
+                    this.emit("click", node.name)
                 );
                 node.element.appendChild(node.rectangle);
                 clusterGroup.appendChild(node.element);
@@ -216,17 +216,16 @@ grapher.Graph = class {
                 node.rectangle.setAttribute('width', node.width);
                 node.rectangle.setAttribute('height', node.height);
                 if (
-                  typeof this._isCompound === "object" &&
-                  this._isCompound instanceof Map &&
-                  this._isCompound.get(nodeId) &&
-                  this._isCompound.get(nodeId).attributes
+                    typeof this._isCompound === "object" &&
+                    this._isCompound instanceof Map &&
+                    this._isCompound.get(nodeId) &&
+                    this._isCompound.get(nodeId).attributes
                 ) {
                     const device = this._isCompound.get(nodeId).attributes.find((attr) => attr.name === "device");
                     const tiling_idx = this._isCompound.get(nodeId).attributes.find((attr) => attr.name === "tiling_idx");
                     const pdi = this._isCompound.get(nodeId).attributes.find((attr) => attr.name === "type" && attr.value.value === "PDI");
                     const root = this._isCompound.get(nodeId).name === "root";
-                    
-                    let label_name = undefined;
+                    let label_name = null;
                     let font_size = "10px";
                     if (root) {
                         label_name = "ROOT";
@@ -235,11 +234,10 @@ grapher.Graph = class {
                         label_name = device.value.value;
                         font_size = "12px";
                     } else if (tiling_idx) {
-                        label_name = "tile " + tiling_idx.value.value;
+                        label_name = `tile ${tiling_idx.value.value}`;
                         font_size = "11px";
                     } else if (pdi) {
-                        const pdi_name = this._isCompound.get(nodeId).attributes.find((attr) => attr.name === "name");
-                        label_name = pdi_name.value.value;
+                        label_name = this._isCompound.get(nodeId).name.replace("_subgraph", "");
                         font_size = "11px";
                     }
                     if (label_name) {
@@ -308,7 +306,7 @@ grapher.Node = class {
         this.height = 0;
         for (const block of this._blocks) {
             block.measure();
-            this.height = this.height + block.height;
+            this.height += block.height;
         }
         this.width = Math.max(...this._blocks.map((block) => block.width));
         for (const block of this._blocks) {
@@ -912,15 +910,23 @@ grapher.Edge.Path = class {
     }
 
     moveTo(x, y) {
-        this._data += `M${this._x0 = this._x1 = Number(x)},${this._y0 = this._y1 = Number(y)}`;
+        this._x0 = x;
+        this._x1 = x;
+        this._y0 = y;
+        this._y1 = y;
+        this._data += `M${x},${y}`;
     }
 
     lineTo(x, y) {
-        this._data += `L${this._x1 = Number(x)},${this._y1 = Number(y)}`;
+        this._x1 = x;
+        this._y1 = y;
+        this._data += `L${x},${y}`;
     }
 
     bezierCurveTo(x1, y1, x2, y2, x, y) {
-        this._data += `C${Number(x1)},${Number(y1)},${Number(x2)},${Number(y2)},${this._x1 = Number(x)},${this._y1 = Number(y)}`;
+        this._x1 = x;
+        this._y1 = y;
+        this._data += `C${x1},${y1},${x2},${y2},${x},${y}`;
     }
 
     closePath() {

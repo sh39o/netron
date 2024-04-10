@@ -568,7 +568,7 @@ xmodel.Metadata = class {
             [ 'data', 'Data'],
             [ 'data-fix', 'Data']
         ];
-        this._types = new Map(categories.map(([name, category]) => [name, { name: name, category: category }]));
+        this._types = new Map(categories.map(([name, category]) => [name, { name, category }]));
         for (const op_def of op_defs) {
             const type = this._types.get(op_def.name) || { name: op_def.name };
             if (op_def.annotation) {
@@ -600,7 +600,7 @@ xmodel.Metadata = class {
 
     type(name) {
         if (!this._types.has(name)) {
-            this._types.set(name, { name: name });
+            this._types.set(name, { name });
         }
         return this._types.get(name);
     }

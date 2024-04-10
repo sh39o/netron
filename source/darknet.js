@@ -27,7 +27,7 @@ darknet.ModelFactory = class {
                     return;
                 }
             }
-        } catch (err) {
+        } catch {
             // continue regardless of error
         }
     }
@@ -53,7 +53,7 @@ darknet.ModelFactory = class {
                     const weights = darknet.Weights.open(content);
                     const reader = new darknet.Reader(context.stream, context.identifier);
                     return new darknet.Model(metadata, reader, weights);
-                } catch (error) {
+                } catch {
                     const reader = new darknet.Reader(context.stream, context.identifier);
                     return new darknet.Model(metadata, reader, null);
                 }
@@ -107,7 +107,7 @@ darknet.Graph = class {
         };
         const option_find_str = (options, key, defaultValue) => {
             const value = options[key];
-            return value !== undefined ? value : defaultValue;
+            return value === undefined ? defaultValue : value;
         };
         const make_shape = (dimensions, source) => {
             if (dimensions.some((dimension) => dimension === 0 || dimension === undefined || isNaN(dimension))) {
@@ -120,7 +120,7 @@ darknet.Graph = class {
             const type = new darknet.TensorType('float32', make_shape(shape, 'load_weights'));
             const initializer = new darknet.Tensor(type, data);
             const value = new darknet.Value('', null, initializer);
-            return new darknet.Argument(name, visible === false ? false : true, [value]);
+            return new darknet.Argument(name, visible !== false, [value]);
         };
         const load_batch_normalize_weights = (layer, prefix, size) => {
             layer.weights.push(load_weights(`${prefix}scale`, [size], prefix === ''));
@@ -813,7 +813,7 @@ darknet.Node = class {
 
     constructor(metadata, net, section) {
         this._name = section.name || '';
-        this._location = section.line !== undefined ? section.line.toString() : undefined;
+        this._location = section.line === undefined ? undefined : section.line.toString();
         this._attributes = [];
         this._inputs = [];
         this._outputs = [];
@@ -932,7 +932,7 @@ darknet.Attribute = class {
     }
 
     get visible() {
-        return this._visible === false ? false : true;
+        return this._visible !== false;
     }
 };
 
@@ -1033,7 +1033,7 @@ darknet.Reader = class {
                         }
                         section = {
                             line: lineNumber,
-                            type: type,
+                            type,
                             options: {}
                         };
                         sections.push(section);

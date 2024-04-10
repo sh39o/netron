@@ -15,12 +15,16 @@ host.ElectronHost = class {
     constructor() {
         this._document = window.document;
         this._window = window;
+        this._global = global;
         this._telemetry = new base.Telemetry(this._window);
         process.on('uncaughtException', (err) => {
             this.exception(err, true);
             this._terminate(err.message);
         });
-        this._window.eval = global.eval = () => {
+        this._global.eval = () => {
+            throw new Error('eval.eval() not supported.');
+        };
+        this._window.eval = () => {
             throw new Error('window.eval() not supported.');
         };
         this._window.addEventListener('unload', () => {
@@ -84,7 +88,7 @@ host.ElectronHost = class {
                     if (json && json.country && countries.indexOf(json.country) === -1) {
                         consent = false;
                     }
-                } catch (error) {
+                } catch {
                     // continue regardless of error
                 }
                 if (consent) {
@@ -155,7 +159,7 @@ host.ElectronHost = class {
         });
         electron.ipcRenderer.on('toggle', (sender, name) => {
             this._view.toggle(name);
-            this._update(Object.assign({}, this._view.options));
+            this._update({ ...this._view.options });
         });
         electron.ipcRenderer.on('zoom-in', () => {
             this._element('zoom-in-button').click();
@@ -219,7 +223,7 @@ host.ElectronHost = class {
             e.preventDefault();
             const paths = Array.from(e.dataTransfer.files).map(((file) => file.path));
             if (paths.length > 0) {
-                electron.ipcRenderer.send('drop-paths', { paths: paths });
+                electron.ipcRenderer.send('drop-paths', { paths });
             }
             return false;
         });
@@ -233,8 +237,8 @@ host.ElectronHost = class {
     async error(message, detail, cancel) {
         const options = {
             type: 'error',
-            message: message,
-            detail: detail,
+            message,
+            detail,
             buttons: cancel ? ['Report', 'Cancel'] : ['Report']
         };
         return electron.ipcRenderer.sendSync('show-message-box', options);
@@ -244,8 +248,8 @@ host.ElectronHost = class {
     confirm(message, detail) {
         const result = electron.ipcRenderer.sendSync('show-message-box', {
             type: 'question',
-            message: message,
-            detail: detail,
+            message,
+            detail,
             buttons: ['Yes', 'No'],
             defaultId: 0,
             cancelId: 1
@@ -260,9 +264,9 @@ host.ElectronHost = class {
     save(name, extension, defaultPath, callback) {
         const selectedFile = electron.ipcRenderer.sendSync('show-save-dialog', {
             title: 'Export Tensor',
-            defaultPath: defaultPath,
+            defaultPath,
             buttonLabel: 'Export',
-            filters: [{ name: name, extensions: [extension] }]
+            filters: [{ name, extensions: [extension] }]
         });
         if (selectedFile) {
             callback(selectedFile);
@@ -297,7 +301,7 @@ host.ElectronHost = class {
     }
 
     execute(name, value) {
-        electron.ipcRenderer.send('execute', { name: name, value: value });
+        electron.ipcRenderer.send('execute', { name, value });
     }
 
     async request(file, encoding, basename) {
@@ -370,7 +374,7 @@ host.ElectronHost = class {
                     error_stack: stack,
                     error_fatal: fatal ? true : false
                 });
-            } catch (e) {
+            } catch {
                 // continue regardless of error
             }
         }
@@ -434,14 +438,14 @@ host.ElectronHost = class {
             try {
                 const model = await this._view.open(context);
                 this._view.show(null);
-                const options = Object.assign({}, this._view.options);
+                const options = { ...this._view.options };
                 if (model) {
                     options.path = path;
                     this._title(location.label);
                 }
                 this._update(options);
             } catch (error) {
-                const options = Object.assign({}, this._view.options);
+                const options = { ...this._view.options };
                 if (error) {
                     await this._view.error(error, null, null);
                     options.path = null;
@@ -461,13 +465,7 @@ host.ElectronHost = class {
                 options.timeout = timeout;
             }
             const request = protocol.request(location, options, (response) => {
-                if (response.statusCode !== 200) {
-                    const err = new Error(`The web request failed with status code ${response.statusCode} at '${location}'.`);
-                    err.type = 'error';
-                    err.url = location;
-                    err.status = response.statusCode;
-                    reject(err);
-                } else {
+                if (response.statusCode === 200) {
                     let data = '';
                     response.on('data', (chunk) => {
                         data += chunk;
@@ -478,6 +476,12 @@ host.ElectronHost = class {
                     response.on('end', () => {
                         resolve(data);
                     });
+                } else {
+                    const err = new Error(`The web request failed with status code ${response.statusCode} at '${location}'.`);
+                    err.type = 'error';
+                    err.url = location;
+                    err.status = response.statusCode;
+                    reject(err);
                 }
             });
             request.on("error", (err) => {
@@ -496,8 +500,8 @@ host.ElectronHost = class {
 
     get(name) {
         try {
-            return electron.ipcRenderer.sendSync('get-configuration', { name: name });
-        } catch (error) {
+            return electron.ipcRenderer.sendSync('get-configuration', { name });
+        } catch {
             // continue regardless of error
         }
         return undefined;
@@ -505,16 +509,16 @@ host.ElectronHost = class {
 
     set(name, value) {
         try {
-            electron.ipcRenderer.sendSync('set-configuration', { name: name, value: value });
-        } catch (error) {
+            electron.ipcRenderer.sendSync('set-configuration', { name, value });
+        } catch {
             // continue regardless of error
         }
     }
 
     delete(name) {
         try {
-            electron.ipcRenderer.sendSync('delete-configuration', { name: name });
-        } catch (error) {
+            electron.ipcRenderer.sendSync('delete-configuration', { name });
+        } catch {
             // continue regardless of error
         }
     }
@@ -527,7 +531,7 @@ host.ElectronHost = class {
                 const path = label.split(this._environment.separator || '/');
                 for (let i = 0; i < path.length; i++) {
                     const span = this.document.createElement('span');
-                    span.innerHTML = ` ${path[i]} ${i !== path.length - 1 ? '<svg class="titlebar-icon" aria-hidden="true"><use xlink:href="#icon-arrow-right"></use></svg>' : ''}`;
+                    span.innerHTML = ` ${path[i]} ${i === path.length - 1 ? '' : '<svg class="titlebar-icon" aria-hidden="true"><use xlink:href="#icon-arrow-right"></use></svg>'}`;
                     element.appendChild(span);
                 }
             }
@@ -557,7 +561,7 @@ host.ElectronHost = class {
         if (this._view) {
             try {
                 this._view.show('welcome message');
-            } catch (error) {
+            } catch {
                 // continue regardless of error
             }
         }
@@ -623,7 +627,7 @@ host.ElectronHost.FileStream = class {
     }
 
     peek(length) {
-        length = length !== undefined ? length : this._length - this._position;
+        length = length === undefined ? this._length - this._position : length;
         if (length < 0x1000000) {
             const position = this._fill(length);
             this._position -= length;
@@ -638,7 +642,7 @@ host.ElectronHost.FileStream = class {
     }
 
     read(length) {
-        length = length !== undefined ? length : this._length - this._position;
+        length = length === undefined ? this._length - this._position : length;
         if (length < 0x10000000) {
             const position = this._fill(length);
             return this._buffer.slice(position, position + length);

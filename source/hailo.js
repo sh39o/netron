@@ -130,7 +130,8 @@ hailo.Node = class {
         this.name = layer.name || '';
         this.type = metadata.type(layer.type);
         if (layer.type === 'activation') {
-            this.type = Object.assign({}, this.type, { name: layer.params.activation || layer.name || '' });
+            const name = layer.params.activation || layer.name || '';
+            this.type = { ...this.type, name };
         }
         this.inputs = layer.input.map((name, index) => {
             const shape = layer.input_shapes ? layer.input_shapes[index] : null;
@@ -289,7 +290,7 @@ hailo.Container = class {
             if (content) {
                 return content.read(type);
             }
-        } catch (error) {
+        } catch {
             // continue regardless of error
         }
         return null;
@@ -307,7 +308,7 @@ hailo.Container = class {
             if (!this.configuration) {
                 throw new hailo.Error("Archive does not contain '.nn' configuration.");
             }
-            let extension = undefined;
+            let extension = '';
             switch (this.metadata.state) {
                 case 'fp_optimized_model': extension = '.fpo.npz'; break;
                 case 'quantized_model': extension = '.q.npz'; break;

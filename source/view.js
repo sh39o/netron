@@ -23,7 +23,7 @@ view.View = class {
             direction: 'vertical',
             mousewheel: 'scroll'
         };
-        this._options = Object.assign({}, this._defaultOptions);
+        this._options = { ...this._defaultOptions };
         this._model = null;
         this._stack = [];
         this._selection = [];
@@ -481,8 +481,8 @@ view.View = class {
         const touchMoveHandler = (e) => {
             if (Array.isArray(this._touchPoints) && this._touchPoints.length === 2 && e.touches.length === 2) {
                 const distance = (points) => {
-                    const dx =(points[1].clientX - points[0].clientX);
-                    const dy =(points[1].clientY - points[0].clientY);
+                    const dx = (points[1].clientX - points[0].clientX);
+                    const dy = (points[1].clientY - points[0].clientY);
                     return Math.sqrt(dx * dx + dy * dy);
                 };
                 const d1 = distance(Array.from(e.touches));
@@ -543,7 +543,7 @@ view.View = class {
 
     _wheelHandler(e) {
         if (e.shiftKey || e.ctrlKey || this._options.mousewheel === 'zoom') {
-            let factor;
+            let factor = 1;
             if (e.deltaMode === 1) {
                 factor = 0.05;
             } else if (e.deltaMode) {
@@ -567,12 +567,12 @@ view.View = class {
                 x += rect.left + (rect.width / 2);
                 y += rect.top + (rect.height / 2);
             }
-            x = x / selection.length;
-            y = y / selection.length;
+            x /= selection.length;
+            y /= selection.length;
             const rect = container.getBoundingClientRect();
             const left = (container.scrollLeft + x - rect.left) - (rect.width / 2);
             const top = (container.scrollTop + y - rect.top) - (rect.height / 2);
-            container.scrollTo({ left: left, top: top, behavior: 'smooth' });
+            container.scrollTo({ left, top, behavior: 'smooth' });
         }
     }
 
@@ -616,7 +616,7 @@ view.View = class {
         if (button === 0 && (url || this._host.type === 'Electron')) {
             this._host.openURL(url || `${this._host.environment('repository')}/issues`);
         }
-        this.show(screen !== undefined ? screen : 'welcome');
+        this.show(screen ? screen : 'welcome');
     }
 
     accept(file, size) {
@@ -646,7 +646,7 @@ view.View = class {
             if (Array.isArray(model.graphs) && model.graphs.length > 0) {
                 const [graph] = model.graphs;
                 const entry = {
-                    graph: graph,
+                    graph,
                     signature: Array.isArray(graph.signatures) && graph.signatures.length > 0 ? graph.signatures[0] : null
                 };
                 stack.push(entry);
@@ -740,7 +740,12 @@ view.View = class {
                         }
                         this.showDefinition(this._stack[0]);
                     });
-                    const name = graph && graph.name ? graph.name : '';
+                    let name = '';
+                    if (graph && graph.identifier) {
+                        name = graph.identifier;
+                    } else if (graph && graph.name) {
+                        name = graph.name;
+                    }
                     if (name.length > 24) {
                         element.setAttribute('title', name);
                         element.innerHTML = `&hellip;${name.substring(name.length - 24, name.length)}`;
@@ -767,7 +772,7 @@ view.View = class {
         if (graph && graph !== this.activeGraph && Array.isArray(graph.nodes)) {
             this._sidebar.close();
             const entry = {
-                graph: graph,
+                graph,
                 signature: Array.isArray(graph.signatures) && graph.signatures.length > 0 ? graph.signatures[0] : null
             };
             this._updateGraph(this._model, [entry].concat(this._stack));
@@ -868,13 +873,13 @@ view.View = class {
             const graphRect = container.getBoundingClientRect();
             const left = (container.scrollLeft + x - graphRect.left) - (graphRect.width / 2);
             const top = (container.scrollTop + y - graphRect.top) - (graphRect.height / 2);
-            container.scrollTo({ left: left, top: top, behavior: 'auto' });
+            container.scrollTo({ left, top, behavior: 'auto' });
         } else {
             const canvasRect = canvas.getBoundingClientRect();
             const graphRect = container.getBoundingClientRect();
             const left = (container.scrollLeft + (canvasRect.width / 2) - graphRect.left) - (graphRect.width / 2);
             const top = (container.scrollTop + (canvasRect.height / 2) - graphRect.top) - (graphRect.height / 2);
-            container.scrollTo({ left: left, top: top, behavior: 'auto' });
+            container.scrollTo({ left, top, behavior: 'auto' });
         }
         this._graph = viewGraph;
     }
@@ -901,7 +906,7 @@ view.View = class {
 
     export(file) {
         const lastIndex = file.lastIndexOf('.');
-        const extension = (lastIndex !== -1) ? file.substring(lastIndex + 1).toLowerCase() : 'png';
+        const extension = lastIndex === -1 ? 'png' : file.substring(lastIndex + 1).toLowerCase();
         if (this.activeGraph && (extension === 'png' || extension === 'svg')) {
             const canvas = this._element('canvas');
             const clone = canvas.cloneNode(true);
@@ -976,7 +981,7 @@ view.View = class {
                 const modelSidebar = new view.ModelSidebar(this._host, this._model, this.activeGraph, this.activeSignature);
                 modelSidebar.on('update-active-graph', (sender, graph) => {
                     const entry = {
-                        graph: graph,
+                        graph,
                         signature: Array.isArray(graph.signatures) && graph.signatures.length > 0 ? graph.signatures[0] : null
                     };
                     this._updateActive([entry]);
@@ -1656,7 +1661,7 @@ view.Graph = class extends grapher.Graph {
 
     createNode(node, type) {
         if (type) {
-            const value = new view.Node(this, { type: type });
+            const value = new view.Node(this, { type });
             value.name = (this._nodeKey++).toString();
             this._table.set(type, value);
             return value;
@@ -1683,13 +1688,13 @@ view.Graph = class extends grapher.Graph {
 
     createValue(argument) {
         const name = argument.name;
-        if (!this._values.has(name)) {
-            const value = new view.Value(this, argument);
-            this._values.set(name, value);
-            this._table.set(argument, value);
-        } else {
+        if (this._values.has(name)) {
             // duplicate argument name
             const value = this._values.get(name);
+            this._table.set(argument, value);
+        } else {
+            const value = new view.Value(this, argument);
+            this._values.set(name, value);
             this._table.set(argument, value);
         }
         return this._values.get(name);
@@ -1760,7 +1765,7 @@ view.Graph = class extends grapher.Graph {
             }
             const createCluster = (name) => {
                 if (!clusters.has(name)) {
-                    this.setNode({ name: name, rx: 5, ry: 5 });
+                    this.setNode({ name, rx: 5, ry: 5 });
                     clusters.add(name);
                     const parent = clusterParentMap.get(name);
                     if (parent) {
@@ -1774,13 +1779,13 @@ view.Graph = class extends grapher.Graph {
                 if (groupName && groupName.length > 0) {
                     if (!clusterParentMap.has(groupName)) {
                         const lastIndex = groupName.lastIndexOf('/');
-                        if (lastIndex !== -1) {
+                        if (lastIndex === -1) {
+                            groupName = null;
+                        } else {
                             groupName = groupName.substring(0, lastIndex);
                             if (!clusterParentMap.has(groupName)) {
                                 groupName = null;
                             }
-                        } else {
-                            groupName = null;
                         }
                     }
                     if (groupName) {
@@ -1982,7 +1987,7 @@ view.Node = class extends grapher.Node {
                             let type = '?';
                             try {
                                 type = value.initializer.type.toString();
-                            } catch (error) {
+                            } catch {
                                 // continue regardless of error
                             }
                             const error = new view.Error(`Failed to render tensor of type '${type}' (${err.message}).`);
@@ -2276,7 +2281,7 @@ view.Sidebar = class {
     }
 
     open(content, title) {
-        this._update([{ title: title, content: content }]);
+        this._update([{ title, content }]);
     }
 
     close() {
@@ -2284,7 +2289,7 @@ view.Sidebar = class {
     }
 
     push(content, title) {
-        this._update(this._stack.concat({ title: title, content: content }));
+        this._update(this._stack.concat({ title, content }));
     }
 
     _update(stack) {
@@ -2401,7 +2406,7 @@ view.NodeSidebar = class extends view.ObjectSidebar {
             const type = node.type;
             const item = this.addProperty('type', node.type.identifier || node.type.name);
             if (type && (type.description || type.inputs || type.outputs || type.attributes)) {
-                item.action(type.nodes ? '\u0192': '?', () => {
+                item.action(type.nodes ? '\u0192' : '?', () => {
                     this.emit('show-documentation', null);
                 });
             }
@@ -3172,7 +3177,7 @@ view.ModelSidebar = class extends view.ObjectSidebar {
             selector.on('change', (sender, data) => this.emit('update-active-graph', data));
             this.add('graph', selector);
         }
-        if (Array.isArray(graph.signatures) && graph.signatures.length > 0) {
+        if (graph && Array.isArray(graph.signatures) && graph.signatures.length > 0) {
             const entries = new Map();
             entries.set('', graph);
             for (const signature of graph.signatures) {
@@ -3183,7 +3188,7 @@ view.ModelSidebar = class extends view.ObjectSidebar {
             this.add('signature', selector);
         }
         const metadata = model.metadata instanceof Map ?
-            Array.from(model.metadata).map(([name, value]) => ({ name: name, value: value })) :
+            Array.from(model.metadata).map(([name, value]) => ({ name, value })) :
             model.metadata;
         if (Array.isArray(metadata) && metadata.length > 0) {
             this.addHeader('Metadata');
@@ -3590,7 +3595,7 @@ view.FindSidebar = class extends view.Control {
                 edge(value);
             }
         }
-        this._contentElement.style.display = this._contentElement.childNodes.length !== 0 ? 'block' : 'none';
+        this._contentElement.style.display = this._contentElement.childNodes.length === 0 ? 'none' : 'block';
     }
 
     render() {
@@ -3886,7 +3891,7 @@ view.Tensor = class {
             switch (dataType) {
                 case 'boolean':
                     for (; offset < max; offset += stride) {
-                        results.push(view.getUint8(offset) === 0 ? false : true);
+                        results.push(view.getUint8(offset) !== 0);
                     }
                     break;
                 case 'qint8':
@@ -4593,7 +4598,7 @@ markdown.Generator = class {
                     lastToken.text += `\n${match[0].trimRight()}`;
                 } else {
                     const text = match[0].replace(/^ {4}/gm, '').replace(/\n*$/, '');
-                    tokens.push({ type: 'code', text: text });
+                    tokens.push({ type: 'code', text });
                 }
                 continue;
             }
@@ -4610,7 +4615,7 @@ markdown.Generator = class {
                         return (match !== null && match[0].length >= indent.length) ? node.slice(indent.length) : node;
                     }).join('\n');
                 }
-                tokens.push({ type: 'code', language: language, text: content });
+                tokens.push({ type: 'code', language, text: content });
                 continue;
             }
             match = this._headingRegExp.exec(source);
@@ -4625,7 +4630,7 @@ markdown.Generator = class {
                 const align = match[2].replace(/^ *|\| *$/g, '').split(/ *\| */);
                 if (header.length === align.length) {
                     const cells = match[3] ? match[3].replace(/\n$/, '').split('\n') : [];
-                    const token = { type: 'table', header: header, align: align, cells: cells, raw: match[0] };
+                    const token = { type: 'table', header, align, cells, raw: match[0] };
                     for (let i = 0; i < token.align.length; i++) {
                         if (/^ *-+: *$/.test(token.align[i])) {
                             token.align[i] = 'right';
@@ -4653,7 +4658,7 @@ markdown.Generator = class {
             if (match) {
                 source = source.substring(match[0].length);
                 const text = match[0].replace(/^ *> ?/gm, '');
-                tokens.push({ type: 'blockquote', text: text, tokens: this._tokenize(text, [], links, top) });
+                tokens.push({ type: 'blockquote', text, tokens: this._tokenize(text, [], links, top) });
                 continue;
             }
             match = this._listRegExp.exec(source);
@@ -4662,7 +4667,7 @@ markdown.Generator = class {
                 const ordered = bull.length > 1;
                 const parent = bull[bull.length - 1] === ')';
                 let raw = value;
-                const list = { type: 'list', raw: raw, ordered: ordered, start: ordered ? Number(bull.slice(0, -1)) : '', loose: false, items: [] };
+                const list = { type: 'list', raw, ordered, start: ordered ? Number(bull.slice(0, -1)) : '', loose: false, items: [] };
                 const itemMatch = value.match(this._itemRegExp);
                 let next = false;
                 const length = itemMatch.length;
@@ -4694,12 +4699,12 @@ markdown.Generator = class {
                         list.loose = true;
                     }
                     const task = /^\[[ xX]\] /.test(item);
-                    let checked = undefined;
+                    let checked = false;
                     if (task) {
                         checked = item[1] !== ' ';
                         item = item.replace(/^\[[ xX]\] +/, '');
                     }
-                    list.items.push({ type: 'list_item', raw, task: task, checked: checked, loose: loose, text: item });
+                    list.items.push({ type: 'list_item', raw, task, checked, loose, text: item });
                 }
                 source = source.substring(list.raw.length);
                 for (const item of list.items) {
@@ -4732,7 +4737,7 @@ markdown.Generator = class {
                 const align = match[2].replace(/^ *|\| *$/g, '').split(/ *\| */);
                 if (header.length === align.length) {
                     const cells = match[3] ? match[3].replace(/\n$/, '').split('\n') : [];
-                    const token = { type: 'table', header: header, align: align, cells: cells, raw: match[0] };
+                    const token = { type: 'table', header, align, cells, raw: match[0] };
                     for (let i = 0; i < token.align.length; i++) {
                         if (/^ *-+: *$/.test(token.align[i])) {
                             token.align[i] = 'right';
@@ -4875,7 +4880,7 @@ markdown.Generator = class {
                 if (!link || !link.href) {
                     const text = match[0].charAt(0);
                     source = source.substring(text.length);
-                    tokens.push({ type: 'text', text: text });
+                    tokens.push({ type: 'text', text });
                 } else {
                     source = source.substring(match[0].length);
                     const token = this._outputLink(match, link);
@@ -4891,7 +4896,7 @@ markdown.Generator = class {
                 const masked = maskedSource.slice(-1 * source.length);
                 const endReg = match[0] === '**' ? this._strongEndAstRegExp : this._strongEndUndRegExp;
                 endReg.lastIndex = 0;
-                let cap;
+                let cap = '';
                 while ((match = endReg.exec(masked)) !== null) {
                     cap = this._strongMiddleRegExp.exec(masked.slice(0, match.index + 3));
                     if (cap) {
@@ -4901,7 +4906,7 @@ markdown.Generator = class {
                 if (cap) {
                     const text = source.substring(2, cap[0].length - 2);
                     source = source.substring(cap[0].length);
-                    tokens.push({ type: 'strong', text: text, tokens: this._tokenizeInline(text, links, inLink, inRawBlock, '') });
+                    tokens.push({ type: 'strong', text, tokens: this._tokenizeInline(text, links, inLink, inRawBlock, '') });
                     continue;
                 }
             }
@@ -4910,7 +4915,7 @@ markdown.Generator = class {
                 const masked = maskedSource.slice(-1 * source.length);
                 const endReg = match[0] === '*' ? this._emEndAstRegExp : this._emEndUndRegExp;
                 endReg.lastIndex = 0;
-                let cap;
+                let cap = '';
                 while ((match = endReg.exec(masked)) !== null) {
                     cap = this._emMiddleRegExp.exec(masked.slice(0, match.index + 2));
                     if (cap) {
@@ -4920,7 +4925,7 @@ markdown.Generator = class {
                 if (cap) {
                     const text = source.slice(1, cap[0].length - 1);
                     source = source.substring(cap[0].length);
-                    tokens.push({ type: 'em', text: text, tokens: this._tokenizeInline(text, links, inLink, inRawBlock, '') });
+                    tokens.push({ type: 'em', text, tokens: this._tokenizeInline(text, links, inLink, inRawBlock, '') });
                     continue;
                 }
             }
@@ -4944,7 +4949,7 @@ markdown.Generator = class {
             if (match) {
                 const [value, text] = match;
                 source = source.substring(value.length);
-                tokens.push({ type: 'del', text: text, tokens: this._tokenizeInline(text, links, inLink, inRawBlock, '') });
+                tokens.push({ type: 'del', text, tokens: this._tokenizeInline(text, links, inLink, inRawBlock, '') });
                 continue;
             }
             match = this._autolinkRegExp.exec(source);
@@ -4952,7 +4957,7 @@ markdown.Generator = class {
                 source = source.substring(match[0].length);
                 const text = this._escape(match[1]);
                 const href = match[2] === '@' ? `mailto:${text}` : text;
-                tokens.push({ type: 'link', text: text, href: href, tokens: [{ type: 'text', raw: text, text }] });
+                tokens.push({ type: 'link', text, href, tokens: [{ type: 'text', raw: text, text }] });
                 continue;
             }
             if (!inLink) {
@@ -4961,7 +4966,7 @@ markdown.Generator = class {
                     const email = match[2] === '@';
                     let [value] = match;
                     if (!email) {
-                        let prevCapZero;
+                        let prevCapZero = '';
                         do {
                             prevCapZero = value;
                             [value] = this._backpedalRegExp.exec(value);
@@ -4975,7 +4980,7 @@ markdown.Generator = class {
                         href = `http://${text}`;
                     }
                     source = source.substring(value.length);
-                    tokens.push({ type: 'link', text: text, href: href, tokens: [{ type: 'text', text: text }] });
+                    tokens.push({ type: 'link', text, href, tokens: [{ type: 'text', text }] });
                     continue;
                 }
             }
@@ -5181,9 +5186,9 @@ markdown.Generator = class {
     _outputLink(match, href, title) {
         title = title ? this._escape(title) : null;
         const text = match[1].replace(/\\([[\]])/g, '$1');
-        return match[0].charAt(0) !== '!' ?
-            { type: 'link', href: href, title: title, text: text } :
-            { type: 'image', href: href, title: title, text: this._escape(text) };
+        return match[0].charAt(0) === '!' ?
+            { type: 'image', href, title, text: this._escape(text) } :
+            { type: 'link', href, title, text };
     }
 
     _splitCells(tableRow, count) {
@@ -5289,7 +5294,7 @@ view.Context = class {
                                         this._content.set(type, obj);
                                     }
                                 }
-                            } catch (error) {
+                            } catch {
                                 // continue regardless of error
                             }
                             break;
@@ -5305,7 +5310,7 @@ view.Context = class {
                                         this._content.set(type, obj);
                                     }
                                 }
-                            } catch (error) {
+                            } catch {
                                 // continue regardless of error
                             }
                             break;
@@ -5333,7 +5338,7 @@ view.Context = class {
                                     const pickle = execution.__import__('pickle');
                                     unpickler = new pickle.Unpickler(data);
                                 }
-                            } catch (error) {
+                            } catch {
                                 // continue regardless of error
                             }
                             if (unpickler) {
@@ -5453,7 +5458,7 @@ view.Context = class {
                                     }
                                     this._content.set(type, content);
                                 }
-                            } catch (error) {
+                            } catch {
                                 // continue regardless of error
                             }
                             break;
@@ -5557,16 +5562,6 @@ view.Context = class {
                                 tags = reader.decode();
                                 break;
                             }
-                            case 'flatbuffers': {
-                                const reader = flatbuffers.BinaryReader.open(stream);
-                                if (reader) {
-                                    const identifier = reader.identifier;
-                                    if (identifier.length > 0) {
-                                        tags.set('file_identifier', identifier);
-                                    }
-                                }
-                                break;
-                            }
                             case 'xml': {
                                 const reader = xml.TextReader.open(stream);
                                 if (reader) {
@@ -5583,7 +5578,7 @@ view.Context = class {
                                 throw new view.Error(`Unsupported tags format type '${type}'.`);
                             }
                         }
-                    } catch (error) {
+                    } catch {
                         tags.clear();
                     }
                 }
@@ -5650,7 +5645,7 @@ view.ModelFactoryService = class {
         this._factories = [];
         this.register('./server', ['.netron']);
         this.register('./pytorch', ['.pt', '.pth', '.ptl', '.pt1', '.pyt', '.pyth', '.pkl', '.pickle', '.h5', '.t7', '.model', '.dms', '.tar', '.ckpt', '.chkpt', '.tckpt', '.bin', '.pb', '.zip', '.nn', '.torchmodel', '.torchscript', '.pytorch', '.ot', '.params', '.trt', '.ff', '.ptmf', '.jit', '.pte', '.bin.index.json', 'serialized_exported_program.json'], ['.model', '.pt2']);
-        this.register('./onnx', ['.onnx', '.onn', '.pb', '.onnxtxt', '.pbtxt', '.prototxt', '.txt', '.model', '.pt', '.pth', '.pkl', '.ort', '.ort.onnx', 'onnxmodel', 'ngf', 'json']);
+        this.register('./onnx', ['.onnx', '.onnx_data', '.onn', '.pb', '.onnxtxt', '.pbtxt', '.prototxt', '.txt', '.model', '.pt', '.pth', '.pkl', '.ort', '.ort.onnx', '.ngf', '.json', '.bin', 'onnxmodel']);
         this.register('./mxnet', ['.json', '.params'], ['.mar']);
         this.register('./coreml', ['.mlmodel', '.bin', 'manifest.json', 'metadata.json', 'featuredescriptions.json', '.pb', '.pbtxt'], ['.mlpackage']);
         this.register('./caffe', ['.caffemodel', '.pbtxt', '.prototxt', '.pt', '.txt']);
@@ -5710,7 +5705,7 @@ view.ModelFactoryService = class {
 
     register(module, factories, containers) {
         for (const pattern of factories) {
-            this._factories.push({ pattern: pattern, module: module });
+            this._factories.push({ pattern, module });
             this._patterns.add(pattern);
         }
         for (const pattern of containers || []) {
@@ -5770,10 +5765,8 @@ view.ModelFactoryService = class {
         for (const callback of callbacks) {
             let archive = null;
             try {
-                /* eslint-disable no-await-in-loop */
                 archive = callback(stream);
-                /* eslint-enable no-await-in-loop */
-            } catch (error) {
+            } catch {
                 // continue regardless of error
             }
             if (archive) {
@@ -5864,8 +5857,8 @@ view.ModelFactoryService = class {
                     { name: 'mediapipe.BoxDetectorIndex data', tags: [[1,[[1,[[1,[[1,5],[2,5],[3,5],[4,5],[6,0],[7,5],[8,5],[10,5],[11,0],[12,0]]],[2,5],[3,[]]]],[2,false],[3,false],[4,false],[5,false]]],[2,false],[3,false]] },
                     { name: 'third_party.tensorflow.python.keras.protobuf.SavedMetadata data', tags: [[1,[[1,[[1,0],[2,0]]],[2,0],[3,2],[4,2],[5,2]]]] },
                     { name: 'pblczero.Net data', tags: [[1,5],[2,2],[3,[[1,0],[2,0],[3,0]],[10,[[1,[]],[2,[]],[3,[]],[4,[]],[5,[]],[6,[]]]],[11,[]]]] }, // https://github.com/LeelaChessZero/lczero-common/blob/master/proto/net.proto
-                    { name: 'optimization_guide.proto.PageTopicsOverrideList', tags: [[1,[[1,2],[2,[]]]]] }, // https://github.com/chromium/chromium/blob/main/components/optimization_guide/proto/page_topics_override_list.proto
-                    { name: 'optimization_guide.proto.ModelInfo', tags: [[1,0],[2,0],[4,0],[6,[]],[7,[]],[9,0]] } // https://github.com/chromium/chromium/blob/22b0d711657b451b61d50dd2e242b3c6e38e6ef5/components/optimization_guide/proto/models.proto#L80
+                    { name: 'optimization_guide.proto.PageTopicsOverrideList data', tags: [[1,[[1,2],[2,[]]]]] }, // https://github.com/chromium/chromium/blob/main/components/optimization_guide/proto/page_topics_override_list.proto
+                    { name: 'optimization_guide.proto.ModelInfo data', tags: [[1,0],[2,0],[4,0],[6,[]],[7,[]],[9,0]] } // https://github.com/chromium/chromium/blob/22b0d711657b451b61d50dd2e242b3c6e38e6ef5/components/optimization_guide/proto/models.proto#L80
                 ];
                 const match = (tags, schema) => {
                     for (const [key, inner] of schema) {
@@ -5908,12 +5901,12 @@ view.ModelFactoryService = class {
             }
         };
         const flatbuffers = () => {
-            const tags = context.tags('flatbuffers');
-            if (tags.has('file_identifier')) {
-                const file_identifier = tags.get('file_identifier');
+            const reader = context.peek('flatbuffers.binary');
+            if (reader) {
+                const file_identifier = reader.identifier;
                 const formats = [
-                    { name: 'onnxruntime.experimental.fbs.InferenceSession data', identifier: 'ORTM' },
-                    { name: 'tflite.Model data', identifier: 'TFL3' }
+                    { name: 'ONNX Runtime model data', identifier: 'ORTM' },
+                    { name: 'TensorFlow Lite model data', identifier: 'TFL3' }
                 ];
                 for (const format of formats) {
                     if (file_identifier === format.identifier) {
@@ -5950,7 +5943,7 @@ view.ModelFactoryService = class {
                 stream.seek(0);
                 const buffer = stream.peek(Math.min(16, stream.length));
                 const bytes = Array.from(buffer).map((c) => (c < 16 ? '0' : '') + c.toString(16)).join('');
-                const content = stream.length > 268435456 ? `(${bytes}) [${stream.length}]`: `(${bytes})`;
+                const content = stream.length > 268435456 ? `(${bytes}) [${stream.length}]` : `(${bytes})`;
                 throw new view.Error(`Unsupported file content ${content} for extension '.${extension}'.`);
             }
             throw new view.Error("Unsupported file directory.");
@@ -6173,7 +6166,7 @@ view.Metadata = class {
                 const content = await context.request(name);
                 const types = JSON.parse(content);
                 metadata.set(name, new view.Metadata(types));
-            } catch (error) {
+            } catch {
                 metadata.set(name, new view.Metadata(null));
             }
         }

@@ -30,7 +30,7 @@ om.Model = class {
     constructor(metadata, target) {
         this.format = target.format;
         const context = {
-            metadata: metadata,
+            metadata,
             signature: target.signature,
             weights: target.weights
         };
@@ -402,7 +402,7 @@ om.Container = class {
                                 partitions.clear();
                                 break;
                             }
-                            partitions.set(type, { offset: offset, size: size });
+                            partitions.set(type, { offset, size });
                         }
                         if (partitions.size > 0) {
                             break;
@@ -553,7 +553,7 @@ svp.ModelDef = class ModelDef {
                     const op = new svp.OpDef(value);
                     for (const item of this.graph) {
                         if (op.attr && op.attr.seg_id && op.attr.seg_id.i === item.id) {
-                            let out_num;
+                            let out_num = 0;
                             if (typeof op.output_index === 'number') {
                                 out_num = op.output_index + 1;
                             } else {
@@ -591,11 +591,11 @@ svp.ModelDef = class ModelDef {
                                     break;
                                 }
                             }
-                            if (curr_op !== null) {
-                                curr_op.output_desc = curr_op.output_desc.concat(out_list);
-                            } else {
+                            if (curr_op === null) {
                                 op.output_desc = op.output_desc.concat(out_list);
                                 item.op.push(op);
+                            } else {
+                                curr_op.output_desc = curr_op.output_desc.concat(out_list);
                             }
                             break;
                         }
@@ -768,7 +768,7 @@ svp.BinaryReader = class {
     }
 
     value(tag, type) {
-        let value;
+        let value = 0;
         switch (tag >> 13) {
             case 1: value = this.int8(); break;
             case 2: value = this.uint16(); break;

@@ -80,7 +80,7 @@ mlir.Graph = class {
         const values = new Map();
         values.map = (name) => {
             if (!values.has(name)) {
-                values.set(name, { name: name, to: [], from: [] });
+                values.set(name, { name, to: [], from: [] });
             }
             return values.get(name);
         };
@@ -93,7 +93,7 @@ mlir.Graph = class {
                 outputs: [],
                 delete: false,
             };
-            // TODO: convert attributes to proper types
+            // convert attributes to proper types
             operation.attributes = op.attributes;
             // for (const [key, value] of Object.entries(op.attributes)) {
             //     operation.attributes[key] = convertValue(value);
@@ -472,7 +472,7 @@ mlir.Tokenizer = class {
         let line = 1;
         let column = 1;
         this._decoder.position = 0;
-        let c;
+        let c = '';
         do {
             if (this._decoder.position === this._position) {
                 return `at ${line}:${column}.`;
@@ -738,7 +738,7 @@ mlir.Parser = class {
         const graph = {
             functions: [],
             operations: [],
-            attributes: attributes,
+            attributes,
         };
         // functions or operations
         const terminal = hasModule ? mlir.TokenType.RBRACE : mlir.TokenType.EOF;
@@ -791,13 +791,13 @@ mlir.Parser = class {
         }
         this._read(mlir.TokenType.RBRACE);
         return {
-            name: name,
+            name,
             inputs: inputs.map((input) => input.name),
             inputTypes: inputs.map((input) => input.type),
             outputTypes: outputs,
-            operations: operations,
-            attributes: attributes,
-            visibility: visibility,
+            operations,
+            attributes,
+            visibility,
         };
     }
 
@@ -869,7 +869,7 @@ mlir.Parser = class {
         if (this._current.type === mlir.TokenType.RBRACE) {
             // early return
             return {
-                outputs: outputs,
+                outputs,
                 name: operationName,
             };
         }
@@ -890,17 +890,17 @@ mlir.Parser = class {
         // successor-list?
         // condition: start with `[`, end with `]`
         if (this._match(mlir.TokenType.LBRACKET)) {
-            skipSymbolBetween(mlir.TokenType.LBRACKET, mlir.TokenType.RBRACKET); // TODO
+            skipSymbolBetween(mlir.TokenType.LBRACKET, mlir.TokenType.RBRACKET);
         }
         // dictionary-properties?
         // condition: start with `<`, end with `>`
         if (this._match(mlir.TokenType.LESS_THAN)) {
-            skipSymbolBetween(mlir.TokenType.LESS_THAN, mlir.TokenType.GREATER_THAN); // TODO
+            skipSymbolBetween(mlir.TokenType.LESS_THAN, mlir.TokenType.GREATER_THAN);
         }
         // region-list?
         // condition: start with `({^`, or (operation, end with `)`
         if (this._match(mlir.TokenType.LPAREN) && this._current.type === mlir.TokenType.LBRACE) {
-            skipSymbolBetween(mlir.TokenType.LPAREN, mlir.TokenType.RPAREN); // TODO
+            skipSymbolBetween(mlir.TokenType.LPAREN, mlir.TokenType.RPAREN);
         }
         // dictionary-attribute?
         // condition: start with `{`, end with `}`
@@ -915,10 +915,10 @@ mlir.Parser = class {
             // constant
             const result = {
                 name: operationName,
-                attributes: attributes,
+                attributes,
                 // data: this._parseConstantData(),
-                outputs: outputs,
-                outputTypes: outputTypes,
+                outputs,
+                outputTypes,
                 isConstant: true,
             };
             return result;
@@ -953,12 +953,12 @@ mlir.Parser = class {
         attributes = Object.assign(attributes, this._parseAttribute());
         const result = {
             name: operationName,
-            attributes: attributes,
-            inputs: inputs,
-            inputTypes: inputTypes,
-            outputs: outputs,
-            outputTypes: outputTypes,
-            body: body,
+            attributes,
+            inputs,
+            inputTypes,
+            outputs,
+            outputTypes,
+            body,
         };
         return result;
     }
@@ -1001,7 +1001,7 @@ mlir.Parser = class {
     }
 
     _parseOperationName() {
-        let value;
+        let value = '';
         switch (this._current.type) {
             case mlir.TokenType.STRING_LITERAL:
                 value = this._current.value;

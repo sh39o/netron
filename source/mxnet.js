@@ -8,20 +8,25 @@ mxnet.ModelFactory = class {
     match(context) {
         const identifier = context.identifier;
         const extension = identifier.split('.').pop().toLowerCase();
-        if (extension === 'json') {
-            const obj = context.peek('json');
-            if (obj && obj.nodes && obj.arg_nodes && obj.heads) {
-                context.type = 'mxnet.json';
-                context.target = obj;
-                return;
+        switch (extension) {
+            case 'json': {
+                const obj = context.peek('json');
+                if (obj && obj.nodes && obj.arg_nodes && obj.heads) {
+                    context.type = 'mxnet.json';
+                    context.target = obj;
+                }
+                break;
             }
-        }
-        if (extension === 'params') {
-            const stream = context.stream;
-            const signature = [0x12, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-            if (stream && stream.length > signature.length && stream.peek(signature.length).every((value, index) => value === signature[index])) {
-                context.type = 'mxnet.params';
-                return;
+            case 'params': {
+                const stream = context.stream;
+                const signature = [0x12, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+                if (stream && stream.length > signature.length && stream.peek(signature.length).every((value, index) => value === signature[index])) {
+                    context.type = 'mxnet.params';
+                }
+                break;
+            }
+            default: {
+                break;
             }
         }
     }
@@ -137,7 +142,7 @@ mxnet.ModelFactory = class {
                                 const content = await context.fetch(obj.Model.Signature);
                                 manifest.signature = content.read('json');
                                 return manifest;
-                            } catch (error) {
+                            } catch {
                                 return manifest;
                             }
                         }
@@ -150,11 +155,11 @@ mxnet.ModelFactory = class {
             try {
                 const content = await context.fetch('MANIFEST.json');
                 return parse(content.stream);
-            } catch (error) {
+            } catch {
                 try {
                     const content = await context.fetch('MAR-INF/MANIFEST.json');
                     return parse(content.stream);
-                } catch (error) {
+                } catch {
                     return parse(null);
                 }
             }
@@ -167,7 +172,7 @@ mxnet.ModelFactory = class {
                         const name = (key.startsWith('arg:') || key.startsWith('aux:')) ? key.substring(4) : key;
                         parameters.set(name, array);
                     }
-                } catch (error) {
+                } catch {
                     // continue regardless of error
                 }
             }
@@ -199,7 +204,7 @@ mxnet.ModelFactory = class {
                             const content = await context.fetch(file);
                             const reader = content.read('binary');
                             return createModel(metadata, manifest, symbol, reader);
-                        } catch (error) {
+                        } catch {
                             return createModel(metadata, manifest, symbol, null);
                         }
                     }
@@ -217,7 +222,7 @@ mxnet.ModelFactory = class {
                             const content = await context.fetch(name);
                             const symbol = content.read('json');
                             return createModel(metadata, manifest, symbol, params);
-                        } catch (error) {
+                        } catch {
                             return createModel(metadata, manifest, null, params);
                         }
                     }
@@ -410,7 +415,7 @@ mxnet.Graph = class {
                                         try {
                                             dataType = parseInt(arg_node.attrs.__dtype__, 10);
                                             shape = JSON.parse(`[${arg_node.attrs.__shape__.replace('(', '').replace(')', '').split(' ').join('').split(',').map(((dimension) => dimension || '"?"')).join(',')}]`);
-                                        } catch (err) {
+                                        } catch {
                                             // continue regardless of error
                                         }
                                     }
@@ -649,8 +654,6 @@ mxnet.Attribute = class {
     constructor(metadata, type, name, value) {
         this._name = name;
         this._value = value;
-
-        let number;
         metadata = metadata.attribute(type, name);
         if (metadata && metadata.type) {
             switch (metadata.type) {
@@ -670,15 +673,17 @@ mxnet.Attribute = class {
                             throw new mxnet.Error(`Unsupported attribute boolean value '${value}'.`);
                     }
                     break;
-                case 'int32':
-                    number = Number.parseInt(this._value, 10);
+                case 'int32': {
+                    const number = Number.parseInt(this._value, 10);
                     this._value = Number.isNaN(this._value - number) ? value : number;
                     break;
+                }
                 case 'float32':
-                case 'float64':
-                    number = Number.parseFloat(this._value);
+                case 'float64': {
+                    const number = Number.parseFloat(this._value);
                     this._value = Number.isNaN(this._value - number) ? value : number;
                     break;
+                }
                 case 'int32[]':
                     if (this._value.length > 2 && this._value.startsWith('(') && this._value.endsWith(')')) {
                         let array = [];
@@ -686,11 +691,11 @@ mxnet.Attribute = class {
                             .map((item) => item.trim())
                             .map((item) => item.endsWith('L') ? item.substring(0, item.length - 1) : item);
                         for (const item of items) {
-                            number = Number.parseInt(item, 10);
-                            if (Number.isNaN(item - number)) {
+                            const value = Number.parseInt(item, 10);
+                            if (Number.isNaN(item - value)) {
                                 array = null;
                             } else if (array !== null) {
-                                array.push(number);
+                                array.push(value);
                             }
                         }
                         if (array !== null) {
@@ -738,7 +743,7 @@ mxnet.Attribute = class {
     }
 
     get visible() {
-        return this._visible === false ? false : true;
+        return this._visible !== false;
     }
 };
 

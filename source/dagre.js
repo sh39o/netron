@@ -20,8 +20,8 @@ dagre.layout = (graph, layout) => {
     // attributes can influence layout.
     const buildLayoutGraph = (graph) => {
         const g = new dagre.Graph({ compound: true });
-        g.layout = Object.assign({}, { ranksep: 50, edgesep: 20, nodesep: 50, rankdir: 'tb' }, layout);
-        g.state = Object.assign({}, graph.state);
+        g.layout = { ranksep: 50, edgesep: 20, nodesep: 50, rankdir: 'tb', ...layout };
+        g.state = { ...graph.state };
         for (const node of graph.nodes.values()) {
             const v = node.v;
             const label = node.label;
@@ -70,7 +70,7 @@ dagre.layout = (graph, layout) => {
 
         // Adds a dummy node to the graph and return v.
         const addDummyNode = (g, type, label, name) => {
-            let v;
+            let v = '';
             do {
                 v = uniqueId(name);
             } while (g.hasNode(v));
@@ -147,7 +147,7 @@ dagre.layout = (graph, layout) => {
                     if (!label.selfEdges) {
                         label.selfEdges = [];
                     }
-                    label.selfEdges.push({ e: e, label: e.label });
+                    label.selfEdges.push({ e, label: e.label });
                     g.removeEdge(e);
                 }
             }
@@ -160,22 +160,20 @@ dagre.layout = (graph, layout) => {
             const stack = Array.from(g.nodes.keys()).reverse();
             while (stack.length > 0) {
                 const v = stack.pop();
-                if (!Array.isArray(v)) {
-                    if (!visited.has(v)) {
-                        visited.add(v);
-                        path.add(v);
-                        stack.push([v]);
-                        const out = g.node(v).out;
-                        for (let i = out.length - 1; i >= 0; i--) {
-                            const e = out[i];
-                            if (path.has(e.w)) {
-                                edges.push(e);
-                            }
-                            stack.push(e.w);
-                        }
-                    }
-                } else {
+                if (Array.isArray(v)) {
                     path.delete(v[0]);
+                } else if (!visited.has(v)) {
+                    visited.add(v);
+                    path.add(v);
+                    stack.push([v]);
+                    const out = g.node(v).out;
+                    for (let i = out.length - 1; i >= 0; i--) {
+                        const e = out[i];
+                        if (path.has(e.w)) {
+                            edges.push(e);
+                        }
+                        stack.push(e.w);
+                    }
                 }
             }
             for (const e of edges) {
@@ -261,7 +259,7 @@ dagre.layout = (graph, layout) => {
                 while (tightTree(t, g) < size) {
                     // Finds the edge with the smallest slack that is incident on tree and returns it.
                     let minKey = Number.MAX_SAFE_INTEGER;
-                    let edge = undefined;
+                    let edge = null;
                     for (const e of g.edges.values()) {
                         if (t.hasNode(e.v) !== t.hasNode(e.w)) {
                             const key = slack(g, e);
@@ -384,7 +382,7 @@ dagre.layout = (graph, layout) => {
                         if (parent) {
                             label.parent = parent;
                         } else {
-                            // TODO should be able to remove this when we incrementally update low lim
+                            // should be able to remove this when we incrementally update low lim
                             delete label.parent;
                         }
                         return nextLim;
@@ -476,7 +474,7 @@ dagre.layout = (graph, layout) => {
                         return rootLabel.low <= vLabel.lim && vLabel.lim <= rootLabel.lim;
                     };
                     let minKey = Number.POSITIVE_INFINITY;
-                    let minValue = undefined;
+                    let minValue = null;
                     for (const edge of g.edges.values()) {
                         if (flip === isDescendant(t.node(edge.v).label, tailLabel) &&
                             flip !== isDescendant(t.node(edge.w).label, tailLabel)) {
@@ -525,8 +523,8 @@ dagre.layout = (graph, layout) => {
                 const t = feasibleTree(g);
                 initLowLimValues(t);
                 initCutValues(t, g);
-                let e;
-                let f;
+                let e = null;
+                let f = null;
                 while ((e = leaveEdge(t))) {
                     f = enterEdge(t, g, e);
                     exchangeEdges(t, g, e, f);
@@ -554,7 +552,7 @@ dagre.layout = (graph, layout) => {
                 if (edge.width && edge.height) {
                     const v = e.vNode.label;
                     const w = e.wNode.label;
-                    addDummyNode(g, 'edge-proxy', { rank: (w.rank - v.rank) / 2 + v.rank, e: e }, '_ep');
+                    addDummyNode(g, 'edge-proxy', { rank: (w.rank - v.rank) / 2 + v.rank, e }, '_ep');
                 }
             }
         };
@@ -657,9 +655,9 @@ dagre.layout = (graph, layout) => {
                     const childTop = childNode.borderTop ? childNode.borderTop : child;
                     const childBottom = childNode.borderBottom ? childNode.borderBottom : child;
                     const thisWeight = childNode.borderTop ? weight : 2 * weight;
-                    const minlen = childTop !== childBottom ? 1 : height - depths[v] + 1;
-                    g.setEdge(top, childTop, { weight: thisWeight, minlen: minlen, nestingEdge: true });
-                    g.setEdge(childBottom, bottom, { weight: thisWeight, minlen: minlen, nestingEdge: true });
+                    const minlen = childTop === childBottom ? height - depths[v] + 1 : 1;
+                    g.setEdge(top, childTop, { weight: thisWeight, minlen, nestingEdge: true });
+                    g.setEdge(childBottom, bottom, { weight: thisWeight, minlen, nestingEdge: true });
                 }
                 if (!g.parent(v)) {
                     g.setEdge(root, top, { weight: 0, minlen: height + depths[v] });
@@ -750,7 +748,7 @@ dagre.layout = (graph, layout) => {
                         delete e.key;
                         const attrs = {
                             width: 0, height: 0,
-                            edgeLabel: edgeLabel,
+                            edgeLabel,
                             edgeObj: e,
                             rank: vRank
                         };
@@ -826,7 +824,7 @@ dagre.layout = (graph, layout) => {
                 while ((parent = g.parent(parent)) !== lca) {
                     wPath.push(parent);
                 }
-                return { path: vPath.concat(wPath.reverse()), lca: lca };
+                return { path: vPath.concat(wPath.reverse()), lca };
             };
             const postorder = (g) => {
                 const result = {};
@@ -836,7 +834,7 @@ dagre.layout = (graph, layout) => {
                     for (const u of g.children(v)) {
                         dfs(u);
                     }
-                    result[v] = { low: low, lim: lim++ };
+                    result[v] = { low, lim: lim++ };
                 };
                 for (const v of g.children()) {
                     dfs(v);
@@ -877,7 +875,7 @@ dagre.layout = (graph, layout) => {
 
         const addBorderSegments = (g) => {
             const addBorderNode = (g, prop, prefix, sg, sgNode, rank) => {
-                const label = { width: 0, height: 0, rank: rank, borderType: prop };
+                const label = { width: 0, height: 0, rank, borderType: prop };
                 const prev = sgNode[prop][rank - 1];
                 const curr = addDummyNode(g, 'border', label, prefix);
                 sgNode[prop][rank] = curr;
@@ -934,7 +932,7 @@ dagre.layout = (graph, layout) => {
                     const mappedEntries = new Map();
                     for (let i = 0; i < entries.length; i++) {
                         const entry = entries[i];
-                        const tmp = { indegree: 0, 'in': [], out: [], vs: [entry.v], i: i };
+                        const tmp = { indegree: 0, 'in': [], out: [], vs: [entry.v], i };
                         if (entry.barycenter !== undefined) {
                             tmp.barycenter = entry.barycenter;
                             tmp.weight = entry.weight;
@@ -1007,7 +1005,7 @@ dagre.layout = (graph, layout) => {
                     return (movable || []).map((v) => {
                         const inV = g.node(v).in;
                         if (!inV.length) {
-                            return { v: v };
+                            return { v };
                         }
                         const result = inV.reduce((acc, e) => {
                             const edge = e.label;
@@ -1018,7 +1016,7 @@ dagre.layout = (graph, layout) => {
                             };
                         }, { sum: 0, weight: 0 });
                         return {
-                            v: v,
+                            v,
                             barycenter: result.sum / result.weight,
                             weight: result.weight
                         };
@@ -1026,7 +1024,7 @@ dagre.layout = (graph, layout) => {
                 };
                 const sort = (entries, biasRight) => {
                     const consumeUnsortable = (vs, unsortable, index) => {
-                        let last;
+                        let last = null;
                         while (unsortable.length && (last = unsortable[unsortable.length - 1]).i <= index) {
                             unsortable.pop();
                             vs.push(last.vs);
@@ -1041,7 +1039,7 @@ dagre.layout = (graph, layout) => {
                             } else if (entryV.barycenter > entryW.barycenter) {
                                 return 1;
                             }
-                            return !bias ? entryV.i - entryW.i : entryW.i - entryV.i;
+                            return bias ? entryW.i - entryV.i : entryV.i - entryW.i;
                         };
                     };
                     // partition
@@ -1077,7 +1075,7 @@ dagre.layout = (graph, layout) => {
                 };
                 const node = g.node(v);
                 const bl = node && node.label ? node.label.borderLeft : undefined;
-                const br = node && node.label ? node.label.borderRight: undefined;
+                const br = node && node.label ? node.label.borderRight : undefined;
                 const subgraphs = {};
                 const movable = bl ? g.children(v).filter((w) => w !== bl && w !== br) : g.children(v);
                 const barycenters = barycenter(g, movable);
@@ -1086,12 +1084,12 @@ dagre.layout = (graph, layout) => {
                         const result = sortSubgraph(g, entry.v, cg, biasRight);
                         subgraphs[entry.v] = result;
                         if ('barycenter' in result) {
-                            if (entry.barycenter !== undefined) {
-                                entry.barycenter = (entry.barycenter * entry.weight + result.barycenter * result.weight) / (entry.weight + result.weight);
-                                entry.weight += result.weight;
-                            } else {
+                            if (entry.barycenter === undefined) {
                                 entry.barycenter = result.barycenter;
                                 entry.weight = result.weight;
+                            } else {
+                                entry.barycenter = (entry.barycenter * entry.weight + result.barycenter * result.weight) / (entry.weight + result.weight);
+                                entry.weight += result.weight;
                             }
                         }
                     }
@@ -1129,11 +1127,11 @@ dagre.layout = (graph, layout) => {
                     }
                     // add subgraph constraints
                     const prev = {};
-                    let rootPrev;
+                    let rootPrev = '';
                     let exit = false;
                     for (const v of vs) {
                         let child = lg.parent(v);
-                        let prevChild;
+                        let prevChild = null;
                         while (child) {
                             const parent = lg.parent(child);
                             if (parent) {
@@ -1230,14 +1228,14 @@ dagre.layout = (graph, layout) => {
             const initOrder = (g) => {
                 const visited = new Set();
                 const nodes = Array.from(g.nodes.values()).filter((node) => g.children(node.v).length === 0);
-                let maxRank = undefined;
+                let maxRank = -1;
                 for (const node of nodes) {
                     const rank = node.label.rank;
-                    if (maxRank === undefined || (rank !== undefined && rank > maxRank)) {
+                    if (maxRank === -1 || (rank !== undefined && rank > maxRank)) {
                         maxRank = rank;
                     }
                 }
-                if (maxRank !== undefined) {
+                if (maxRank !== -1) {
                     const layers = Array.from(new Array(maxRank + 1), () => []);
                     const queue = nodes.sort((a, b) => a.label.rank - b.label.rank).map((node) => node.v).reverse();
                     for (let i = 0; i < queue.length; i++) {
@@ -1278,12 +1276,12 @@ dagre.layout = (graph, layout) => {
             //    4. Edges incident on movable nodes, selected by the relationship parameter, are added to the output graph.
             //    5. The weights for copied edges are aggregated as need, since the output graph is not a multi-graph.
             const buildLayerGraph = (g, nodes, rank, relationship) => {
-                let root;
+                let root = '';
                 while (g.hasNode((root = uniqueId('_root')))) {
                     // continue
                 }
                 const graph = new dagre.Graph({ compound: true });
-                graph.state = { root: root };
+                graph.state = { root };
                 graph.setDefaultNodeLabel((v) => {
                     const node = g.node(v);
                     return node ? node.label : undefined;
@@ -1336,7 +1334,7 @@ dagre.layout = (graph, layout) => {
                 upLayerGraphs[i] = buildLayerGraph(g, nodes, rank - i - 1, false);
             }
             let bestCC = Number.POSITIVE_INFINITY;
-            let best;
+            let best = [];
             for (let i = 0, lastBest = 0; lastBest < 4; ++i, ++lastBest) {
                 sweepLayerGraphs(i % 2 ? downLayerGraphs : upLayerGraphs, i % 4 >= 2);
                 layering = buildLayerMatrix(g);
@@ -1445,7 +1443,8 @@ dagre.layout = (graph, layout) => {
                 }
                 let conflictsV = conflicts[v];
                 if (!conflictsV) {
-                    conflicts[v] = conflictsV = {};
+                    conflictsV = {};
+                    conflicts[v] = conflictsV;
                 }
                 conflictsV[w] = true;
             };
@@ -1462,7 +1461,7 @@ dagre.layout = (graph, layout) => {
                 const edgeSep = g.layout.edgesep;
                 const blockGraph = new dagre.Graph();
                 for (const layer of layering) {
-                    let u;
+                    let u = null;
                     for (const v of layer) {
                         const vRoot = root[v];
                         blockGraph.setNode(vRoot, {});
@@ -1471,7 +1470,7 @@ dagre.layout = (graph, layout) => {
                             const vLabel = g.node(v).label;
                             const wLabel = g.node(u).label;
                             let sum = 0;
-                            let delta;
+                            let delta = 0;
                             sum += vLabel.width / 2;
                             if ('labelpos' in vLabel) {
                                 switch (vLabel.labelpos) {
@@ -1541,15 +1540,17 @@ dagre.layout = (graph, layout) => {
                             for (let i = Math.floor(mp); i <= il; i++) {
                                 const w = ws[i];
                                 if (align[v] === v && prevIdx < pos[w] && !hasConflict(conflicts, v, w)) {
+                                    const x = root[w];
                                     align[w] = v;
-                                    align[v] = root[v] = root[w];
+                                    align[v] = x;
+                                    root[v] = x;
                                     prevIdx = pos[w];
                                 }
                             }
                         }
                     }
                 }
-                return { root: root, align: align };
+                return { root, align };
             };
             const horizontalCompaction = (g, layering, root, align, reverseSep) => {
                 // This portion of the algorithm differs from BK due to a number of problems.
@@ -1661,9 +1662,8 @@ dagre.layout = (graph, layout) => {
             const findType2Conflicts = (g, layering) => {
                 const conflicts = {};
                 const scan = (south, southPos, southEnd, prevNorthBorder, nextNorthBorder) => {
-                    let v;
                     for (let i = southPos; i < southEnd; i++) {
-                        v = south[i];
+                        const v = south[i];
                         if (g.node(v).labeldummy) {
                             for (const u of g.predecessors(v)) {
                                 const uNode = g.node(u).label;
@@ -1679,7 +1679,7 @@ dagre.layout = (graph, layout) => {
                     for (let i = 1; i < layering.length; i++) {
                         const south = layering[i];
                         let prevNorthPos = -1;
-                        let nextNorthPos;
+                        let nextNorthPos = 0;
                         let southPos = 0;
                         south.forEach((v, southLookahead) => {
                             if (g.node(v).label.dummy === 'border') {
@@ -1733,7 +1733,7 @@ dagre.layout = (graph, layout) => {
             }
             // Find smallest width alignment: Returns the alignment that has the smallest width of the given alignments.
             let minWidth = Number.POSITIVE_INFINITY;
-            let minValue = undefined;
+            let minValue = null;
             for (const xs of Object.values(xss)) {
                 let max = Number.NEGATIVE_INFINITY;
                 let min = Number.POSITIVE_INFINITY;
@@ -1772,10 +1772,9 @@ dagre.layout = (graph, layout) => {
                 for (const horizontal of ['l', 'r']) {
                     const alignment = vertical + horizontal;
                     const xs = xss[alignment];
-                    let delta;
                     if (xs !== alignTo) {
                         const vsValsRange = range(Object.values(xs));
-                        delta = horizontal === 'l' ? alignToRange[0] - vsValsRange[0] : alignToRange[1] - vsValsRange[1];
+                        const delta = horizontal === 'l' ? alignToRange[0] - vsValsRange[0] : alignToRange[1] - vsValsRange[1];
                         if (delta) {
                             const list = {};
                             for (const key of Object.keys(xs)) {
@@ -1816,7 +1815,7 @@ dagre.layout = (graph, layout) => {
                     label.label.points = [
                         { x: x + 2 * dx / 3, y: y - dy },
                         { x: x + 5 * dx / 6, y: y - dy },
-                        { x: x +     dx    , y: y },
+                        { x: x +     dx    , y },
                         { x: x + 5 * dx / 6, y: y + dy },
                         { x: x + 2 * dx / 3, y: y + dy }
                     ];
@@ -1952,15 +1951,15 @@ dagre.layout = (graph, layout) => {
                 const edge = e.label;
                 const vNode = e.vNode.label;
                 const wNode = e.wNode.label;
-                let p1;
-                let p2;
-                if (!edge.points) {
+                let p1 = null;
+                let p2 = null;
+                if (edge.points) {
+                    [p1] = edge.points;
+                    p2 = edge.points[edge.points.length - 1];
+                } else {
                     edge.points = [];
                     p1 = wNode;
                     p2 = vNode;
-                } else {
-                    [p1] = edge.points;
-                    p2 = edge.points[edge.points.length - 1];
                 }
                 edge.points.unshift(intersectRect(vNode, p1));
                 edge.points.push(intersectRect(wNode, p2));
@@ -2071,7 +2070,7 @@ dagre.Graph = class {
                 node.label = label;
             }
         } else {
-            const node = { label: label ? label : this._defaultNodeLabelFn(v), in: [], out: [], predecessors: {}, successors: {}, v: v };
+            const node = { label: label ? label : this._defaultNodeLabelFn(v), in: [], out: [], predecessors: {}, successors: {}, v };
             this.nodes.set(v, node);
             if (this._compound) {
                 this._parent[v] = '\x00';
@@ -2177,7 +2176,7 @@ dagre.Graph = class {
                 v = w;
                 w = tmp;
             }
-            const edge = { label: label, v: v, w: w, name: name, key: key, vNode: null, wNode: null };
+            const edge = { label, v, w, name, key, vNode: null, wNode: null };
             this.edges.set(key, edge);
             this.setNode(v);
             this.setNode(w);

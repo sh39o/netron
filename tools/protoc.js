@@ -146,11 +146,12 @@ protoc.Root = class extends protoc.Namespace {
         this._library = new Map();
         this._library.set('google/protobuf/any.proto', () => {
             const type = this.defineType('google.protobuf.Any');
-            new protoc.Field(type, 'type_url', 1, 'string');
-            new protoc.Field(type, 'value', 2, 'bytes');
+            type.defineField('type_url', 1, 'string');
+            type.defineField('value', 2, 'bytes');
         });
         this._library.set('google/protobuf/wrappers.proto', () => {
-            new protoc.Field(this.defineType('google.protobuf.BoolValue'), 'value', 1, 'bool');
+            const type = this.defineType('google.protobuf.BoolValue');
+            type.defineField('value', 1, 'bool');
         });
     }
 
@@ -173,7 +174,10 @@ protoc.Root = class extends protoc.Namespace {
     async _loadFile(paths, file, weak) {
         if (!this._files.has(file)) {
             this._files.add(file);
-            if (!this._library.has(file)) {
+            if (this._library.has(file)) {
+                const callback = this._library.get(file);
+                callback();
+            } else {
                 try {
                     await this._parseFile(paths, file);
                 } catch (err) {
@@ -181,9 +185,6 @@ protoc.Root = class extends protoc.Namespace {
                         throw err;
                     }
                 }
-            } else {
-                const callback = this._library.get(file);
-                callback();
             }
         }
     }
@@ -229,7 +230,7 @@ protoc.Root = class extends protoc.Namespace {
             try {
                 await fs.access(path);
                 return true;
-            } catch (error) {
+            } catch {
                 return false;
             }
         };
@@ -263,13 +264,17 @@ protoc.Type = class extends protoc.Namespace {
     get(name) {
         return this.fields.get(name) || this.oneofs.get(name) || this.children.get(name) || null;
     }
+
+    defineField(name, id, type, rule, extend) {
+        return new protoc.Field(this, name, id, type, rule, extend);
+    }
 };
 
 protoc.Enum = class extends protoc.Type {
 
     constructor(parent, name) {
         super(parent, name);
-        this.valuesById = {};
+        this.valuesById = new Map();
         this.values = {};
         this.reserved = [];
     }
@@ -287,12 +292,12 @@ protoc.Enum = class extends protoc.Type {
         if (protoc.Namespace.isReservedName(this.reserved, name)) {
             throw new protoc.Error(`Name '${name}' is reserved in '${this.name}'.`);
         }
-        if (this.valuesById[id] !== undefined) {
+        if (this.valuesById.has(id)) {
             if (!this.options.has('allow_alias')) {
                 throw new protoc.Error(`Duplicate identifier '${id}' in '${this.name}'.`);
             }
         } else {
-            this.valuesById[id] = name;
+            this.valuesById.set(id, name);
         }
         this.values[name] = id;
     }
@@ -424,7 +429,7 @@ protoc.Parser = class {
     }
 
     parse() {
-        let token;
+        let token = '';
         while ((token = this._tokenizer.next()) !== null) {
             switch (token) {
                 case 'package':
@@ -552,7 +557,7 @@ protoc.Parser = class {
             obj.file = this._file;
         }
         if (this._tokenizer.eat("{")) {
-            let token;
+            let token = '';
             while ((token = this._tokenizer.next()) !== "}") {
                 ifCallback(token);
             }
@@ -839,7 +844,7 @@ protoc.Parser = class {
 
     _readString() {
         const values = [];
-        let token;
+        let token = '';
         do {
             if ((token = this._tokenizer.next()) !== '"' && token !== "'") {
                 throw this._parseError(token);
@@ -880,7 +885,7 @@ protoc.Parser = class {
 
     _readRanges(target, acceptStrings) {
         do {
-            let token;
+            let token = '';
             if (acceptStrings && ((token = this._tokenizer.peek()) === '"' || token === "'")) {
                 target.push(this._readString());
             } else {
@@ -975,9 +980,9 @@ protoc.Tokenizer = class {
             return this._readString();
         }
 
-        let repeat;
-        let prev;
-        let curr;
+        let repeat = false;
+        let prev = '';
+        let curr = '';
         do {
             if (this._position === this._length) {
                 return null;
@@ -992,7 +997,6 @@ protoc.Tokenizer = class {
                     return null;
                 }
             }
-
             if (this._get(this._position) === '/') {
                 this._position++;
                 if (this._position === this._length) {
@@ -1186,7 +1190,6 @@ protoc.Generator = class {
 
         const name = type.fullName.split('.').map((name) => protoc.Generator._escapeName(name)).join('.');
         this._builder.add(`${name} = class ${protoc.Generator._escapeName(type.name)} {`);
-        this._builder.add('');
         this._builder.indent();
 
         this._buildConstructor(type);
@@ -1240,10 +1243,16 @@ protoc.Generator = class {
     }
 
     _buildConstructor(type) {
+        const filter = (field) => field instanceof protoc.MapField || field.repeated;
+        const fields = Array.from(type.fields.values()).filter(filter);
+        if (fields.length === 0) {
+            return;
+        }
         /* eslint-disable indent */
+        this._builder.add('');
         this._builder.add('constructor() {');
         this._builder.indent();
-            for (const field of type.fields.values()) {
+            for (const field of fields) {
                 if (field instanceof protoc.MapField) {
                     this._builder.add(`this${protoc.Generator._propertyReference(field.name)} = {};`);
                 } else if (field.repeated) {
@@ -1261,7 +1270,7 @@ protoc.Generator = class {
         this._builder.add('static decode(reader, length) {');
         this._builder.indent();
             this._builder.add(`const message = new ${type.fullName}();`);
-            this._builder.add('const end = length !== undefined ? reader.position + length : reader.length;');
+            this._builder.add('const end = length === undefined ? reader.length : reader.position + length;');
             this._builder.add("while (reader.position < end) {");
             this._builder.indent();
                 this._builder.add("const tag = reader.uint32();");
@@ -1412,7 +1421,7 @@ protoc.Generator = class {
     }
 
     static _propertyReference(name) {
-        if (!/^[$\w_]+$/.test(name) || protoc.Generator._isKeyword(name)) {
+        if (!/^[$\w_]+$/.test(name)) {
             return `["${name.replace(/\\/g, '\\\\').replace(/"/g, "\\\"")}"]`;
         }
         return `.${name}`;

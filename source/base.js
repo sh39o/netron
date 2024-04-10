@@ -25,6 +25,8 @@ base.Complex128 = class Complex {
     }
 };
 
+/* eslint-disable no-extend-native */
+
 BigInt.prototype.toNumber = function() {
     if (this > Number.MAX_SAFE_INTEGER || this < Number.MIN_SAFE_INTEGER) {
         throw new Error('64-bit value exceeds safe integer.');
@@ -47,8 +49,8 @@ if (!DataView.prototype.getFloat16) {
         return value & 0x8000 ? -f : f;
     };
     DataView.__float16_pow = {
-        1: 1/16384, 2: 1/8192, 3: 1/4096, 4: 1/2048, 5: 1/1024, 6: 1/512, 7: 1/256, 8: 1/128,
-        9: 1/64, 10: 1/32, 11: 1/16, 12: 1/8, 13: 1/4, 14: 1/2, 15: 1, 16: 2,
+        1: 1 / 16384, 2: 1 / 8192, 3: 1 / 4096, 4: 1 / 2048, 5: 1 / 1024, 6: 1 / 512, 7: 1 / 256, 8: 1 / 128,
+        9: 1 / 64, 10: 1 / 32, 11: 1 / 16, 12: 1 / 8, 13: 1 / 4, 14: 1 / 2, 15: 1, 16: 2,
         17: 4, 18: 8, 19: 16, 20: 32, 21: 64, 22: 128, 23: 256, 24: 512,
         25: 1024, 26: 2048, 27: 4096, 28: 8192, 29: 16384, 30: 32768, 31: 65536
     };
@@ -197,14 +199,14 @@ DataView.prototype.getFloat8e5m2 = function(byteOffset, fn, uz) {
 };
 
 DataView.prototype.getIntBits = DataView.prototype.getUintBits || function(offset, bits, littleEndian) {
-    offset = offset * bits;
+    offset *= bits;
     const position = Math.floor(offset / 8);
     const remainder = offset % 8;
-    let value;
+    let value = 0;
     if ((remainder + bits) <= 8) {
-        value = littleEndian ? this.getUint8(position) >> remainder /* TODO */ : this.getUint8(position) >> (8 - remainder - bits);
+        value = littleEndian ? this.getUint8(position) >> remainder : this.getUint8(position) >> (8 - remainder - bits);
     } else {
-        value = littleEndian ? this.getUint16(position, true) >> remainder /* TODO */ : this.getUint16(position, false) >> (16 - remainder - bits);
+        value = littleEndian ? this.getUint16(position, true) >> remainder : this.getUint16(position, false) >> (16 - remainder - bits);
     }
     value &= (1 << bits) - 1;
     if (value & (1 << (bits - 1))) {
@@ -214,14 +216,14 @@ DataView.prototype.getIntBits = DataView.prototype.getUintBits || function(offse
 };
 
 DataView.prototype.getUintBits = DataView.prototype.getUintBits || function(offset, bits, littleEndian) {
-    offset = offset * bits;
+    offset *= bits;
     const position = Math.floor(offset / 8);
     const remainder = offset % 8;
-    let value;
+    let value = 0;
     if ((remainder + bits) <= 8) {
-        value = littleEndian ? this.getUint8(position) >> remainder /* TODO */ : this.getUint8(position) >> (8 - remainder - bits);
+        value = littleEndian ? this.getUint8(position) >> remainder : this.getUint8(position) >> (8 - remainder - bits);
     } else {
-        value = littleEndian ? this.getUint16(position, true) >> remainder /* TODO */ : this.getUint16(position, false) >> (16 - remainder - bits);
+        value = littleEndian ? this.getUint16(position, true) >> remainder : this.getUint16(position, false) >> (16 - remainder - bits);
     }
     return value & ((1 << bits) - 1);
 };
@@ -257,6 +259,8 @@ DataView.prototype.setComplex128 = DataView.prototype.setComplex128 || function(
         this.setFloat64(byteOffset, value.imaginary, littleEndian);
     }
 };
+
+/* eslint-enable no-extend-native */
 
 base.BinaryStream = class {
 
@@ -298,7 +302,7 @@ base.BinaryStream = class {
             return this._buffer;
         }
         const position = this._position;
-        this.skip(length !== undefined ? length : this._length - this._position);
+        this.skip(length === undefined ? this._length - this._position : length);
         const end = this._position;
         this.seek(position);
         return this._buffer.subarray(position, end);
@@ -310,7 +314,7 @@ base.BinaryStream = class {
             return this._buffer;
         }
         const position = this._position;
-        this.skip(length !== undefined ? length : this._length - this._position);
+        this.skip(length === undefined ? this._length - this._position : length);
         return this._buffer.subarray(position, this._position);
     }
 };
@@ -369,7 +373,7 @@ base.BufferReader = class {
             return this._buffer;
         }
         const position = this._position;
-        this.skip(length !== undefined ? length : this._length - this._position);
+        this.skip(length === undefined ? this._length - this._position : length);
         const end = this._position;
         this._position = position;
         return this._buffer.slice(position, end);
@@ -381,7 +385,7 @@ base.BufferReader = class {
             return this._buffer;
         }
         const position = this._position;
-        this.skip(length !== undefined ? length : this._length - this._position);
+        this.skip(length === undefined ? this._length - this._position : length);
         return this._buffer.slice(position, this._position);
     }
 
@@ -455,7 +459,7 @@ base.BufferReader = class {
     }
 
     boolean() {
-        return this.byte() !== 0 ? true : false;
+        return this.byte() === 0 ? false : true;
     }
 };
 
@@ -562,7 +566,7 @@ base.StreamReader = class {
     }
 
     boolean() {
-        return this.byte() !== 0 ? true : false;
+        return this.byte() === 0 ? false : true;
     }
 };
 
@@ -680,7 +684,7 @@ base.Telemetry = class {
     send(name, params) {
         if (this._session) {
             try {
-                params = Object.assign({ event_name: name }, this._metadata, /* { debug_mode: true },*/ params);
+                params = { event_name: name, ...this._metadata, ...params };
                 this._metadata = {};
                 if (this._update()) {
                     params.engagement_time_msec = this._engagement_time_msec;
@@ -694,7 +698,7 @@ base.Telemetry = class {
                 this._navigator.sendBeacon(url, body);
                 this._session[2] = this.get('session_engaged') || '0';
                 this.set('hit_count', this.get('hit_count') + 1);
-            } catch (e) {
+            } catch {
                 // continue regardless of error
             }
         }

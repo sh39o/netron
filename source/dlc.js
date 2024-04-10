@@ -143,7 +143,7 @@ dlc.Node = class {
 
     constructor(metadata, version, node, value) {
         const type = `${node.type}:v${version}`;
-        this.type = Object.assign({}, metadata.type(type));
+        this.type = { ...metadata.type(type) };
         this.type.name = node.type;
         this.name = node.name;
         this.inputs = [];
@@ -607,7 +607,7 @@ dlc.Container = class {
         try {
             const context = await this.context.fetch(name);
             return context.stream;
-        } catch (error) {
+        } catch {
             return null;
         }
     }

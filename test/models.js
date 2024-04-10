@@ -23,7 +23,7 @@ const access = async (path) => {
     try {
         await fs.access(path);
         return true;
-    } catch (error) {
+    } catch {
         return false;
     }
 };
@@ -70,7 +70,7 @@ class Logger {
                 case 'download':
                     if (message.percent !== undefined) {
                         value = `${(`  ${Math.floor(100 * message.percent)}`).slice(-3)}% `;
-                    } else if (message.position !== undefined) {
+                    } else if (Number.isInteger(message.position)) {
                         value = ` ${message.position}${this._threads === 1 ? ' bytes' : ''} `;
                     } else {
                         value = '  \u2714  ';
@@ -119,7 +119,7 @@ class Queue extends Array {
         for (const target of targets) {
             target.targets = target.target.split(',');
             target.name = target.type ? `${target.type}/${target.targets[0]}` : target.targets[0];
-            target.tags = target.tags? target.tags.split(',') : [];
+            target.tags = target.tags ? target.tags.split(',') : [];
         }
         if (patterns.length > 0) {
             const tags = new Set();

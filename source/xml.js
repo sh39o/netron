@@ -165,9 +165,9 @@ xml.TextReader = class {
                                     const value = this._attributeValue();
                                     attributes.push({
                                         qualifiedName: name,
-                                        value: value,
-                                        position: position,
-                                        valuePosition: valuePosition
+                                        value,
+                                        position,
+                                        valuePosition
                                     });
                                     whitespace = this._whitespace(0);
                                     if (name === 'xmlns' && (!this._validateNamespace(value) || value === 'http://www.w3.org/2000/xmlns/' || value === 'http://www.w3.org/XML/1998/namespace')) {
@@ -210,15 +210,15 @@ xml.TextReader = class {
                             let element = null;
                             const documentType = document.documentType;
                             const elementType = documentType ? documentType.elements.getNamedItem(name) : null;
-                            if (namespaceURI !== null) {
+                            if (namespaceURI === null) {
+                                this._assert((pair[0] === null && !name.endsWith(':')) || name === ':' || elementType !== null);
+                                element = document.createElement(name);
+                            } else {
                                 this._assert(name === ':' || (!name.endsWith(':') && !name.startsWith(':')));
                                 if (prefix && namespaceURI === '') {
                                     this._error(`Invalid namespace prefix '${prefix}'`, this._start);
                                 }
                                 element = document.createElementNS(namespaceURI, name);
-                            } else {
-                                this._assert((pair[0] === null && !name.endsWith(':')) || name === ':' || elementType !== null);
-                                element = document.createElement(name);
                             }
                             const parent = this._node();
                             if (parent.nodeType === xml.NodeType.Document && parent.documentElement !== null) {
@@ -646,7 +646,7 @@ xml.TextReader = class {
 
     _elementChildren() {
         const skipQualifiers = () => this._match('?') || this._match('*') || this._match('+');
-        let separator = undefined;
+        let separator = '';
         const choice = new Set();
         for (;;) {
             const name = this._name();
@@ -729,7 +729,7 @@ xml.TextReader = class {
     }
 
     _content() {
-        const c = this._char !== '&' ? this._char : this._resolveEntityReference();
+        const c = this._char === '&' ? this._resolveEntityReference() : this._char;
         if (c === undefined) {
             return '';
         }
@@ -1214,7 +1214,7 @@ xml.TextReader = class {
         let line = 1;
         let column = 1;
         this._decoder.position = 0;
-        let c;
+        let c = '';
         do {
             if (this._decoder.position === this._position) {
                 break;
@@ -1234,10 +1234,6 @@ xml.TextReader = class {
 };
 
 xml.NodeList = class extends Array {
-
-    constructor() {
-        super();
-    }
 
     item(index) {
         return this[index] || null;

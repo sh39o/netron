@@ -28,20 +28,25 @@ openvino.ModelFactory = class {
                 }
             }
             if (/^.*pytorch_model.*\.bin$/.test(identifier) ||
-                /^.*group.+-shard.+of.+\.bin$/.test(identifier)) {
+                /^.*group.+-shard.+of.+\.bin$/.test(identifier) ||
+                /^.*param\.bin$/.test(identifier)) {
                 return;
             }
             const identifiers = new Set(['config.bin', 'model.bin', '__model__.bin', 'weights.bin', 'programs.bin', 'best.bin', 'ncnn.bin']);
-            if (identifiers.has(identifier)) {
-                return;
+            if (!identifiers.has(identifier)) {
+                const size = Math.min(stream.length, 1024) & 0xFFFC;
+                const buffer = stream.peek(size);
+                const array = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+                const values = Array.from(array);
+                if (values.every((value) => !Number.isNaN(value) && Number.isFinite(value) && value > -10.0 && value < 10.0)) {
+                    context.type = 'openvino.bin';
+                }
             }
-            context.type = 'openvino.bin';
             return;
         }
         const tags = context.tags('xml');
         if (tags.has('net')) {
             context.type = 'openvino.xml';
-            return;
         }
     }
 
@@ -61,7 +66,7 @@ openvino.ModelFactory = class {
                     const file = `${base}.bin`;
                     const content = await context.fetch(file);
                     bin = content.stream.peek();
-                } catch (error) {
+                } catch {
                     // continue regardless of error
                 }
                 break;
@@ -136,14 +141,14 @@ openvino.ModelFactory = class {
                 layer.output = ports(element, 'output');
                 const data = child(element, 'data');
                 const blobs = child(element, 'blobs');
-                layer.data = !data ? {} : object(data);
-                layer.blobs = !blobs ? [] : blobs.getElementsByTagName('*').map((blob) => {
+                layer.data = data ? object(data) : {};
+                layer.blobs = blobs ? blobs.getElementsByTagName('*').map((blob) => {
                     const obj = object(blob);
                     obj.name = blob.localName;
                     obj.offset = parseInt(obj.offset, 10);
                     obj.size = parseInt(obj.size, 10);
                     return obj;
-                });
+                }) : [];
                 if (layer.type === 'TensorIterator') {
                     layer.back_edges = edges(element, 'back_edges');
                     const body = child(element, 'body');
@@ -244,7 +249,7 @@ openvino.Graph = class {
                     const shape = layer.data.shape;
                     layer.blobs.push({
                         name: 'value',
-                        precision: precision,
+                        precision,
                         offset: parseInt(layer.data.offset, 10),
                         size: parseInt(layer.data.size, 10),
                         shape: shape ? shape.split(',').map((dim) => parseInt(dim.trim(), 10)) : null
@@ -260,7 +265,7 @@ openvino.Graph = class {
             for (const layer of layers) {
                 if (layer.type === 'Const' && layer.input.length === 0 && layer.output.length === 1) {
                     const from = `${layer.id}:${layer.output[0].id}`;
-                    constants.set(from, { layer: layer, counter: 0 });
+                    constants.set(from, { layer, counter: 0 });
                 }
             }
             for (const from of Object.values(edges)) {
@@ -462,7 +467,7 @@ openvino.Node = class {
         const type = layer.type;
         this.type = metadata.type(type) || { name: type };
         for (let i = 0; i < inputs.length;) {
-            let input;
+            let input = null;
             if (this.type && Array.isArray(this.type.inputs) && i < this.type.inputs.length) {
                 input = this.type.inputs[i];
             } else if (inputs.length === 1) {
@@ -477,7 +482,7 @@ openvino.Node = class {
             i += count;
         }
         for (let i = 0; i < outputs.length;) {
-            let output;
+            let output = null;
             if (this.type && Array.isArray(this.type.outputs) && i < this.type.outputs.length) {
                 output = this.type.outputs[i];
             } else if (outputs.length === 1) {
@@ -508,7 +513,7 @@ openvino.Node = class {
             const category = blob.kind || 'Blob';
             const id = blob.id || '';
             const precision = blob.precision || layer.precision;
-            let itemSize = undefined;
+            let itemSize = -1;
             switch (precision) {
                 case 'BOOL': case 'BOOLEAN':            itemSize = 1; break;
                 case 'I1':   case 'U1':                 itemSize = 0.125; break;
@@ -531,7 +536,7 @@ openvino.Node = class {
                 }
                 return null;
             };
-            if (itemSize) {
+            if (itemSize !== -1) {
                 switch (`${type}:${name}`) {
                     case 'FullyConnected:weights': {
                         const outSize = parseInt(layer.data['out-size'], 10);
@@ -770,6 +775,7 @@ openvino.TensorType = class {
             case 'boolean': this.dataType = 'boolean'; break;
             case 'bin':     this.dataType = 'bit'; break;
             case 'f8e4m3':  this.dataType = 'float8e4m3'; break;
+            case 'string':  this.dataType = 'string'; break;
             case '':        this.dataType = '?'; break;
             case null:      this.dataType = '?'; break;
             default:        throw new openvino.Error(`Unsupported precision '${JSON.stringify(precision)}'.`);

@@ -233,7 +233,6 @@ tf.ModelFactory = class {
                 const offset = reader.uint64().toNumber();
                 if (offset < stream.length) {
                     context.type = 'tf.pb.mmap';
-                    return;
                 }
             }
         }
@@ -266,7 +265,7 @@ tf.ModelFactory = class {
                     const stream = content.stream;
                     const bundle = await tf.TensorBundle.open(stream, identifier, context);
                     return openModel(saved_model, format, producer, bundle);
-                } catch (error) {
+                } catch {
                     return openModel(saved_model, format, producer, null);
                 }
             }
@@ -297,7 +296,7 @@ tf.ModelFactory = class {
                 const content = await context.fetch(file);
                 const stream = content.stream;
                 return openBundle(context, stream, file);
-            } catch (error) {
+            } catch {
                 const file = `${base.join('.')}.ckpt`;
                 const content = await context.fetch(file);
                 const stream = content.stream;
@@ -376,7 +375,7 @@ tf.ModelFactory = class {
                             const name = item.name;
                             if (name.indexOf('::') !== -1) {
                                 const index = name.indexOf('.');
-                                const key = (index !== -1) ? name.substring(0, index) : name;
+                                const key = index === -1 ? name : name.substring(0, index);
                                 if (!metadata.has(key)) {
                                     metadata.set(key, []);
                                 }
@@ -389,7 +388,7 @@ tf.ModelFactory = class {
                             }
                         }
                         return saved_model;
-                    } catch (error) {
+                    } catch {
                         return saved_model;
                     }
                 };
@@ -494,21 +493,19 @@ tf.ModelFactory = class {
                         try {
                             for (const key of shards.keys()) {
                                 const stream = shards.get(key);
-                                /* eslint-disable no-await-in-loop */
                                 const archive = zip.Archive.open(stream, 'gzip');
-                                /* eslint-enable no-await-in-loop */
                                 if (archive && archive.entries.size === 1) {
                                     const stream = archive.entries.values().next().value;
                                     const buffer = stream.peek();
                                     shards.set(key, buffer);
                                 }
                             }
-                        } catch (error) {
+                        } catch {
                             // continue regardless of error
                         }
                     }
                     return openShards(shards);
-                } catch (error) {
+                } catch {
                     shards.clear();
                     return openShards(shards);
                 }
@@ -598,7 +595,7 @@ tf.ModelFactory = class {
                 const content = await context.fetch(identifier);
                 saved_model = openBinarySavedModel(content);
 
-            } catch (error) {
+            } catch {
                 format = 'TensorFlow Fingerprint';
                 saved_model = new tf.proto.tensorflow.SavedModel();
             }
@@ -799,7 +796,7 @@ tf.Graph = class {
             }
             const namespaces = new Set();
             this.nodes = Array.from(nodes).map(([name, value]) => {
-                const node = { op: 'Node', name: name };
+                const node = { op: 'Node', name };
                 return new tf.Node(metadata, node, namespaces, new tf.Context(), value);
             });
         }
@@ -845,7 +842,7 @@ tf.Function = class {
         this.nodes = [];
         this.inputs = [];
         this.outputs = [];
-        this.description = !func ? 'Function definition not found.' : null;
+        this.description = func ? null : 'Function definition not found.';
         this.groups = false;
         const context = new tf.Context();
         const input_arg = func && func.signature ? func.signature.input_arg : [];
@@ -1285,7 +1282,7 @@ tf.TensorShape = class {
 tf.TensorBundle = class {
 
     static async open(stream, identifier, context) {
-        const format = !identifier.toLowerCase().endsWith('.index') ? 1 : 2;
+        const format = identifier.toLowerCase().endsWith('.index') ? 2 : 1;
         const table = new tf.TensorBundle.Table(stream);
         if (!table.entries.has('')) {
             throw new tf.Error('Bundle header not available.');
@@ -1332,14 +1329,7 @@ tf.TensorBundle = class {
                         const slices = tf.proto.tensorflow.SavedTensorSlices.decode(reader);
                         const name = slices.data.name;
                         const tensor = slices.data.data;
-                        if (!data.has(name)) {
-                            if (tensor.tensor_content && tensor.tensor_content.length > 0) {
-                                data.set(name, { key: 'tensor_content', value: tensor.tensor_content });
-                            } else {
-                                const keys = Object.keys(tensor).filter((key) => key.endsWith('_val') && tensor[key] && tensor[key].length > 0);
-                                data.set(name, keys.length === 1 ? { key: keys[0], value: tensor[keys[0]] } : null);
-                            }
-                        } else {
+                        if (data.has(name)) {
                             const item = data.get(name);
                             if (item !== null) {
                                 if (tensor[item.key] && tensor[item.key].length > 0) {
@@ -1348,6 +1338,11 @@ tf.TensorBundle = class {
                                     data.set(name, null);
                                 }
                             }
+                        } else if (tensor.tensor_content && tensor.tensor_content.length > 0) {
+                            data.set(name, { key: 'tensor_content', value: tensor.tensor_content });
+                        } else {
+                            const keys = Object.keys(tensor).filter((key) => key.endsWith('_val') && tensor[key] && tensor[key].length > 0);
+                            data.set(name, keys.length === 1 ? { key: keys[0], value: tensor[keys[0]] } : null);
                         }
                     }
                 }
@@ -1465,7 +1460,7 @@ tf.TensorBundle.Table.Block = class {
                     break;
                 }
                 key = key.substring(0, sharedSize);
-                key = key + decoder.decode(reader.read(nonSharedSize));
+                key += decoder.decode(reader.read(nonSharedSize));
                 const value = reader.read(valueSize);
                 this.entries.set(key, value);
             }
@@ -1597,12 +1592,12 @@ tf.EventFileReader = class {
                 crc = crc & 1 ? (crc >>> 1) ^ poly : crc >>> 1;
                 crc = crc & 1 ? (crc >>> 1) ^ poly : crc >>> 1;
                 crc = crc & 1 ? (crc >>> 1) ^ poly : crc >>> 1;
-                crc = crc >>> 0;
+                crc >>>= 0;
             }
-            crc = crc ^ 0xffffffff;
-            crc = crc >>> 0;
+            crc ^= 0xffffffff;
+            crc >>>= 0;
             crc = ((crc >> 15) | (crc << 17)) + 0xa282ead8;
-            crc = crc >>> 0;
+            crc >>>= 0;
             return crc;
         };
         const buffer = stream.peek(12);
@@ -1784,7 +1779,7 @@ tf.Context = class {
                 if (from) {
                     from.output[index].to.push(node);
                 }
-                const value = { name: key, from: from };
+                const value = { name: key, from };
                 if (control) {
                     node.controlDependencies.push(value);
                 } else {
@@ -1795,7 +1790,7 @@ tf.Context = class {
         if (output_arg_map) {
             for (const [name, node] of nodes) {
                 if (output_arg_map.has(name)) {
-                    node.output.push({ name: name, to: [] });
+                    node.output.push({ name, to: [] });
                 }
             }
         }
@@ -2085,7 +2080,7 @@ tf.Context = class {
                                 }
                             }
                         }
-                        node.metadata = Object.assign({}, schema);
+                        node.metadata = { ...schema };
                         node.metadata.name = node.op;
                     }
                 }
@@ -2229,7 +2224,7 @@ tf.JsonReader = class {
                 message.list = tf.JsonReader.decodeAttrValueListValue(json.list);
                 break;
             case 'func':
-                message[key]= value;
+                message[key] = value;
                 break;
             default:
                 throw new tf.Error(`Unsupported JSON 'tensorflow.AttrValue.${key}'.`);

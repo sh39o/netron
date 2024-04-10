@@ -67,7 +67,6 @@ keras.ModelFactory = class {
                 const content = String.fromCharCode.apply(null, buffer);
                 if (/root"/.test(content) && /\{\s*"class_name"\s*:/.test(content)) {
                     context.type = 'keras.pb.SavedMetadata';
-                    return;
                 }
             }
         }
@@ -87,7 +86,7 @@ keras.ModelFactory = class {
         const request_json = async (context, name) => {
             try {
                 context = await context.fetch(name);
-            } catch (error) {
+            } catch {
                 return null;
             }
             return context.read('json');
@@ -135,12 +134,12 @@ keras.ModelFactory = class {
                     return name.toLowerCase();
                 };
                 let name = pascal_to_snake_case(trackable.class_name);
-                if (!used_names.has(name)) {
-                    used_names.set(name, 0);
-                } else {
+                if (used_names.has(name)) {
                     const next = used_names.get(name) + 1;
                     used_names.set(name, next);
                     name = `${name}_${next}`;
+                } else {
+                    used_names.set(name, 0);
                 }
                 _load_state(trackable, weights_store, assets_store, `${inner_path}/${name}`);
             }
@@ -210,7 +209,7 @@ keras.ModelFactory = class {
                     /* eslint-disable no-await-in-loop */
                     content = await context.fetch(name);
                     /* eslint-enable no-await-in-loop */
-                } catch (error) {
+                } catch {
                     // continue regardless of error
                 }
                 if (content) {
@@ -613,7 +612,7 @@ keras.Graph = class {
                                 continue;
                             }
                         }
-                        const nodeInputs = [{ name: name }];
+                        const nodeInputs = [{ name }];
                         if (layer.config && layer.config.name) {
                             current = layer.config.name;
                         }
@@ -667,7 +666,7 @@ keras.Graph = class {
                                     const [dim] = dims;
                                     for (let i = 1; i < dims.length; i++) {
                                         if (dim.length === dims[i].length) {
-                                            if (!dims[i].every((value, i) => value ===dim[i])) {
+                                            if (!dims[i].every((value, i) => value === dim[i])) {
                                                 throw new python.Error('Invalid array shape.');
                                             }
                                         }
@@ -679,7 +678,7 @@ keras.Graph = class {
                             const shape = transform(input_data);
                             const flatten = (input) => input.reduce((a, b) => a.concat(Array.isArray(b) ? flatten(b) : b), []);
                             const value = flatten(input_data);
-                            return { shape: shape, value: value };
+                            return { shape, value };
                         };
                         const functional = config.layers.every((layer) => Array.isArray(layer.inbound_nodes));
                         const layers = new Map();
@@ -792,7 +791,7 @@ keras.Graph = class {
                                             config.class_name = '__Function__';
                                             config.name = layer.name;
                                             config.config = {};
-                                            config.config.layers = [Object.assign({}, layer)];
+                                            config.config.layers = [{ ...layer }];
                                             delete config.config.layers[0].inbound_nodes;
                                             delete config.config.layers[0].input_layers;
                                             delete config.config.layers[0].output_layers;
@@ -872,7 +871,7 @@ keras.Graph = class {
         } else if (weights) {
             for (const name of weights.keys()) {
                 if (weights.get('', name).length <= 6) {
-                    const layer = { class_name: 'Weights', config: { name: name } };
+                    const layer = { class_name: 'Weights', config: { name } };
                     const node = new keras.Node(metadata, layer, '', weights, values);
                     this._nodes.push(node);
                 }
@@ -924,7 +923,7 @@ keras.Value = class {
         if (typeof name !== 'string') {
             throw new keras.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
-        this.name= name;
+        this.name = name;
         this.type = !type && initializer ? initializer.type  : type;
         this.quantization = initializer && initializer.quantization ? initializer.quantization : null;
         this.initializer = initializer || null;
@@ -1005,7 +1004,7 @@ keras.Node = class {
         if (layer._trainable_variables) {
             if (inputs.length === 0 && Array.isArray(this._type.inputs) && this._type.inputs.length > 0) {
                 // weights-only, remove 'input' from type metadata
-                this._type = Object.assign({}, this._type);
+                this._type = { ...this._type };
                 this._type.inputs = this._type.inputs.slice(1);
             }
             for (const variable of layer._trainable_variables) {
@@ -1016,12 +1015,12 @@ keras.Node = class {
                 let tensors = weights.get(group, name);
                 if (tensors.length > 0) {
                     for (const initializer of tensors) {
-                        inputs.push({ name: initializer.name, initializer: initializer });
+                        inputs.push({ name: initializer.name, initializer });
                     }
                 } else {
                     tensors = weights.get('', name);
                     for (const initializer of tensors) {
-                        inputs.push({ name: initializer.name, initializer: initializer });
+                        inputs.push({ name: initializer.name, initializer });
                     }
                 }
             }
@@ -1032,7 +1031,7 @@ keras.Node = class {
                 if (class_name !== 'Activation' && name === 'activation' && value !== 'linear') {
                     if (typeof value === 'string') {
                         const config = { activation: value };
-                        const node = new keras.Node(metadata, { class_name: 'Activation', config: config }, null, null, value);
+                        const node = new keras.Node(metadata, { class_name: 'Activation', config }, null, null, value);
                         this.chain.push(node);
                     } else if (value && typeof value.class_name === 'string' && value.config) {
                         const type = value.class_name;
@@ -1065,7 +1064,7 @@ keras.Node = class {
                         inputIndex++;
                         continue;
                     }
-                    visible = input.visible === false ? false : true;
+                    visible = input.visible !== false;
                     if (this._type.inputs[inputIndex].list) {
                         list = true;
                     }
@@ -1096,7 +1095,7 @@ keras.Node = class {
                         break;
                 }
             }
-            const input = !list ? [inputs.shift()] : inputs.splice(0, inputs.length);
+            const input = list ? inputs.splice(0, inputs.length) : [inputs.shift()];
             const inputArguments = input.map((input) => {
                 if (input.name) {
                     return values.map(input.name, null, input.initializer);
@@ -1241,7 +1240,7 @@ keras.Attribute = class {
     }
 
     get visible() {
-        return this._visible === false ? false : true;
+        return this._visible !== false;
     }
 
     static _convert(value) {
@@ -1535,11 +1534,9 @@ tfjs.Container = class {
                 shards.set(key, buffer);
             }
             this._openShards(manifests, shards);
-            return;
-        } catch (error) {
+        } catch {
             shards.clear();
             this._openShards(manifests, shards);
-            return;
         }
     }
 

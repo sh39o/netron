@@ -18,7 +18,6 @@ circle.ModelFactory = class {
         if (obj && obj.subgraphs && obj.operator_codes) {
             context.type = 'circle.flatbuffers.json';
             context.target = obj;
-            return;
         }
     }
 
@@ -54,7 +53,7 @@ circle.ModelFactory = class {
                             attachments.set(name, value);
                         }
                     }
-                } catch (error) {
+                } catch {
                     // continue regardless of error
                 }
                 break;
@@ -311,7 +310,7 @@ circle.Node = class {
                 const argument = new circle.Argument(name, values);
                 this._outputs.push(argument);
             }
-            if (type.custom && Array.isArray(node.custom_options) && node.custom_options.length > 0) {
+            if (type.custom && node.custom_options && node.custom_options.length > 0) {
                 let decoded = false;
                 if (node.custom_options_format === circle.schema.CustomOptionsFormat.FLEXBUFFERS) {
                     try {
@@ -331,7 +330,7 @@ circle.Node = class {
                                 decoded = true;
                             }
                         }
-                    } catch (err) {
+                    } catch {
                         // continue regardless of error
                     }
                 }
@@ -430,7 +429,7 @@ circle.Attribute = class {
     }
 
     get visible() {
-        return this._visible === false ? false : true;
+        return this._visible !== false;
     }
 };
 
@@ -439,7 +438,7 @@ circle.Argument = class {
     constructor(name, value, visible) {
         this.name = name;
         this.value = value;
-        this.visible = visible === false ? false : true;
+        this.visible = visible !== false;
     }
 };
 

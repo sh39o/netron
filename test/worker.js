@@ -13,7 +13,7 @@ const access = async (path) => {
     try {
         await fs.access(path);
         return true;
-    } catch (error) {
+    } catch {
         return false;
     }
 };
@@ -382,9 +382,9 @@ export class Target {
                                 position += result.value.length;
                                 if (length >= 0) {
                                     const percent = position / length;
-                                    target.status({ name: 'download', target: url, percent: percent });
+                                    target.status({ name: 'download', target: url, percent });
                                 } else {
-                                    target.status({ name: 'download', target: url, position: position });
+                                    target.status({ name: 'download', target: url, position });
                                 }
                                 controller.enqueue(result.value);
                                 return await read();
@@ -427,12 +427,12 @@ export class Target {
             sources = sources && sources.startsWith(',') ? sources.substring(1).trim() : '';
         } else {
             const commaIndex = sources.indexOf(',');
-            if (commaIndex !== -1) {
-                source = sources.substring(0, commaIndex);
-                sources = sources.substring(commaIndex + 1);
-            } else {
+            if (commaIndex === -1) {
                 source = sources;
                 sources = '';
+            } else {
+                source = sources.substring(0, commaIndex);
+                sources = sources.substring(commaIndex + 1);
             }
         }
         await Promise.all(targets.map((target) => {
@@ -447,7 +447,13 @@ export class Target {
             const archive = decompress(data);
             for (const name of sourceFiles) {
                 this.status({ name: 'write', target: name });
-                if (name !== '.') {
+                if (name === '.') {
+                    const target = targets.shift();
+                    const dir = path.join(this.folder, target);
+                    /* eslint-disable no-await-in-loop */
+                    await fs.mkdir(dir, { recursive: true });
+                    /* eslint-enable no-await-in-loop */
+                } else {
                     const stream = archive.entries.get(name);
                     if (!stream) {
                         throw new Error(`Entry not found '${name}. Archive contains entries: ${JSON.stringify(Array.from(archive.entries.keys()))} .`);
@@ -458,17 +464,11 @@ export class Target {
                     /* eslint-disable no-await-in-loop */
                     await fs.writeFile(file, buffer, null);
                     /* eslint-enable no-await-in-loop */
-                } else {
-                    const target = targets.shift();
-                    const dir = path.join(this.folder, target);
-                    /* eslint-disable no-await-in-loop */
-                    await fs.mkdir(dir, { recursive: true });
-                    /* eslint-enable no-await-in-loop */
                 }
             }
         } else {
             const target = targets.shift();
-            this.status({ name: 'write', target: target });
+            this.status({ name: 'write', target });
             await fs.writeFile(`${this.folder}/${target}`, data, null);
         }
         if (targets.length > 0 && sources.length > 0) {
@@ -524,7 +524,7 @@ export class Target {
         if (this.runtime && this.model.runtime !== this.runtime) {
             throw new Error(`Invalid runtime '${this.model.runtime}'.`);
         }
-        if (this.model.metadata &&!Array.isArray(this.model.metadata) &&
+        if (this.model.metadata && !Array.isArray(this.model.metadata) &&
             this.model.metadata.every((argument) => argument.name && argument.value)) {
             throw new Error("Invalid metadata.'");
         }
@@ -702,7 +702,7 @@ export class Target {
             for (const signature of signatures) {
                 /* eslint-disable no-await-in-loop */
                 await current.renderGraph(this.model, graph, signature, current.options);
-                /* eslint-disable no-await-in-loop */
+                /* eslint-enable no-await-in-loop */
             }
         }
     }
@@ -716,7 +716,7 @@ const main = () => {
             response.type = 'complete';
             response.target = target.name;
             target.on('status', (_, message) => {
-                message = Object.assign({ type: 'status' }, message);
+                message = { type: 'status', ...message };
                 worker_threads.parentPort.postMessage(message);
             });
             await target.execute();

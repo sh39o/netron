@@ -12,31 +12,28 @@ numpy.ModelFactory = class {
         const signature = [0x93, 0x4E, 0x55, 0x4D, 0x50, 0x59];
         if (stream && signature.length <= stream.length && stream.peek(signature.length).every((value, index) => value === signature[index])) {
             context.type = 'npy';
-            return;
-        }
-        const entries = context.peek('npz');
-        if (entries && entries.size > 0) {
-            context.type = 'npz';
-            context.target = entries;
-            return;
-        }
-        const obj = context.peek('pkl');
-        if (obj) {
-            if (numpy.Utility.isTensor(obj)) {
-                context.type = 'numpy.ndarray';
-                context.target = obj;
-                return;
-            }
-            if (Array.isArray(obj) && obj.length > 0 && obj.every((obj) => obj && obj.__class__ && obj.__class__.__name__ === 'Network' && (obj.__class__.__module__ === 'dnnlib.tflib.network' || obj.__class__.__module__ === 'tfutil'))) {
-                context.type = 'dnnlib.tflib.network';
-                context.target = obj;
-                return;
-            }
-            const weights = numpy.Utility.weights(obj);
-            if (weights && weights.size > 0) {
-                context.type = 'numpy.pickle';
-                context.target = weights;
-                return;
+        } else {
+            const entries = context.peek('npz');
+            if (entries && entries.size > 0) {
+                context.type = 'npz';
+                context.target = entries;
+            } else {
+                const obj = context.peek('pkl');
+                if (obj) {
+                    if (numpy.Utility.isTensor(obj)) {
+                        context.type = 'numpy.ndarray';
+                        context.target = obj;
+                    } else if (Array.isArray(obj) && obj.length > 0 && obj.every((obj) => obj && obj.__class__ && obj.__class__.__name__ === 'Network' && (obj.__class__.__module__ === 'dnnlib.tflib.network' || obj.__class__.__module__ === 'tfutil'))) {
+                        context.type = 'dnnlib.tflib.network';
+                        context.target = obj;
+                    } else {
+                        const weights = numpy.Utility.weights(obj);
+                        if (weights && weights.size > 0) {
+                            context.type = 'numpy.pickle';
+                            context.target = weights;
+                        }
+                    }
+                }
             }
         }
     }
@@ -52,7 +49,7 @@ numpy.ModelFactory = class {
                 const buffer = stream.peek();
                 const bytes = execution.invoke('io.BytesIO', [buffer]);
                 const array = execution.invoke('numpy.load', [bytes]);
-                const layer = { type: 'numpy.ndarray', parameters: [{ name: 'value', tensor: { name: '', array: array } }] };
+                const layer = { type: 'numpy.ndarray', parameters: [{ name: 'value', tensor: { name: '', array } }] };
                 graphs.push({ layers: [layer] });
                 break;
             }
@@ -70,7 +67,7 @@ numpy.ModelFactory = class {
                     const layer = layers.get(groupName);
                     layer.parameters.push({
                         name: parameterName,
-                        tensor: { name: name, array: array }
+                        tensor: { name, array }
                     });
                 }
                 graphs.push({ layers: Array.from(layers.values()) });
@@ -81,12 +78,12 @@ numpy.ModelFactory = class {
                 const layers = new Map();
                 const layer = (name) => {
                     if (!layers.has(name)) {
-                        layers.set(name, { name: name, parameters: [] });
+                        layers.set(name, { name, parameters: [] });
                     }
                     return layers.get(name);
                 };
                 const weights = context.target;
-                let separator = undefined;
+                let separator = '';
                 if (Array.from(weights.keys()).every((key) => key.indexOf('.') !== -1)) {
                     separator = '.';
                 }
@@ -106,7 +103,7 @@ numpy.ModelFactory = class {
                     }
                     layer(layerName).parameters.push({
                         name: parameterName,
-                        tensor: { name: name, array: value }
+                        tensor: { name, array: value }
                     });
                 }
                 graphs.push({ layers: Array.from(layers.values()) });
@@ -136,7 +133,7 @@ numpy.ModelFactory = class {
                             const layer = layers.get(layerName);
                             layer.parameters.push({
                                 name: parameterName,
-                                tensor: { name: name, array: value }
+                                tensor: { name, array: value }
                             });
                         }
                     }

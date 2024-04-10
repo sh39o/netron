@@ -138,10 +138,10 @@ torch.Graph = class {
                     break;
                 }
                 case 'nn.Inception': {
-                    delete module.modules; // TODO
-                    delete module.module; // TODO
-                    delete module.transfer; // TODO
-                    delete module.pool; // TODO
+                    delete module.modules;
+                    delete module.module;
+                    delete module.transfer;
+                    delete module.pool;
                     const node = new torch.Node(metadata, module, groups, key, inputs, outputs, values);
                     this.nodes.push(node);
                     break;
@@ -170,10 +170,10 @@ torch.Graph = class {
         const outputs = [];
         loadModule(metadata, root, [], '', inputs, outputs);
         this.inputs = this.inputs.concat(inputs.map((input, index) => {
-            return new torch.Argument(`input${index !== 0 ? (index + 1).toString() : ''}`, [input]);
+            return new torch.Argument(`input${index === 0 ? '' : (index + 1).toString()}`, [input]);
         }));
         this.outputs = this.outputs.concat(outputs.map((output, index) => {
-            return new torch.Argument(`output${index !== 0 ? (index + 1).toString() : ''}`, [output]);
+            return new torch.Argument(`output${index === 0 ? '' : (index + 1).toString()}`, [output]);
         }));
     }
 };
@@ -271,7 +271,7 @@ torch.Node = class {
                 delete module.gradWeight;
                 delete module.normalized;
                 delete module.centered;
-                delete module.bn; // TODO InstanceNormalization
+                delete module.bn;
                 break;
             case 'nn.SpatialCrossMapLRN':
                 delete module.scale;

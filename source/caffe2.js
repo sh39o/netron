@@ -6,42 +6,51 @@ caffe2.ModelFactory = class {
     match(context) {
         const identifier = context.identifier.toLowerCase();
         const extension = identifier.split('.').pop().toLowerCase();
-        if (extension === 'pb') {
-            const tags = context.tags('pb');
-            if (tags.size > 0 &&
-                Array.from(tags.keys()).every((tag) => tag <= 9) &&
-                Array.from(tags.values()).every((type) => type <= 4)) {
-                if (tags.size === 1 && tags.get(2) === 2 && identifier.endsWith('saved_model.pb')) {
-                    return;
+        switch (extension) {
+            case 'pbtxt':
+            case 'prototxt': {
+                const tags = context.tags('pbtxt');
+                if (tags.has('op') && !tags.has('op.attr') && !tags.has('op.graph_op_name') && !tags.has('op.endpoint')) {
+                    context.type = 'caffe2.pbtxt';
                 }
-                const schema = [[1,2],[2,2],[3,2],[4,0],[5,2],[6,2],[7,2],[8,2],[9,2]];
-                if (schema.every(([key, value]) => !tags.has(key) || tags.get(key) === value)) {
-                    const stream = context.stream;
-                    if (stream.length > 3) {
-                        const buffer = stream.peek(Math.min(stream.length, 67));
-                        const [signature, size] = buffer;
-                        if (signature === 0x0A) {
-                            if (size < 64 &&
-                                buffer.length > 2 + size + 1 &&
-                                buffer.slice(2, 2 + size).every((c) => c >= 32 && c <= 127) &&
-                                buffer[2 + size] === 0x12) {
-                                context.type = 'caffe2.pb';
-                                return;
+                break;
+            }
+            case 'pb': {
+                const tags = context.tags('pb');
+                if (tags.size > 0 &&
+                    Array.from(tags.keys()).every((tag) => tag <= 9) &&
+                    Array.from(tags.values()).every((type) => type <= 4)) {
+                    if (tags.size === 1 && tags.get(2) === 2 && identifier.endsWith('saved_model.pb')) {
+                        return;
+                    }
+                    const schema = [[1,2],[2,2],[3,2],[4,0],[5,2],[6,2],[7,2],[8,2],[9,2]];
+                    if (schema.every(([key, value]) => !tags.has(key) || tags.get(key) === value)) {
+                        const stream = context.stream;
+                        if (stream.length > 3) {
+                            const buffer = stream.peek(Math.min(stream.length, 67));
+                            const [signature, size] = buffer;
+                            switch (signature) {
+                                case 0x0A:
+                                    if (size < 64 &&
+                                        buffer.length > 2 + size + 1 &&
+                                        buffer.slice(2, 2 + size).every((c) => c >= 32 && c <= 127) &&
+                                        buffer[2 + size] === 0x12) {
+                                        context.type = 'caffe2.pb';
+                                    }
+                                    break;
+                                case 0x12:
+                                    context.type = 'caffe2.pb';
+                                    break;
+                                default:
+                                    break;
                             }
-                        }
-                        if (signature === 0x12) {
-                            context.type = 'caffe2.pb';
-                            return;
                         }
                     }
                 }
+                break;
             }
-        }
-        if (extension === 'pbtxt' || extension === 'prototxt') {
-            const tags = context.tags('pbtxt');
-            if (tags.has('op') && !tags.has('op.attr') && !tags.has('op.graph_op_name') && !tags.has('op.endpoint')) {
-                context.type = 'caffe2.pbtxt';
-                return;
+            default: {
+                break;
             }
         }
     }
@@ -83,7 +92,7 @@ caffe2.ModelFactory = class {
                                 init_net = caffe2.proto.NetDef.decode(reader);
                             }
                         }
-                    } catch (error) {
+                    } catch {
                         // continue regardless of error
                     }
                     return new caffe2.Model(metadata, predict_net, init_net);
@@ -93,7 +102,7 @@ caffe2.ModelFactory = class {
                         const name = identifier.replace('init_net', 'predict_net');
                         const content = await context.fetch(name);
                         return openText(content, context, true);
-                    } catch (error) {
+                    } catch {
                         return openText(context, null, true);
                     }
                 }
@@ -102,12 +111,12 @@ caffe2.ModelFactory = class {
                         const name = identifier.replace('predict_net', 'init_net').replace(/\.pbtxt/, '.pb');
                         const content = await context.fetch(name);
                         return openText(context, content, false);
-                    } catch (error) {
+                    } catch {
                         try {
                             const name = identifier.replace('predict_net', 'init_net');
                             const content = await context.fetch(name);
                             return openText(context, content, true);
-                        } catch (error) {
+                        } catch {
                             return openText(context, null, true);
                         }
                     }
@@ -116,7 +125,7 @@ caffe2.ModelFactory = class {
                     const name = `${base}_init.pb`;
                     const content = await context.fetch(name);
                     return openText(context, content, false);
-                } catch (error) {
+                } catch {
                     return openText(context, null, false);
                 }
             }
@@ -136,7 +145,7 @@ caffe2.ModelFactory = class {
                             const reader = initContext.read('protobuf.binary');
                             init_net = caffe2.proto.NetDef.decode(reader);
                         }
-                    } catch (error) {
+                    } catch {
                         // continue regardless of error
                     }
                     return new caffe2.Model(metadata, predict_net, init_net);
@@ -146,7 +155,7 @@ caffe2.ModelFactory = class {
                         const name = `${base.replace(/init_net$/, '')}predict_net.${extension}`;
                         const content = await context.fetch(name);
                         return openBinary(content, context);
-                    } catch (error) {
+                    } catch {
                         return openBinary(context, null);
                     }
                 }
@@ -155,7 +164,7 @@ caffe2.ModelFactory = class {
                         const name = `${base.replace(/_init$/, '')}.${extension}`;
                         const content = await context.fetch(name);
                         return openBinary(content, context);
-                    } catch (error) {
+                    } catch {
                         return openBinary(context, null);
                     }
                 }
@@ -164,7 +173,7 @@ caffe2.ModelFactory = class {
                         const name = identifier.replace('predict_net', 'init_net');
                         const content = await context.fetch(name);
                         return openBinary(context, content);
-                    } catch (error) {
+                    } catch {
                         return openBinary(context, null);
                     }
                 }
@@ -172,7 +181,7 @@ caffe2.ModelFactory = class {
                     const file = `${base}_init.${extension}`;
                     const content = await context.fetch(file, null);
                     return openBinary(context, content);
-                } catch (error) {
+                } catch {
                     return openBinary(context, null);
                 }
             }
@@ -402,8 +411,6 @@ caffe2.Attribute = class {
         } else if (arg.n) {
             this.value = new caffe2.Graph(metadata, arg.n, null);
             this.type = 'graph';
-        } else if (arg.i !== 0) {
-            this.value = arg.i;
         } else {
             this.value = arg.i;
         }

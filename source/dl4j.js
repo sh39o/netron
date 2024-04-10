@@ -12,15 +12,12 @@ dl4j.ModelFactory = class {
             if (obj && (obj.confs || obj.vertices)) {
                 context.type = 'dl4j.configuration';
                 context.target = obj;
-                return;
             }
-        }
-        if (identifier === 'coefficients.bin') {
+        } else if (identifier === 'coefficients.bin') {
             const signature = [0x00, 0x07, 0x4A, 0x41, 0x56, 0x41, 0x43, 0x50, 0x50]; // JAVACPP
             const stream = context.stream;
             if (signature.length <= stream.length && stream.peek(signature.length).every((value, index) => value === signature[index])) {
                 context.type = 'dl4j.coefficients';
-                return;
             }
         }
     }
@@ -38,7 +35,7 @@ dl4j.ModelFactory = class {
                     const content = await context.fetch('coefficients.bin');
                     const reader = content.read('binary.big-endian');
                     return new dl4j.Model(metadata, obj, reader);
-                } catch (error) {
+                } catch {
                     return new dl4j.Model(metadata, obj, null);
                 }
             }
@@ -67,7 +64,7 @@ dl4j.Graph = class {
 
     constructor(metadata, configuration, coefficients) {
         this.inputs = [];
-        this.outputs =[];
+        this.outputs = [];
         this.nodes = [];
         coefficients = coefficients ? new dl4j.NDArray(coefficients) : null;
         const dataType = coefficients ? coefficients.dataType : '?';

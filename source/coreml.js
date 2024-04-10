@@ -123,7 +123,7 @@ coreml.ModelFactory = class {
                     for (let i = 0; i < keys.length; i++) {
                         weights.set(keys[i], contexts[i].stream);
                     }
-                } catch (error) {
+                } catch {
                     // continue regardless of error
                 }
             }
@@ -257,7 +257,7 @@ coreml.Argument = class {
     constructor(name, value, visible) {
         this.name = name;
         this.value = value;
-        this.visible = visible === false ? false : true;
+        this.visible = visible !== false;
     }
 };
 
@@ -284,7 +284,8 @@ coreml.Node = class {
         if (obj.group) {
             this.group = obj.group || null;
         }
-        this.type = Object.assign({}, context.metadata.type(obj.type) || { name: obj.type });
+        const type = context.metadata.type(obj.type);
+        this.type = type ? { ...type } : { name: obj.type };
         this.type.name = obj.type.split(':').pop();
         this.name = obj.name || '';
         this.description = obj.description || '';
@@ -546,23 +547,23 @@ coreml.Context = class {
 
     input(name) {
         if (!this.values.has(name)) {
-            this.values.set(name, { counter: 0, name: name, to: [], from: [] });
+            this.values.set(name, { counter: 0, name, to: [], from: [] });
         }
         return this.values.get(name);
     }
 
     output(name) {
-        if (!this.values.has(name)) {
-            const value = { counter: 0, name: name, to: [], from: [] };
-            this.values.set(name, value);
-            const key = `${name}|${value.counter}`;
-            this.values.set(key, value);
-        } else {
-            const value = Object.assign({}, this.values.get(name));
+        if (this.values.has(name)) {
+            const value = { ...this.values.get(name) };
             value.counter++;
             value.name = `${name}|${value.counter}`; // custom argument id
             this.values.set(name, value);
             this.values.set(value.name, value);
+        } else {
+            const value = { counter: 0, name, to: [], from: [] };
+            this.values.set(name, value);
+            const key = `${name}|${value.counter}`;
+            this.values.set(key, value);
         }
         return this.values.get(name);
     }
@@ -578,10 +579,10 @@ coreml.Context = class {
 
     node(group, type, name, description, data, inputs, outputs, inputTensors, outputTensors) {
         const obj = {
-            group: group,
-            type: type,
-            name: name,
-            description: description,
+            group,
+            type,
+            name,
+            description,
             attributes: {},
             inputs: [],
             outputs: []
@@ -631,7 +632,7 @@ coreml.Context = class {
             const input = this.metadata.input(type, name);
             const visible = input && input.visible === false ? false : true;
             const value = { obj: new coreml.Value('', null, null, tensor) };
-            initializers.push({ name: name, visible: visible, value: [value] });
+            initializers.push({ name, visible, value: [value] });
         };
         const vector = (value) => {
             return (value && Object.keys(value).length === 1 && value.vector) ? value.vector : value;
@@ -642,7 +643,7 @@ coreml.Context = class {
                     const weightsShape = [data.outputChannels, data.kernelChannels, data.kernelSize[0], data.kernelSize[1]];
                     if (data.isDeconvolution) {
                         weightsShape[0] = data.kernelChannels;
-                        weightsShape[1] = Math.floor(Number(data.outputChannels / (data.nGroups !== 0 ? data.nGroups : 1)));
+                        weightsShape[1] = Math.floor(Number(data.outputChannels / (data.nGroups === 0 ? 1 : data.nGroups)));
                     }
                     initializer(type, 'weights', weightsShape, data.weights);
                     if (data.hasBias) {
@@ -800,7 +801,7 @@ coreml.Context = class {
     }
 
     model(model, group, description) {
-        this.groups = this.groups | (group.length > 0 ? true : false);
+        this.groups |= group.length > 0;
         const shortDescription = model && model.description && model.description.metadata && model.description.metadata.shortDescription ? model.description.metadata.shortDescription : '';
         switch (model.Type) {
             case 'neuralNetworkClassifier': {
@@ -1109,7 +1110,7 @@ coreml.Context = class {
             const type = classifier.ClassLabels;
             const node = {
                 // group: this._group,
-                type: type,
+                type,
                 name: null,
                 description: '',
                 attributes: classifier[type] || {}
@@ -1162,9 +1163,9 @@ coreml.Context = class {
     }
 
     program(program, group) {
-        // TODO: need to handle functions other than main?
+        // need to handle functions other than main?
         const main = program.functions.main;
-        // TODO: need to handle more than one block specialization?
+        // need to handle more than one block specialization?
         const block_specializations = main.block_specializations;
         const key = Object.keys(block_specializations).filter((key) => key.startsWith('CoreML')).shift();
         const block = block_specializations[key];
@@ -1257,7 +1258,7 @@ coreml.Context = class {
                     }
                     return { value: argument.value };
                 });
-                return { name: name, value: args };
+                return { name, value: args };
             });
             operation.outputs = op.outputs.map((output) => {
                 const value = this.input(output.name);
@@ -1383,7 +1384,7 @@ coreml.Utility = class {
                     if (type.multiArrayType.shape && type.multiArrayType.shape.length > 0) {
                         shape = new coreml.TensorShape(type.multiArrayType.shape.map((dim) => Number(dim)));
                     }
-                    let dataType;
+                    let dataType = '';
                     const ArrayDataType = coreml.proto.ArrayFeatureType.ArrayDataType;
                     switch (type.multiArrayType.dataType) {
                         case ArrayDataType.INVALID_ARRAY_DATA_TYPE:

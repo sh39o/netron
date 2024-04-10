@@ -36,7 +36,7 @@ acuity.Graph = class {
         const values = new Map();
         const value = (name) => {
             if (!values.has(name)) {
-                values.set(name, { name: name, shape: null });
+                values.set(name, { name, shape: null });
             }
             return values.get(name);
         };
@@ -265,7 +265,7 @@ acuity.Inference = class {
         operators.set('convolution', (inputs, params) => {
             if (params.padding === 'VALID') {
                 const out_h = ~~((inputs[0][1] + params.stride_h + params.pad[0] + params.pad[1] - params.ksize_h) / params.stride_h);
-                const out_w = ~~((inputs[0][2] + params.stride_w + params.pad[2] + params.pad[3]- params.ksize_w) / params.stride_w);
+                const out_w = ~~((inputs[0][2] + params.stride_w + params.pad[2] + params.pad[3] - params.ksize_w) / params.stride_w);
                 return [[inputs[0][0], out_h, out_w, params.weights]];
             } else if (params.padding === 'SAME') {
                 const out_h = ~~((inputs[0][1] + params.stride_h - 1) / params.stride_h);
@@ -289,7 +289,7 @@ acuity.Inference = class {
             const [input] = inputs;
             const [a, b] = input;
             let batch = a;
-            const output = params.num_proj !== null ? params.num_proj : params.weights;
+            const output = params.num_proj === null ? params.weights : params.num_proj;
             if (params.time_major) {
                 batch = b;
             }
@@ -468,7 +468,7 @@ acuity.Inference = class {
             }
             let newShape = [];
             for (let i = 0; i < begin.length; i++) {
-                newShape = newShape.concat([(end[i] - begin[i])/params.slice_strides[i]]);
+                newShape = newShape.concat([(end[i] - begin[i]) / params.slice_strides[i]]);
             }
             if (params.slice_shrink_axis_mask) {
                 const len = (params.slice_shrink_axis_mask >>> 0).toString(2).length;

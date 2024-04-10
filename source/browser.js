@@ -1,4 +1,4 @@
-﻿
+
 import * as base from './base.js';
 
 const host = {};
@@ -78,7 +78,7 @@ host.BrowserHost = class {
                 if (json && json.country && countries.indexOf(json.country) === -1) {
                     consent = false;
                 }
-            } catch (error) {
+            } catch {
                 // continue regardless of error
             }
             if (consent) {
@@ -515,7 +515,7 @@ host.BrowserHost = class {
                 const content = this.window.localStorage.getItem(name);
                 return JSON.parse(content);
             }
-        } catch (error) {
+        } catch {
             // continue regardless of error
         }
         return undefined;
@@ -526,7 +526,7 @@ host.BrowserHost = class {
             if (typeof this.window.localStorage !== 'undefined') {
                 this.window.localStorage.setItem(name, JSON.stringify(value));
             }
-        } catch (error) {
+        } catch {
             // continue regardless of error
         }
     }
@@ -536,7 +536,7 @@ host.BrowserHost = class {
             if (typeof this.window.localStorage !== 'undefined') {
                 this.window.localStorage.removeItem(name);
             }
-        } catch (error) {
+        } catch {
             // continue regardless of error
         }
     }
@@ -698,28 +698,40 @@ host.BrowserHost.FileStream = class {
     }
 
     peek(length) {
-        length = length !== undefined ? length : this._length - this._position;
+        length = length === undefined ? this._length - this._position : length;
         if (length < 0x10000000) {
             const position = this._fill(length);
             this._position -= length;
             return this._buffer.subarray(position, position + length);
         }
         const position = this._start + this._position;
-        this.skip(length);
-        this.seek(position);
+        if (position % this._size === 0) {
+            const index = Math.floor(position / this._size);
+            const chunk = this._chunks[index];
+            if (chunk && chunk.length === length) {
+                return chunk;
+            }
+        }
         const buffer = new Uint8Array(length);
         this._read(buffer, position);
         return buffer;
     }
 
     read(length) {
-        length = length !== undefined ? length : this._length - this._position;
+        length = length === undefined ? this._length - this._position : length;
         if (length < 0x10000000) {
             const position = this._fill(length);
             return this._buffer.subarray(position, position + length);
         }
         const position = this._start + this._position;
         this.skip(length);
+        if (position % this._size === 0) {
+            const index = Math.floor(position / this._size);
+            const chunk = this._chunks[index];
+            if (chunk && chunk.length === length) {
+                return chunk;
+            }
+        }
         const buffer = new Uint8Array(length);
         this._read(buffer, position);
         return buffer;
@@ -741,7 +753,7 @@ host.BrowserHost.FileStream = class {
 
     _read(buffer, offset) {
         let index = Math.floor(offset / this._size);
-        offset = offset - (index * this._size);
+        offset -= index * this._size;
         const chunk = this._chunks[index++];
         let destination = Math.min(chunk.length - offset, buffer.length);
         buffer.set(chunk.subarray(offset, offset + destination), 0);

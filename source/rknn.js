@@ -274,13 +274,14 @@ rknn.Node = class {
                     const buffer = container.get('openvx');
                     const model = new openvx.Model(buffer);
                     this._type = new rknn.Graph(metadata, 'openvx', 'NBG', model, null);
-                } else if (node.op === 'RKNN_OP_NNBG'&& container && container.has('flatbuffers')) {
+                } else if (node.op === 'RKNN_OP_NNBG' && container && container.has('flatbuffers')) {
                     const buffer = container.get('flatbuffers');
                     const reader = flatbuffers.BinaryReader.open(buffer);
                     const model = rknn.schema.Model.create(reader);
                     this._type = new rknn.Graph(metadata, 'flatbuffers', 'NNBG', model.graphs[0], null);
                 } else {
-                    this._type = Object.assign({}, metadata.type(node.op) || { name: node.op });
+                    const type = metadata.type(node.op);
+                    this._type = type ? { ...type } : { name: node.op };
                     for (const prefix of ['VSI_NN_OP_', 'RKNN_OP_']) {
                         this._type.name = this._type.name.startsWith(prefix) ? this._type.name.substring(prefix.length) : this._type.name;
                     }
@@ -656,7 +657,7 @@ openvx.Model = class {
         reader.seek(nodeOffset);
         for (let i = 0; i < this._nodes.length; i++) {
             const type = reader.string(64);
-            const node = { type: type };
+            const node = { type };
             node.index = reader.uint32();
             node.c = reader.uint32();
             if (major > 3) {

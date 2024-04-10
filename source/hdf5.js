@@ -27,7 +27,7 @@ hdf5.File = class {
             // https://support.hdfgroup.org/HDF5/doc/H5.format.html
             const data = this.data;
             delete this.data;
-            let reader;
+            let reader = null;
             if (data instanceof Uint8Array) {
                 reader = new hdf5.BinaryReader(data);
             } else if (data.length < 0x10000000) {
@@ -304,9 +304,6 @@ hdf5.Variable = class {
 
 hdf5.Reader = class {
 
-    constructor() {
-    }
-
     initialize() {
         this._offsetSize = this.byte();
         this._lengthSize = this.byte();
@@ -374,7 +371,7 @@ hdf5.Reader = class {
         } else if (e === 0x1F) {
             return f ? NaN : ((s ? -1 : 1) * Infinity);
         }
-        return (s ? -1 : 1) * Math.pow(2, e-15) * (1 + (f / Math.pow(2, 10)));
+        return (s ? -1 : 1) * Math.pow(2, e - 15) * (1 + (f / Math.pow(2, 10)));
     }
 
     float32() {
@@ -448,7 +445,7 @@ hdf5.Reader = class {
             hdf5.Reader._utf8Decoder = hdf5.Reader._utf8Decoder || new TextDecoder('utf-8');
             return hdf5.Reader._utf8Decoder.decode(data).replace(/\0/g, '');
         }
-        hdf5.Reader._asciiDecoder = hdf5.Reader._asciiDecoder = new TextDecoder('ascii');
+        hdf5.Reader._asciiDecoder = hdf5.Reader._asciiDecoder || new TextDecoder('ascii');
         return hdf5.Reader._asciiDecoder.decode(data).replace(/\0/g, '');
     }
 
@@ -511,7 +508,7 @@ hdf5.BinaryReader = class extends hdf5.Reader {
 
     peek(length) {
         const position = this._offset + this._position;
-        length = length !== undefined ? length : this._buffer.length - position;
+        length = length === undefined ? this._buffer.length - position : length;
         this.take(length);
         const buffer = this._buffer.subarray(position, position + length);
         this._position = position - this._offset;
@@ -1020,21 +1017,21 @@ hdf5.Datatype = class {
         switch (this._class) {
             case 0: // fixed-point
                 if ((this._flags & 0xfff6) === 0) {
-                    if ((this._flags && 0x08) !== 0) {
-                        switch (this._size) {
-                            case 1: return 'int8';
-                            case 2: return 'int16';
-                            case 4: return 'int32';
-                            case 8: return 'int64';
-                            default: throw new hdf5.Error(`Unsupported int size '${this._size}'.`);
-                        }
-                    } else {
+                    if ((this._flags && 0x08) === 0) {
                         switch (this._size) {
                             case 1: return 'uint8';
                             case 2: return 'uint16';
                             case 4: return 'uint32';
                             case 8: return 'uint64';
                             default: throw new hdf5.Error(`Unsupported uint size '${this._size}'.`);
+                        }
+                    } else {
+                        switch (this._size) {
+                            case 1: return 'int8';
+                            case 2: return 'int16';
+                            case 4: return 'int32';
+                            case 8: return 'int64';
+                            default: throw new hdf5.Error(`Unsupported int size '${this._size}'.`);
                         }
                     }
                 }
@@ -1212,7 +1209,7 @@ hdf5.Link = class {
         switch (version) {
             case 1: {
                 const flags = reader.byte();
-                this.type = (flags & 0x08) !== 0 ? reader.byte() : 0;
+                this.type = (flags & 0x08) === 0 ? 0 : reader.byte();
                 if ((flags & 0x04) !== 0) {
                     this.creationOrder = reader.uint32();
                 }
@@ -1530,7 +1527,7 @@ hdf5.Tree = class {
                     const childPointer = reader.offset();
                     if (this.level === 0) {
                         const data = reader.at(childPointer).read(size);
-                        this.nodes.push({ data: data, fields: fields, filterMask: filterMask });
+                        this.nodes.push({ data, fields, filterMask });
                     } else {
                         const tree = new hdf5.Tree(reader.at(childPointer), dimensionality);
                         this.nodes.push(...tree.nodes);

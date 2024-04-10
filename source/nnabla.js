@@ -36,7 +36,7 @@ nnabla.ModelFactory = class {
                     const params = nnabla.proto.NNablaProtoBuf.decode(reader);
                     model.parameter = params.parameter;
                     return await open(model, version);
-                } catch (error) {
+                } catch {
                     return await open(model);
                 }
             }
@@ -181,7 +181,7 @@ nnabla.Node = class {
         this.attributes = attributes || [];
         this.outputs = outputs || [];
         this.chain = [];
-        // TODO: "nonlinearity" does not match metadata type
+        // "nonlinearity" does not match metadata type
         const get_nonlinearity = (name) => {
             switch (name) {
                 case "identity": return "Identity";

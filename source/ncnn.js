@@ -19,11 +19,9 @@ ncnn.ModelFactory = class {
                 const signature = (buffer[0] | buffer[1] << 8 | buffer[2] << 16 | buffer [3] << 24) >>> 0;
                 if (signature === 0x007685DD) {
                     context.type = 'ncnn.model.bin';
-                    return;
                 }
             }
-        }
-        if (identifier.endsWith('.param') || identifier.endsWith('.cfg.ncnn')) {
+        } else if (identifier.endsWith('.param') || identifier.endsWith('.cfg.ncnn')) {
             try {
                 const reader = text.Reader.open(context.stream, 2048);
                 const signature = reader.read();
@@ -35,22 +33,37 @@ ncnn.ModelFactory = class {
                     const header = signature.trim().split(' ');
                     if (header.length === 2 && header.every((value) => value >>> 0 === parseFloat(value))) {
                         context.type = 'ncnn.model';
-                        return;
                     }
                 }
-            } catch (err) {
+            } catch {
                 // continue regardless of error
             }
-        }
-        if (identifier.endsWith('.bin') || identifier.endsWith('.weights.ncnn')) {
+        } else if (identifier.endsWith('.bin') || identifier.endsWith('.weights.ncnn')) {
             const stream = context.stream;
             if (stream.length > 4) {
                 const buffer = stream.peek(4);
                 const signature = (buffer[0] | buffer[1] << 8 | buffer[2] << 16 | buffer [3] << 24) >>> 0;
-                if (signature === 0x00000000 || signature === 0x00000001 ||
-                    signature === 0x01306B47 || signature === 0x000D4B38 || signature === 0x0002C056) {
-                    context.type = 'ncnn.weights';
-                    return;
+                switch (signature) {
+                    case 0x00000000:
+                    case 0x00000001: {
+                        const size = Math.min(stream.length, 1024) & 0xFFFC;
+                        const buffer = stream.peek(size);
+                        const array = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+                        const values = Array.from(array).slice(1);
+                        if (values.every((value) => !Number.isNaN(value) && Number.isFinite(value) && value > -10.0 && value < 10.0)) {
+                            context.type = 'ncnn.weights';
+                        }
+                        break;
+                    }
+                    case 0x01306B47:
+                    case 0x000D4B38:
+                    case 0x0002C056: {
+                        context.type = 'ncnn.weights';
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
                 }
             }
         }
@@ -83,7 +96,7 @@ ncnn.ModelFactory = class {
                     const content = await context.fetch(bin);
                     const buffer = content.stream.peek();
                     return openText(context.stream.peek(), buffer);
-                } catch (error) {
+                } catch {
                     return openText(context.stream.peek(), null);
                 }
             }
@@ -93,7 +106,7 @@ ncnn.ModelFactory = class {
                     const content = await context.fetch(bin);
                     const buffer = content.stream.peek();
                     return openBinary(context.stream.peek(), buffer);
-                } catch (error) {
+                } catch {
                     return openBinary(context.stream.peek(), null);
                 }
             }
@@ -108,7 +121,7 @@ ncnn.ModelFactory = class {
                     const content = await context.fetch(file);
                     const buffer = content.stream.peek();
                     return openText(buffer, context.stream.peek());
-                } catch (error) {
+                } catch {
                     const content = await context.fetch(`${file}.bin`);
                     const buffer = content.stream.peek();
                     return openBinary(buffer, context.stream.peek());
@@ -178,7 +191,7 @@ ncnn.Graph = class {
         }
         for (const layer of layers) {
             if (layer.type === 'Input' || layer.type === 16) {
-                const dimensions = Array.from(layer.attributes.values()).map((value) => !isNaN(parseInt(value, 10)) ? parseInt(value, 10) : value);
+                const dimensions = Array.from(layer.attributes.values()).map((value) => isNaN(parseInt(value, 10)) ? value : parseInt(value, 10));
                 const shape = new ncnn.TensorShape(dimensions);
                 const type = new ncnn.TensorType('float32', shape);
                 const input = new ncnn.Argument(layer.name, layer.outputs.map((output) => values.map(output, type)));
@@ -469,6 +482,7 @@ ncnn.Node = class {
                 const h = parseInt(attributes.get('1') || 0, 10);
                 const d = parseInt(attributes.get('11') || 0, 10);
                 const c = parseInt(attributes.get('2') || 0, 10);
+                /* eslint-disable no-negated-condition */
                 if (d !== 0) {
                     weight(blobReader, 'data', [c, d, h, w], 'float32');
                 } else if (c !== 0) {
@@ -480,6 +494,7 @@ ncnn.Node = class {
                 } else {
                     weight(blobReader, 'data', [1], 'float32');
                 }
+                /* eslint-enable no-negated-condition */
                 break;
             }
             case 'GroupNorm': {
@@ -635,7 +650,7 @@ ncnn.Attribute = class {
     }
 
     get visible() {
-        return this._visible === false ? false : true;
+        return this._visible !== false;
     }
 };
 
@@ -742,7 +757,7 @@ ncnn.TextParamReader = class {
             lines.push(line.trim());
         }
         const signature = lines.shift();
-        const header = (signature !== '7767517' ? signature : lines.shift()).split(' ');
+        const header = (signature === '7767517' ? lines.shift() : signature).split(' ');
         if (header.length !== 2 || !header.every((value) => value >>> 0 === parseFloat(value))) {
             throw new ncnn.Error('Invalid header.');
         }
@@ -917,7 +932,7 @@ ncnn.BlobReader = class {
                     }
                 }
             }
-            return { dataType: dataType, data: data };
+            return { dataType, data };
         }
         return null;
     }
@@ -932,4 +947,3 @@ ncnn.Error = class extends Error {
 };
 
 export const ModelFactory = ncnn.ModelFactory;
-
