@@ -3515,7 +3515,7 @@ view.FindSidebar = class extends view.Control {
                 return term === name;
             };
         } else {
-            terms = searchText.trim().toLowerCase().split(' ').map((term) => term.trim()).filter((term) => term.length > 0);
+            terms = searchText.trim().toLowerCase().split(';').map((term) => term.trim()).filter((term) => term.length > 0);
             match = (name) => {
                 return terms.every((term) => name && name.toLowerCase().indexOf(term) !== -1);
             };
@@ -3534,23 +3534,30 @@ view.FindSidebar = class extends view.Control {
             if (value.type) {
                 for (const term of terms) {
                     if (value.type.dataType && term === value.type.dataType.toLowerCase()) {
-                        return true;
+                        continue;
                     }
                     if (value.type.shape) {
                         if (term === value.type.shape.toString().toLowerCase()) {
-                            return true;
+                            continue;
                         }
                         if (value.type.shape && Array.isArray(value.type.shape.dimensions)) {
                             const dimensions = value.type.shape.dimensions.map((dimension) => dimension ? dimension.toString().toLowerCase() : '');
                             if (term === dimensions.join(',')) {
-                                return true;
+                                continue;
                             }
                             if (dimensions.some((dimension) => term === dimension)) {
-                                return true;
+                                continue;
                             }
                         }
                     }
+                    if (value.type.denotation) {
+                        if (value.type.denotation.toLowerCase().includes(term)) {
+                            continue;
+                        }
+                    }
+                    return false;
                 }
+                return true;
             }
             return false;
         };
