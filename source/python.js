@@ -1663,6 +1663,8 @@ python.Execution = class {
         const math = this.register('math');
         math.inf = Infinity;
         const numpy = this.register('numpy');
+        this.register('numpy.core._multiarray_umath');
+        this.register('numpy.matrixlib.defmatrix');
         const pandas = this.register('pandas');
         this.register('pandas._libs.tslib');
         this.register('pandas._libs.internals');
@@ -2349,6 +2351,9 @@ python.Execution = class {
                 this.flags = {};
                 this._read();
             }
+            static __new__(cls, shape, dtype, buffer, offset, strides, order) {
+                return new cls(shape, dtype, buffer, offset, strides, order);
+            }
             __setstate__(state) {
                 [this.version, this.shape, this.dtype, this.flags.fn, this.data] = state;
                 this._read();
@@ -2526,6 +2531,12 @@ python.Execution = class {
                 return a.slice(0, o);
             }
         });
+        this.registerType('numpy.matrix', class extends numpy.ndarray {
+            static __new__(/* subtype, data, dtype, copy */) {
+                throw new Error("'numpy.matrix.__new__' not implemented.");
+            }
+        });
+        numpy.matrixlib.defmatrix.matrix = numpy.matrix;
         this.registerType('numpy.ma.core.MaskedArray', class extends numpy.ndarray {
             constructor(data /*, mask, dtype, copy, subok, ndmin, fill_value, keep_mask, hard_mask, shrink, order */) {
                 super(data.shape, data.dtype, data.data);
@@ -2537,6 +2548,9 @@ python.Execution = class {
         this.registerFunction('pandas.core.indexes.base._new_Index', (cls, d) => {
             return new cls(d);
         });
+        this.registerType('pandas.core.arrays.datetimes.DatetimeArray', class {});
+        this.registerType('pandas.core.indexes.datetimes._new_DatetimeIndex', class {});
+        this.registerType('pandas.core.indexes.datetimes.DatetimeIndex', class {});
         this.registerType('pandas.core.indexes.base.Index', class {});
         this.registerType('pandas.core.indexes.range.RangeIndex', class {});
         this.registerType('pandas.core.indexes.multi.MultiIndex', class {});
@@ -2552,6 +2566,7 @@ python.Execution = class {
             throw new python.Error("'pandas._libs.internals._unpickle_block' not implemented.");
         });
         this.registerType('pandas._libs.tslibs.base.ABCTimestamp', class extends datetime.datetime {});
+        this.registerType('pandas._libs.tslibs.offsets.Minute', class extends datetime.datetime {});
         this.registerType('pandas._libs.tslibs.timestamps._Timestamp', class extends pandas._libs.tslibs.base.ABCTimestamp {});
         this.registerType('pandas._libs.tslibs.timestamps.Timestamp', class extends pandas._libs.tslibs.timestamps._Timestamp {});
         pandas._libs.tslib.Timestamp = pandas._libs.tslibs.timestamps.Timestamp;
@@ -2636,6 +2651,7 @@ python.Execution = class {
         this.registerType('sklearn.feature_selection._variance_threshold.VarianceThreshold', class {});
         this.registerType('sklearn.feature_selection.univariate_selection.SelectKBest', class {});
         this.registerType('sklearn.feature_selection.variance_threshold.VarianceThreshold', class {});
+        this.registerType('sklearn.gaussian_process._gpc.GaussianProcessClassifier', class {});
         this.registerType('sklearn.gaussian_process._gpr.GaussianProcessRegressor', class {});
         this.registerType('sklearn.gaussian_process.gpc.GaussianProcessClassifier', class {});
         this.registerType('sklearn.gaussian_process.kernels.ConstantKernel', class {});
@@ -2657,6 +2673,7 @@ python.Execution = class {
         this.registerType('sklearn.linear_model._coordinate_descent.Lasso', class {});
         this.registerType('sklearn.linear_model._least_angle.LassoLarsCV', class {});
         this.registerType('sklearn.linear_model._logistic.LogisticRegression', class {});
+        this.registerType('sklearn.linear_model._logistic.LogisticRegressionCV', class {});
         this.registerType('sklearn.linear_model._quantile.QuantileRegressor', class {});
         this.registerType('sklearn.linear_model._ridge.Ridge', class {});
         this.registerType('sklearn.linear_model._ridge.RidgeClassifier', class {});
@@ -2677,6 +2694,7 @@ python.Execution = class {
         this.registerType('sklearn.manifold._t_sne.TSNE', class {});
         this.registerType('sklearn.metrics._dist_metrics.EuclideanDistance', class {});
         this.registerType('sklearn.metrics._dist_metrics.EuclideanDistance64', class {});
+        this.registerType('sklearn.metrics._dist_metrics.ManhattanDistance', class {});
         this.registerType('sklearn.metrics._scorer._PassthroughScorer', class {});
         this.registerType('sklearn.metrics._scorer._PredictScorer', class {});
         this.registerType('sklearn.metrics.scorer._PredictScorer', class {});
@@ -2687,6 +2705,7 @@ python.Execution = class {
         this.registerType('sklearn.model_selection._search.RandomizedSearchCV', class {});
         this.registerType('sklearn.model_selection._split.KFold', class {});
         this.registerType('sklearn.model_selection._split.StratifiedKFold', class {});
+        this.registerType('sklearn.model_selection._split.StratifiedShuffleSplit', class {});
         this.registerType('sklearn.multiclass.OneVsRestClassifier', class {});
         this.registerType('sklearn.multioutput.MultiOutputClassifier', class {});
         this.registerType('sklearn.multioutput.MultiOutputRegressor', class {});
@@ -3705,18 +3724,13 @@ python.Execution = class {
         this.registerFunction('nolearn.lasagne.base.objective', () => {
             throw new python.Error("'nolearn.lasagne.base.objective' not implemented.");
         });
-        this.registerFunction('numpy._reconstruct', (subtype, shape, dtype) => {
-            return self.invoke(subtype, [shape, dtype]);
-        });
         this.registerFunction('numpy.core._DType_reconstruct', (/* scalar_type */) => {
             throw new python.Error("'numpy.core._DType_reconstruct' not implemented.");
         });
-        this.registerFunction('numpy.core._multiarray_umath._reconstruct', (subtype, shape, dtype) => {
-            return self.invoke(subtype, [shape, dtype]);
-        });
         this.registerFunction('numpy.core.multiarray._reconstruct', (subtype, shape, dtype) => {
-            return self.invoke(subtype, [shape, dtype]);
+            return numpy.ndarray.__new__(subtype, shape, dtype);
         });
+        numpy.core._multiarray_umath._reconstruct = numpy.core.multiarray._reconstruct;
         this.registerFunction('numpy.core.multiarray.scalar', (dtype, rawData) => {
             let data = rawData;
             if (typeof rawData === 'string' || rawData instanceof String) {
@@ -3989,11 +4003,35 @@ python.Execution = class {
         this.registerFunction('numpy.random._pickle.__randomstate_ctor', () => {
             return {};
         });
-        this.registerFunction('numpy.random._pickle.__bit_generator_ctor', () => {
-            throw new python.Error("'numpy.random._pickle.__bit_generator_ctor' not implemented.");
+        this.registerType('numpy.random.bit_generator.BitGenerator', class {});
+        this.registerType('numpy.random._mt19937.MT19937', class extends numpy.random.bit_generator.BitGenerator {});
+        this.registerType('numpy.random._pcg64.PCG64', class extends numpy.random.bit_generator.BitGenerator {});
+        this.registerType('numpy.random._pcg64.PCG64DXSM', class extends numpy.random.bit_generator.BitGenerator {});
+        this.registerType('numpy.random._philox.Philox', class extends numpy.random.bit_generator.BitGenerator {});
+        this.registerType('numpy.random._sfc64.SFC64', class extends numpy.random.bit_generator.BitGenerator {});
+        numpy.random._pickle.BitGenerators = {
+            'MT19937': numpy.random._mt19937.MT19937,
+            'PCG64': numpy.random._pcg64.PCG64,
+            'PCG64DXSM': numpy.random._pcg64.PCG64DXSM,
+            'Philox': numpy.random._philox.Philox,
+            'SFC64': numpy.random._sfc64.SFC64,
+        };
+        this.registerType('numpy.random._generator.Generator', class {
+            constructor(bit_generator) {
+                this.bit_generator = bit_generator;
+            }
         });
-        this.registerFunction('numpy.random._pickle.__generator_ctor', () => {
-            throw new python.Error("'numpy.random._pickle.__generator_ctor' not implemented.");
+        this.registerFunction('numpy.random._pickle.__bit_generator_ctor', (bit_generator_name) => {
+            bit_generator_name = bit_generator_name || 'MT19937';
+            const bit_generator = numpy.random._pickle.BitGenerators[bit_generator_name];
+            if (bit_generator) {
+                return new bit_generator();
+            }
+            throw new python.Error(`Unknown bit generator '${bit_generator_name}'.`);
+        });
+        this.registerFunction('numpy.random._pickle.__generator_ctor', (bit_generator_name, bit_generator_ctor) => {
+            bit_generator_ctor = bit_generator_ctor || numpy.random._pickle.__bit_generator_ctor;
+            return new numpy.random._generator.Generator(bit_generator_ctor(bit_generator_name));
         });
         this.registerFunction('numpy.reshape', () => {
             throw new python.Error("'numpy.reshape' not implemented.");
@@ -4019,8 +4057,9 @@ python.Execution = class {
         this.registerFunction('sklearn.metrics._classification.recall_score', () => {
             throw new python.Error("'sklearn.metrics._classification.recall_score' not implemented.");
         });
-        this.registerFunction('sklearn.metrics._dist_metrics.newObj', () => {
-            throw new python.Error("'sklearn.metrics._dist_metrics.newObj' not implemented.");
+        this.registerFunction('sklearn.metrics._dist_metrics.newObj', (obj) => {
+            return obj.__new__(obj);
+
         });
         this.registerFunction('sklearn.metrics._regression.mean_absolute_error', () => {
             throw new python.Error("'sklearn.metrics._regression.mean_absolute_error' not implemented.");
@@ -4586,6 +4625,7 @@ python.Execution = class {
         this.registerType('torchvision.models.vision_transformer.MLPBlock', class extends torchvision.ops.misc.MLP {});
         this.registerType('torchvision.models.vision_transformer.VisionTransformer', class extends torch.nn.modules.module.Module {});
         this.registerType('torchvision.models._utils.IntermediateLayerGetter', class {});
+        this.registerType('torchvision.transforms._presets.ImageClassification', class {});
         this.registerType('torchvision.transforms.functional.InterpolationMode', class {});
         this.registerType('torchvision.transforms.transforms.ColorJitter', class extends torch.nn.modules.module.Module {});
         this.registerType('torchvision.transforms.transforms.Compose', class {});

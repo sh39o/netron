@@ -2821,6 +2821,13 @@
   },
   {
     "type":     "megengine",
+    "target":   "mge_duplicate_value.tm",
+    "source":   "https://github.com/lutzroeder/netron/files/14964811/mge_duplicate_value.tm.zip[mge_duplicate_value.tm]",
+    "format":   "MegEngine v1.12.2",
+    "link":     "https://github.com/lutzroeder/netron/issues/607"
+  },
+  {
+    "type":     "megengine",
     "target":   "mobilenetv1.tm",
     "source":   "https://github.com/lutzroeder/netron/files/9257882/mobilenetv1.tm.zip[mobilenetv1.tm]",
     "format":   "MegEngine v1.10.0",
@@ -3127,6 +3134,7 @@
     "type":     "mslite",
     "target":   "mnist.ms",
     "source":   "https://github.com/lutzroeder/netron/files/6128484/mnist.ms.zip[mnist.ms]",
+    "tags":     "quantization",
     "format":   "MindSpore Lite v1.2.0",
     "link":     "https://github.com/lutzroeder/netron/issues/600"
   },
@@ -3134,6 +3142,7 @@
     "type":     "mslite",
     "target":   "squeezenet1.1.ms",
     "source":   "https://github.com/lutzroeder/netron/files/6128485/squeezenet1.1.ms.zip[squeezenet1.1.ms]",
+    "tags":     "quantization",
     "format":   "MindSpore Lite v1.2.0",
     "link":     "https://github.com/lutzroeder/netron/issues/600"
   },
@@ -3478,6 +3487,13 @@
     "source":   "https://nnabla.org/pretrained-models/nnp_models/imagenet/NIN/NIN.nnp",
     "format":   "NNabla v0.1",
     "link":     "https://nnabla.readthedocs.io/en/latest/python/api/models/imagenet.html"
+  },
+  {
+    "type":     "nnabla",
+    "target":   "results.nnp",
+    "source":   "https://github.com/lutzroeder/netron/files/14927097/results.nnp.zip[results.nnp]",
+    "format":   "NNabla v0.1",
+    "link":     "https://github.com/lutzroeder/netron/issues/759"
   },
   {
     "type":     "nnabla",
@@ -4610,6 +4626,14 @@
     "format":   "Pickle",
     "error":    "Unsupported Pickle object.",
     "link":     "https://github.com/omdv/robinhood-portfolio/tree/4622dc61e0556a85ce52c4de178d01a9838acbc5"
+  },
+  {
+    "type":     "pickle",
+    "target":   "vec_normalize.pkl",
+    "source":   "https://github.com/lutzroeder/netron/files/14981937/vec_normalize.pkl.zip[vec_normalize.pkl]",
+    "format":   "Pickle",
+    "error":    "Unsupported Pickle type 'stable_baselines3.common.vec_env.vec_normalize.VecNormalize'.",
+    "link":     "https://github.com/lutzroeder/netron/issues/901"
   },
   {
     "type":     "pickle",

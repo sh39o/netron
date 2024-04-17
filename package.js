@@ -402,8 +402,9 @@ const publish = async (target) => {
             const copyright = `Copyright (c) ${publisher}`;
             const repository = `https://github.com/${configuration.repository}`;
             const url = `${repository}/releases/download/v${version}/${product}-Setup-${version}.exe`;
-            const extensions = configuration.build.fileAssociations.map((entry) => `- ${entry.ext}`).sort().join('\n');
-            writeLine(`download ${url}`);
+            const content = await fs.readFile(configuration.build.extends, 'utf-8');
+            const builder = JSON.parse(content);
+            const extensions = builder.fileAssociations.map((entry) => `- ${entry.ext}`).sort().join('\n');
             const sha256 = await hash(url, 'sha256');
             const paths = ['dist', 'winget-pkgs', 'manifests', publisher[0].toLowerCase(), publisher.replace(' ', ''), product, version];
             await mkdir(...paths);
@@ -519,29 +520,27 @@ const validate = async() => {
 };
 
 const update = async () => {
+    const dependencies = { ...configuration.dependencies, ...configuration.devDependencies };
+    for (const name of Object.keys(dependencies)) {
+        writeLine(name);
+        /* eslint-disable no-await-in-loop */
+        await exec(`npm install --quiet --no-progress --silent --save-exact ${name}@latest`);
+        /* eslint-enable no-await-in-loop */
+    }
+    await install();
     const targets = process.argv.length > 3 ? process.argv.slice(3) : [
         'armnn',
         'bigdl',
-        'caffe',
-        'circle',
-        'cntk',
-        'coreml',
-        'dlc',
-        'dnn',
+        'caffe', 'circle', 'cntk', 'coreml',
+        'dlc', 'dnn',
         'gguf',
         'keras',
-        'maxviz',
-        'mnn',
-        'mslite',
-        'megengine',
+        'mnn', 'mslite', 'megengine',
         'nnabla',
-        'onnx',
-        'om',
-        'paddle',
-        'pytorch',
+        'onnx', 'om',
+        'paddle', 'pytorch',
         'rknn',
-        'sentencepiece',
-        'sklearn',
+        'sentencepiece', 'sklearn',
         'tf',
         'uff',
         'xmodel'

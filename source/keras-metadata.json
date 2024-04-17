@@ -1958,6 +1958,10 @@
       {
         "name": "lora_rank",
         "description": "Optional integer. If set, the layer's forward pass\n        will implement LoRA (Low-Rank Adaptation)\n        with the provided rank. LoRA sets the layer's embeddings\n        matrix to non-trainable and replaces it with a delta over the\n        original matrix, obtained via multiplying two lower-rank\n        trainable matrices. This can be useful to reduce the\n        computation cost of fine-tuning large embedding layers.\n        You can also enable LoRA on an existing\n        `Embedding` layer by calling `layer.enable_lora(rank)`."
+      },
+      {
+        "name": "weights",
+        "description": "Optional floating-point matrix of size\n        `(input_dim, output_dim)`. The initial embeddings values\n        to use."
       }
     ],
     "inputs": [
@@ -3603,7 +3607,7 @@
     ],
     "examples": [
       {
-        "code": "from keras.layers import RNN\nfrom keras import ops\n\n# First, let's define a RNN Cell, as a layer subclass.\nclass MinimalRNNCell(keras.layers.Layer):\n\n    def __init__(self, units, **kwargs):\n        super().__init__(**kwargs)\n        self.units = units\n        self.state_size = units\n\n    def build(self, input_shape):\n        self.kernel = self.add_weight(shape=(input_shape[-1], self.units),\n                                      initializer='uniform',\n                                      name='kernel')\n        self.recurrent_kernel = self.add_weight(\n            shape=(self.units, self.units),\n            initializer='uniform',\n            name='recurrent_kernel')\n        self.built = True\n\n    def call(self, inputs, states):\n        prev_output = states[0]\n        h = ops.matmul(inputs, self.kernel)\n        output = h + ops.matmul(prev_output, self.recurrent_kernel)\n        return output, [output]\n\n# Let's use this cell in a RNN layer:\n\ncell = MinimalRNNCell(32)\nx = keras.Input((None, 5))\nlayer = RNN(cell)\ny = layer(x)\n\n# Here's how to use the cell to build a stacked RNN:\n\ncells = [MinimalRNNCell(32), MinimalRNNCell(64)]\nx = keras.Input((None, 5))\nlayer = RNN(cells)\ny = layer(x)"
+        "code": "from keras.src.layers import RNN\nfrom keras.src import ops\n\n# First, let's define a RNN Cell, as a layer subclass.\nclass MinimalRNNCell(keras.layers.Layer):\n\n    def __init__(self, units, **kwargs):\n        super().__init__(**kwargs)\n        self.units = units\n        self.state_size = units\n\n    def build(self, input_shape):\n        self.kernel = self.add_weight(shape=(input_shape[-1], self.units),\n                                      initializer='uniform',\n                                      name='kernel')\n        self.recurrent_kernel = self.add_weight(\n            shape=(self.units, self.units),\n            initializer='uniform',\n            name='recurrent_kernel')\n        self.built = True\n\n    def call(self, inputs, states):\n        prev_output = states[0]\n        h = ops.matmul(inputs, self.kernel)\n        output = h + ops.matmul(prev_output, self.recurrent_kernel)\n        return output, [output]\n\n# Let's use this cell in a RNN layer:\n\ncell = MinimalRNNCell(32)\nx = keras.Input((None, 5))\nlayer = RNN(cell)\ny = layer(x)\n\n# Here's how to use the cell to build a stacked RNN:\n\ncells = [MinimalRNNCell(32), MinimalRNNCell(64)]\nx = keras.Input((None, 5))\nlayer = RNN(cells)\ny = layer(x)"
       }
     ]
   },

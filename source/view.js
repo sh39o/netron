@@ -424,53 +424,55 @@ view.View = class {
     }
 
     _pointerDownHandler(e) {
-        if (e.pointerType !== 'touch' && e.buttons === 1) {
-            e.target.setPointerCapture(e.pointerId);
-            const document = this._host.document.documentElement;
-            const container = this._element('graph');
-            this._mousePosition = {
-                left: container.scrollLeft,
-                top: container.scrollTop,
-                x: e.clientX,
-                y: e.clientY
-            };
-            container.style.cursor = 'grabbing';
+        if (e.pointerType === 'touch' || e.buttons !== 1) {
+            return;
+        }
+        const container = this._element('graph');
+        if (e.target === container) {
+            return;
+        }
+        e.target.setPointerCapture(e.pointerId);
+        this._mousePosition = {
+            left: container.scrollLeft,
+            top: container.scrollTop,
+            x: e.clientX,
+            y: e.clientY
+        };
+        container.style.cursor = 'grabbing';
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const pointerMoveHandler = (e) => {
+            e.preventDefault();
             e.stopImmediatePropagation();
-            const pointerMoveHandler = (e) => {
+            if (this._mousePosition) {
+                const dx = e.clientX - this._mousePosition.x;
+                const dy = e.clientY - this._mousePosition.y;
+                this._mousePosition.moved = dx * dx + dy * dy > 0;
+                if (this._mousePosition.moved) {
+                    const container = this._element('graph');
+                    container.scrollTop = this._mousePosition.top - dy;
+                    container.scrollLeft = this._mousePosition.left - dx;
+                }
+            }
+        };
+        const clickHandler = (e) => {
+            e.stopPropagation();
+            document.removeEventListener('click', clickHandler, true);
+        };
+        const pointerUpHandler = (e) => {
+            e.target.releasePointerCapture(e.pointerId);
+            container.style.removeProperty('cursor');
+            container.removeEventListener('pointerup', pointerUpHandler);
+            container.removeEventListener('pointermove', pointerMoveHandler);
+            if (this._mousePosition && this._mousePosition.moved) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
-                if (this._mousePosition) {
-                    const dx = e.clientX - this._mousePosition.x;
-                    const dy = e.clientY - this._mousePosition.y;
-                    this._mousePosition.moved = dx * dx + dy * dy > 0;
-                    if (this._mousePosition.moved) {
-                        const container = this._element('graph');
-                        container.scrollTop = this._mousePosition.top - dy;
-                        container.scrollLeft = this._mousePosition.left - dx;
-                    }
-                }
-            };
-            const clickHandler = (e) => {
-                e.stopPropagation();
-                document.removeEventListener('click', clickHandler, true);
-            };
-            const pointerUpHandler = (e) => {
-                e.target.releasePointerCapture(e.pointerId);
-                container.style.removeProperty('cursor');
-                container.removeEventListener('pointerup', pointerUpHandler);
-                container.removeEventListener('pointerleave', pointerUpHandler);
-                container.removeEventListener('pointermove', pointerMoveHandler);
-                if (this._mousePosition && this._mousePosition.moved) {
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                    delete this._mousePosition;
-                    document.addEventListener('click', clickHandler, true);
-                }
-            };
-            container.addEventListener('pointermove', pointerMoveHandler);
-            container.addEventListener('pointerup', pointerUpHandler);
-            container.addEventListener('pointerleave', pointerUpHandler);
-        }
+                delete this._mousePosition;
+                document.addEventListener('click', clickHandler, true);
+            }
+        };
+        container.addEventListener('pointermove', pointerMoveHandler);
+        container.addEventListener('pointerup', pointerUpHandler);
     }
 
     _touchStartHandler(e) {
@@ -2913,18 +2915,21 @@ view.ValueView = class extends view.Control {
                     if (typeof quantization.type !== 'string') {
                         throw new view.Error('Unsupported quantization value.');
                     }
-                    const line = this.createElement('div', 'sidebar-item-value-line-border');
-                    const content = [
-                        "<span class='sidebar-item-value-line-content'>",
-                        "quantization: ",
-                        `<b>${quantization.type}</b>`,
-                        "</span>",
-                        "<pre style='margin: 4px 0 2px 0'>",
-                        new view.Quantization(quantization).toString(),
-                        "</pre>"
-                    ];
-                    line.innerHTML = content.join('');
-                    this._element.appendChild(line);
+                    const value = new view.Quantization(quantization).toString();
+                    if (value && value !== 'q') {
+                        const line = this.createElement('div', 'sidebar-item-value-line-border');
+                        const content = [
+                            "<span class='sidebar-item-value-line-content'>",
+                            "quantization: ",
+                            `<b>${quantization.type}</b>`,
+                            "</span>",
+                            "<pre style='margin: 4px 0 2px 0'>",
+                            value,
+                            "</pre>"
+                        ];
+                        line.innerHTML = content.join('');
+                        this._element.appendChild(line);
+                    }
                 }
                 const location = this._value.location;
                 if (location !== undefined) {
@@ -4150,7 +4155,7 @@ view.Quantization = class {
                     s = value > 0 ? `${s} - ${value}` : `${s} + ${-value}`;
                     bracket = true;
                 }
-                if (i < scale.length && scale[i] !== undefined && scale[i] !== 0) {
+                if (i < scale.length && scale[i] !== undefined && scale[i] !== 1) {
                     const value = scale[i];
                     s = bracket ? `(${s})` : s;
                     s = `${value} * ${s}`;
@@ -5681,7 +5686,7 @@ view.ModelFactoryService = class {
         this.register('./ncnn', ['.param', '.bin', '.cfg.ncnn', '.weights.ncnn', '.ncnnmodel']);
         this.register('./tnn', ['.tnnproto', '.tnnmodel']);
         this.register('./tengine', ['.tmfile']);
-        this.register('./mslite', ['.ms']);
+        this.register('./mslite', ['.ms', '.bin']);
         this.register('./barracuda', ['.nn']);
         this.register('./circle', ['.circle']);
         this.register('./dnn', ['.dnn']);
@@ -5694,7 +5699,7 @@ view.ModelFactoryService = class {
         this.register('./acuity', ['.json']);
         this.register('./imgdnn', ['.dnn', 'params', '.json']);
         this.register('./flax', ['.msgpack']);
-        this.register('./om', ['.om', '.onnx', '.pb', '.engine']);
+        this.register('./om', ['.om', '.onnx', '.pb', '.engine', '.bin']);
         this.register('./gguf', ['.gguf', /^[^.]+$/]);
         this.register('./nnabla', ['.nntxt'], ['.nnp']);
         this.register('./hickle', ['.h5', '.hkl']);
