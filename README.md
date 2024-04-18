@@ -1,7 +1,8 @@
 <div align="center">
-<img width="400px" height="100px" src="https://github.com/lutzroeder/netron/raw/main/.github/logo-light.svg#gh-light-mode-only">
-<img width="400px" height="100px" src="https://github.com/lutzroeder/netron/raw/main/.github/logo-dark.svg#gh-dark-mode-only">
+<img width="400px" height="100px" src="./publish/logo-light.svg#gh-light-mode-only">
+<img width="400px" height="100px" src="./publish/logo-dark.svg#gh-dark-mode-only">
 </div>
+
 7.6.0 更新：支持 tensor name 搜索，支持 tensor 属性的搜索，支持tensor shape 的搜索，支持 tensor 多属性的高级搜索
 搜索shape用法：[n,h,w,c]（中间不带空格）
 搜索 reg_id为 1：reg_id: 1 （中间有一个空格）
@@ -59,19 +60,15 @@ Netron supports ONNX, TensorFlow Lite, Core ML, Keras, Caffe, Darknet, MXNet, Pa
 
 Netron has experimental support for PyTorch, TorchScript, TensorFlow, OpenVINO, RKNN, MediaPipe, ML.NET and scikit-learn.
 
-<p align='center'><a href='https://www.lutzroeder.com/ai'><img src='.github/screenshot.png' width='800'></a></p>
+<p align='center'><img src='./publish/illustration.png' width='800'></a></p>
 
 ## Install
 
-**macOS**: [**Download**](https://github.com/lutzroeder/netron/releases/latest) the `.dmg` file or run `brew install --cask netron`
+**macOS**: [**Download**](https://gitenterprise.xilinx.com/huisu/netron/releases/latest) the `.dmg` file or run `brew install --cask netron`
 
-**Linux**: [**Download**](https://github.com/lutzroeder/netron/releases/latest) the `.AppImage` file or run `snap install netron`
+**Linux**: [**Download**](https://gitenterprise.xilinx.com/huisu/netron/releases/latest) the `.AppImage` file or run `snap install netron`
 
-**Windows**: [**Download**](https://github.com/lutzroeder/netron/releases/latest) the `.exe` installer or run `winget install -s winget netron`
-
-**Browser**: [**Start**](https://netron.app) the browser version.
-
-**Python Server**: Run `pip install netron` and `netron [FILE]` or `netron.start('[FILE]')`.
+**Windows**: [**Download**](https://gitenterprise.xilinx.com/huisu/netron/releases/latest) the `.exe` installer or run `winget install -s winget netron`
 
 ## Models
 
