@@ -44,13 +44,7 @@ xmodel.Graph = class {
         this.const_nodes = [];
         this.op_map = new Map();
         const counts = new Map();
-        const zp_ops = [];
-        const scale_ops = [];
         for (const op_node of graph.op_node) {
-            if (op_node.op_type === "dequantize-linear" || op_node.op_type === "quantize-linear") {
-                zp_ops.push(op_node.args[2].arg_ops[0]);
-                scale_ops.push(op_node.args[1].arg_ops[0]);
-            }
             for (const arg of op_node.args) {
                 for (const arg_op of arg.arg_ops) {
                     counts.set(arg_op, counts.has(arg_op) ? counts.get(arg_op) + 1 : 1);
@@ -69,20 +63,14 @@ xmodel.Graph = class {
         for (const node of graph.op_node) {
             if (node.args.length === 0) {
                 if (node.op_type === 'data' || node.op_type === 'data-fix') {
-                    const value = values.map(node.op_name, node);
+                    values.map(node.op_name, node);
                     nodes.push(node);
                     // this.inputs.push(new xmodel.Argument(node.op_name, [ value ]));
                     continue;
                 }
             }
-            if (zp_ops.includes(node.op_name) || scale_ops.includes(node.op_name)) {
-                values.map(node.op_name, node, true);
-                const_nodes.push(node);
-                continue;
-            }
-            if (node.args.length === 0 && counts.get(node.op_name) === 1) {
-                if ((node.op_type === 'const-fix' || node.op_type === 'const') &&
-                    this.root_subg.subg_child.length > 0) {
+            if (node.args.length === 0) {
+                if (node.op_type === 'const-fix' || node.op_type === 'const') {
                     values.map(node.op_name, node, true);
                     const_nodes.push(node);
                     continue;
