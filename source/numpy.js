@@ -44,11 +44,17 @@ numpy.ModelFactory = class {
         switch (context.type) {
             case 'npy': {
                 format = 'NumPy Array';
+                const unresolved = new Set();
                 const execution = new python.Execution();
+                execution.on('resolve', (_, name) => unresolved.add(name));
                 const stream = context.stream;
                 const buffer = stream.peek();
                 const bytes = execution.invoke('io.BytesIO', [buffer]);
                 const array = execution.invoke('numpy.load', [bytes]);
+                if (unresolved.size > 0) {
+                    const name = unresolved.values().next().value;
+                    throw new numpy.Error(`Unknown type name '${name}'.`);
+                }
                 const layer = { type: 'numpy.ndarray', parameters: [{ name: 'value', tensor: { name: '', array } }] };
                 graphs.push({ layers: [layer] });
                 break;
