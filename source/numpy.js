@@ -44,11 +44,17 @@ numpy.ModelFactory = class {
         switch (context.type) {
             case 'npy': {
                 format = 'NumPy Array';
+                const unresolved = new Set();
                 const execution = new python.Execution();
+                execution.on('resolve', (_, name) => unresolved.add(name));
                 const stream = context.stream;
                 const buffer = stream.peek();
                 const bytes = execution.invoke('io.BytesIO', [buffer]);
                 const array = execution.invoke('numpy.load', [bytes]);
+                if (unresolved.size > 0) {
+                    const name = unresolved.values().next().value;
+                    throw new numpy.Error(`Unknown type name '${name}'.`);
+                }
                 const layer = { type: 'numpy.ndarray', parameters: [{ name: 'value', tensor: { name: '', array } }] };
                 graphs.push({ layers: [layer] });
                 break;
@@ -190,35 +196,17 @@ numpy.Value = class {
 numpy.Node = class {
 
     constructor(layer) {
-        this._name = layer.name || '';
-        this._type = { name: layer.type || 'Object' };
-        this._inputs = [];
+        this.name = layer.name || '';
+        this.type = { name: layer.type || 'Object' };
+        this.inputs = [];
+        this.outputs = [];
+        this.attributes = [];
         for (const parameter of layer.parameters) {
             const initializer = new numpy.Tensor(parameter.tensor.array);
             const value = new numpy.Value(parameter.tensor.name || '', initializer);
             const argument = new numpy.Argument(parameter.name, [value]);
-            this._inputs.push(argument);
+            this.inputs.push(argument);
         }
-    }
-
-    get type() {
-        return this._type;
-    }
-
-    get name() {
-        return this._name;
-    }
-
-    get inputs() {
-        return this._inputs;
-    }
-
-    get outputs() {
-        return [];
-    }
-
-    get attributes() {
-        return [];
     }
 };
 

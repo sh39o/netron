@@ -52,7 +52,7 @@ schema() {
     [[ $(grep -U $'\x0D' ./source/tflite-schema.js) ]] && crlf=1
     temp1=$(mktemp -d)
     temp2=$(mktemp -d)
-    node ./tools/flatc.js --text --root tflite --out ./source/tflite-schema.js ./third_party/source/tensorflow/tensorflow/lite/schema/schema.fbs ./third_party/source/tflite-support/tensorflow_lite_support/metadata/metadata_schema.fbs
+    node ./tools/flatc.js --text --root tflite --out ./source/tflite-schema.js ./third_party/source/tensorflow/tensorflow/compiler/mlir/lite/schema/schema.fbs ./third_party/source/tflite-support/tensorflow_lite_support/metadata/metadata_schema.fbs
     if [[ -n ${crlf} ]]; then
         unix2dos --quiet --newfile ./source/tflite-schema.js ./source/tflite-schema.js
     fi
@@ -68,7 +68,7 @@ metadata() {
     echo "tflite metadata"
     export TF_CPP_MIN_LOG_LEVEL=2
     if [[ $(grep -U $'\x0D' ./source/tflite-metadata.json) ]]; then crlf=1; else crlf=; fi
-    node ./tools/tflite_metadata.js
+    node ./tools/tflite-script.js
     if [[ -n ${crlf} ]]; then
         unix2dos --quiet --newfile ./source/tflite-metadata.json ./source/tflite-metadata.json
     fi
@@ -76,7 +76,7 @@ metadata() {
     venv
     if [[ $(grep -U $'\x0D' ./source/tf-metadata.json) ]]; then crlf=1; else crlf=; fi
     export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-    ${python} ./tools/tf_metadata.py
+    ${python} ./tools/tf_script.py
     if [[ -n ${crlf} ]]; then
         unix2dos --quiet --newfile ./source/tf-metadata.json ./source/tf-metadata.json
     fi

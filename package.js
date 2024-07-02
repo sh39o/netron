@@ -199,7 +199,7 @@ const fork = async (organization, repository) => {
 const pullrequest = async (organization, repository, body) => {
     writeLine(`github push ${repository}`);
     await exec(`git -C dist/${repository} push`);
-    writeLine('github pullrequest homebrew-cask');
+    writeLine(`github pullrequest ${repository}`);
     const headers = {
         Authorization: `Bearer ${process.env.GITHUB_TOKEN}`
     };
@@ -514,9 +514,9 @@ const lint = async () => {
 };
 
 const validate = async() => {
-    await lint();
     writeLine('test');
     await exec('node test/models.js tag:validation');
+    await lint();
 };
 
 const update = async () => {
@@ -531,7 +531,7 @@ const update = async () => {
     const targets = process.argv.length > 3 ? process.argv.slice(3) : [
         'armnn',
         'bigdl',
-        'caffe', 'circle', 'cntk', 'coreml',
+        'caffe', 'caffe2', 'circle', 'cntk', 'coreml',
         'dlc', 'dnn',
         'gguf',
         'keras',
@@ -648,7 +648,8 @@ const version = async () => {
     await exec('git push --tags');
 };
 
-const next = async () => {
+const main = async () => {
+    await load();
     try {
         const task = read();
         switch (task) {
@@ -668,12 +669,12 @@ const next = async () => {
             case 'forge': await forge(); break;
             default: throw new Error(`Unsupported task '${task}'.`);
         }
-    } catch (err) {
+    } catch (error) {
         if (process.stdout.write) {
-            process.stdout.write(err.message + os.EOL);
+            process.stdout.write(error.message + os.EOL);
         }
         process.exit(1);
     }
 };
 
-load().then(() => next());
+await main();

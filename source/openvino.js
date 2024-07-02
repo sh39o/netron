@@ -32,14 +32,32 @@ openvino.ModelFactory = class {
                 /^.*param\.bin$/.test(identifier)) {
                 return;
             }
-            const identifiers = new Set(['config.bin', 'model.bin', '__model__.bin', 'weights.bin', 'programs.bin', 'best.bin', 'ncnn.bin']);
+            const identifiers = new Set([
+                'config.bin', 'model.bin', '__model__.bin', 'weights.bin',
+                'programs.bin', 'best.bin', 'ncnn.bin',
+                'stories15M.bin','stories42M.bin','stories110M.bin','stories260K.bin'
+            ]);
             if (!identifiers.has(identifier)) {
                 const size = Math.min(stream.length, 1024) & 0xFFFC;
-                const buffer = stream.peek(size);
-                const array = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-                const values = Array.from(array);
-                if (values.every((value) => !Number.isNaN(value) && Number.isFinite(value) && value > -10.0 && value < 10.0)) {
-                    context.type = 'openvino.bin';
+                const buffer = stream.peek(size).slice(0);
+                const length = buffer.length / 4;
+                if (length >= 1) {
+                    switch (buffer[0] | buffer[1] << 8 | buffer[2] << 16 | buffer[3] << 24) {
+                        case 0x00000001:
+                        case 0x01306B47:
+                        case 0x000D4B38:
+                        case 0x0002C056: {
+                            break;
+                        }
+                        default: {
+                            const array = new Float32Array(buffer.buffer, buffer.byteOffset, length);
+                            const values = Array.from(array);
+                            if (values.every((x) => x === 0) ||
+                                (array[0] !== 0 && values.every((x) => !Number.isNaN(x) && Number.isFinite(x) && x > -10.0 && x < 10.0))) {
+                                context.type = 'openvino.bin';
+                            }
+                        }
+                    }
                 }
             }
             return;
@@ -318,7 +336,9 @@ openvino.Graph = class {
             });
         };
         const body = net.body;
-        const layers = new Map(body.layers.map((entry) => [entry.id, entry]));
+        const body_layers = body && Array.isArray(body.layers) ? body.layers : [];
+        const body_edges = body && body.edges ? body.edges : {};
+        const layers = new Map(body_layers.map((entry) => [entry.id, entry]));
         const ports = new Map();
         if (Array.isArray(net.input)) {
             for (const input of net.input) {
@@ -336,7 +356,7 @@ openvino.Graph = class {
                 ports.set(output.id, value);
             }
         }
-        for (const layer of body.layers) {
+        for (const layer of body_layers) {
             for (const output of layer.output) {
                 if (!output.precision) {
                     output.precision = layer.precision;
@@ -371,7 +391,7 @@ openvino.Graph = class {
                 }
             }
         }
-        const layer_list = constant(body.layers, body.edges);
+        const layer_list = constant(body_layers, body_edges);
         for (const layer of layer_list) {
             for (const input of layer.input) {
                 if (input.blob) {
@@ -429,15 +449,11 @@ openvino.Graph = class {
             const createMapLayer = (obj) => {
                 const data = {};
                 for (const [name, value] of Object.entries(obj)) {
-                    if (name === 'external_port_id' || name === 'internal_layer_id' || name === 'internal_port_id') {
-                        continue;
+                    if (name !== 'external_port_id' && name !== 'internal_layer_id' && name !== 'internal_port_id') {
+                        data[name] = value;
                     }
-                    data[name] = value;
                 }
-                const layer = {};
-                layer.type = '-';
-                layer.data = data;
-                return layer;
+                return { type: '-', data };
             };
             for (const input of net.port_map.input) {
                 const internal_port = layers.get(input.internal_layer_id).input.find((v) => v.id === input.internal_port_id);
@@ -496,13 +512,103 @@ openvino.Node = class {
             this.outputs.push(argument);
             i += count;
         }
-        for (const [name, value] of Object.entries(layer.data)) {
-            const attribute = new openvino.Attribute(metadata.attribute(type, name), name, value);
+        const op = type;
+        for (const [name, obj] of Object.entries(layer.data)) {
+            const schema = metadata.attribute(op, name);
+            let value = obj;
+            let type = null;
+            let visible = true;
+            if (schema && schema.type !== undefined) {
+                type = schema.type;
+                switch (schema.type) {
+                    case '':
+                    case 'graph':
+                    case 'string':
+                        break;
+                    case 'boolean':
+                        if (obj === '1' || obj === 'true' || obj === 'True') {
+                            value = true;
+                        } else if (obj === '0' || obj === 'false' || obj === 'False') {
+                            value = false;
+                        } else {
+                            throw new openvino.Error(`Unsupported attribute boolean value '${obj}'.`);
+                        }
+                        break;
+                    case 'int32':
+                    case 'int64': {
+                        const intValue = Number.parseInt(obj, 10);
+                        value = Number.isNaN(obj - intValue) ? obj : intValue;
+                        break;
+                    }
+                    case 'float32':
+                    case 'float64': {
+                        const floatValue = Number.parseFloat(obj);
+                        value = Number.isNaN(obj - floatValue) ? obj : floatValue;
+                        break;
+                    }
+                    case 'int32[]':
+                        if (obj.length > 2) {
+                            let ints = [];
+                            for (const entry of obj.split(',')) {
+                                const item = entry.trim();
+                                const intValue = Number.parseInt(item, 10);
+                                if (Number.isNaN(item - intValue)) {
+                                    ints = null;
+                                } else if (ints !== null) {
+                                    ints.push(intValue);
+                                }
+                            }
+                            if (ints !== null) {
+                                value = ints;
+                            }
+                        }
+                        break;
+                    case 'float32[]':
+                        if (obj.length > 2) {
+                            let floats = [];
+                            for (const entry of obj.split(',')) {
+                                const item = entry.trim();
+                                const floatValue = Number.parseFloat(item);
+                                if (Number.isNaN(item - floatValue)) {
+                                    floats = null;
+                                } else if (floats !== null) {
+                                    floats.push(floatValue);
+                                }
+                            }
+                            if (floats !== null) {
+                                value = floats;
+                            }
+                        }
+                        break;
+                    default:
+                        throw new openvino.Error(`Unsupported attribute type '${schema.type}'.`);
+                }
+            }
+            if (schema && schema.visible === false) {
+                visible = false;
+            } else if (schema && schema.default !== undefined) {
+                let defaultValue = schema.default;
+                if (value === defaultValue) {
+                    visible = false;
+                } else if (Array.isArray(value) && Array.isArray(defaultValue)) {
+                    defaultValue = defaultValue.slice(0, defaultValue.length);
+                    if (defaultValue.length > 1 && defaultValue[defaultValue.length - 1] === null) {
+                        defaultValue.pop();
+                        while (defaultValue.length < value.length) {
+                            defaultValue.push(defaultValue[defaultValue.length - 1]);
+                        }
+                    }
+                    if (value.every((item, index) => item === defaultValue[index])) {
+                        visible = false;
+                    }
+                }
+            }
+            const attribute = new openvino.Argument(name, value, type, visible);
             this.attributes.push(attribute);
         }
         if (layer.type === 'TensorIterator') {
             const graph = new openvino.Graph(metadata, layer, null);
-            const attribute = new openvino.Attribute({ type: 'graph' }, 'body', graph);
+            const attribute = new openvino.Argument('body', graph, 'graph');
             this.attributes.push(attribute);
         }
         for (const blob of layer.blobs || []) {
@@ -628,9 +734,11 @@ openvino.Node = class {
 
 openvino.Argument = class {
 
-    constructor(name, value) {
+    constructor(name, value, type, visible) {
         this.name = name;
         this.value = value;
+        this.type = type || null;
+        this.visible = visible !== false;
     }
 };
 
@@ -643,99 +751,6 @@ openvino.Value = class {
         this.name = name;
         this.type = initializer ? initializer.type : type;
         this.initializer = initializer || null;
-    }
-};
-
-openvino.Attribute = class {
-
-    constructor(metadata, name, value) {
-        this.name = name;
-        this.value = value;
-        if (metadata && metadata.type !== undefined) {
-            this.type = metadata.type;
-            switch (metadata.type) {
-                case '':
-                case 'graph':
-                case 'string':
-                    break;
-                case 'boolean':
-                    if (value === '1' || value === 'true' || value === 'True') {
-                        this.value = true;
-                    } else if (value === '0' || value === 'false' || value === 'False') {
-                        this.value = false;
-                    } else {
-                        throw new openvino.Error(`Unsupported attribute boolean value '${value}'.`);
-                    }
-                    break;
-                case 'int32':
-                case 'int64': {
-                    const intValue = Number.parseInt(this.value, 10);
-                    this.value = Number.isNaN(this.value - intValue) ? value : intValue;
-                    break;
-                }
-                case 'float32':
-                case 'float64': {
-                    const floatValue = Number.parseFloat(this.value);
-                    this.value = Number.isNaN(this.value - floatValue) ? value : floatValue;
-                    break;
-                }
-                case 'int32[]':
-                    if (this.value.length > 2) {
-                        let ints = [];
-                        for (const entry of this.value.split(',')) {
-                            const item = entry.trim();
-                            const intValue = Number.parseInt(item, 10);
-                            if (Number.isNaN(item - intValue)) {
-                                ints = null;
-                            } else if (ints !== null) {
-                                ints.push(intValue);
-                            }
-                        }
-                        if (ints !== null) {
-                            this.value = ints;
-                        }
-                    }
-                    break;
-                case 'float32[]':
-                    if (this.value.length > 2) {
-                        let floats = [];
-                        for (const entry of this.value.split(',')) {
-                            const item = entry.trim();
-                            const floatValue = Number.parseFloat(item);
-                            if (Number.isNaN(item - floatValue)) {
-                                floats = null;
-                            } else if (floats !== null) {
-                                floats.push(floatValue);
-                            }
-                        }
-                        if (floats !== null) {
-                            this.value = floats;
-                        }
-                    }
-                    break;
-                default:
-                    throw new openvino.Error(`Unsupported attribute type '${metadata.type}'.`);
-            }
-        }
-        if (metadata && metadata.visible === false) {
-            this.visible = false;
-        } else if (metadata && metadata.default !== undefined) {
-            let defaultValue = metadata.default;
-            if (this.value === defaultValue) {
-                this.visible = false;
-            } else if (Array.isArray(this.value) && Array.isArray(defaultValue)) {
-                defaultValue = defaultValue.slice(0, defaultValue.length);
-                if (defaultValue.length > 1 && defaultValue[defaultValue.length - 1] === null) {
-                    defaultValue.pop();
-                    while (defaultValue.length < this.value.length) {
-                        defaultValue.push(defaultValue[defaultValue.length - 1]);
-                    }
-                }
-                if (this.value.every((item, index) => item === defaultValue[index])) {
-                    this.visible = false;
-                }
-            }
-        }
     }
 };
 

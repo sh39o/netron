@@ -41,6 +41,10 @@ dlc.Model = class {
                     this.source = version ? `${source} v${version}` : source;
                 }
             }
+            const license = target.metadata.get('model-copyright');
+            if (license && license !== 'N/A') {
+                this.metadata.push(new dlc.Argument('license', license));
+            }
         }
         for (const graph of target.graphs) {
             this.graphs = [new dlc.Graph(metadata, target.version, graph)];
@@ -98,7 +102,7 @@ dlc.Graph = class {
         }
         for (const [name, tensor] of values) {
             const type = tensor.shape ? new dlc.TensorType(tensor.dtype, tensor.shape) : null;
-            const initializer = tensor.data && tensor.data ? new dlc.Tensor(type, tensor.data) : null;
+            const initializer = tensor.data && tensor.data ? new dlc.Tensor(tensor.name, type, tensor.data) : null;
             const value = new dlc.Value(name, type, initializer);
             values.set(name, value);
         }
@@ -121,9 +125,10 @@ dlc.Graph = class {
 
 dlc.Argument = class {
 
-    constructor(name, value) {
+    constructor(name, value, type) {
         this.name = name;
         this.value = value;
+        this.type = type || null;
     }
 };
 
@@ -141,15 +146,15 @@ dlc.Value = class {
 
 dlc.Node = class {
 
-    constructor(metadata, version, node, value) {
-        const type = `${node.type}:v${version}`;
+    constructor(metadata, version, obj, value) {
+        const type = `${obj.type}:v${version}`;
         this.type = { ...metadata.type(type) };
-        this.type.name = node.type;
-        this.name = node.name;
+        this.type.name = obj.type;
+        this.name = obj.name;
         this.inputs = [];
         this.outputs = [];
         this.attributes = [];
-        const inputs = Array.isArray(node.inputs) ? Array.from(node.inputs).map((input) => value(input)) : [];
+        const inputs = Array.isArray(obj.inputs) ? Array.from(obj.inputs).map((name) => value(name)) : [];
         if (Array.isArray(this.type.inputs) && inputs.length === this.type.inputs.length) {
             for (let i = 0; i < inputs.length; i++) {
                 const argument = new dlc.Argument(this.type.inputs[i].name, [inputs[i]]);
@@ -159,7 +164,7 @@ dlc.Node = class {
             const argument = new dlc.Argument(inputs.length === 1 ? 'input' : 'inputs', inputs);
             this.inputs.push(argument);
         }
-        const outputs = Array.isArray(node.outputs) ? Array.from(node.outputs).map((output) => value(output)) : [];
+        const outputs = Array.isArray(obj.outputs) ? Array.from(obj.outputs).map((name) => value(name)) : [];
         if (Array.isArray(this.type.outputs) && outputs.length === this.type.outputs.length) {
             for (let i = 0; i < outputs.length; i++) {
                 const argument = new dlc.Argument(this.type.outputs[i].name, [outputs[i]]);
@@ -169,45 +174,38 @@ dlc.Node = class {
             const argument = new dlc.Argument(outputs.length === 1 ? 'output' : 'outputs', outputs);
             this.outputs.push(argument);
         }
-        if (node.attributes) {
-            for (const attr of node.attributes) {
+        if (obj.attributes) {
+            for (const attr of obj.attributes) {
                 if (attr.name === 'OutputDims') {
                     continue;
                 }
-                const attribute = new dlc.Attribute(metadata.attribute(type, attr.name), version, attr);
+                const schema = metadata.attribute(obj.type, attr.name);
+                let type = attr.type;
+                switch (type) {
+                    case 'tensor': {
+                        const tensor = attr.data;
+                        const type = new dlc.TensorType(tensor.dtype, tensor.shape);
+                        value = new dlc.Tensor(tensor.name, type, tensor.data);
+                        break;
+                    }
+                    default: {
+                        value = attr.data;
+                    }
+                }
+                if (schema && schema.type) {
+                    type = schema.type;
+                    value = dlc.Utility.enum(version, type, value);
+                }
+                const attribute = new dlc.Argument(attr.name, value, type);
                 this.attributes.push(attribute);
             }
         }
-        if (node.weights) {
-            for (const tensor of node.weights) {
+        if (obj.weights) {
+            for (const tensor of obj.weights) {
                 const type = new dlc.TensorType(tensor.data.dtype, tensor.shape);
-                const value = new dlc.Value('', type, new dlc.Tensor(type, tensor.data));
+                const value = new dlc.Value('', type, new dlc.Tensor(tensor.name, type, tensor.data));
                 this.inputs.push(new dlc.Argument(tensor.name, [value]));
             }
-        }
-    }
-};
-
-dlc.Attribute = class {
-
-    constructor(metadata, version, attribute) {
-        this.name = attribute.name;
-        this.type = attribute.type;
-        switch (this.type) {
-            case 'tensor': {
-                const tensor = attribute.data;
-                const type = new dlc.TensorType(tensor.dtype, tensor.shape);
-                const data = tensor.data;
-                this.value = new dlc.Tensor(type, data);
-                break;
-            }
-            default: {
-                this.value = attribute.data;
-            }
-        }
-        if (metadata && metadata.type) {
-            this.type = metadata.type;
-            this.value = dlc.Utility.enum(version, this.type, this.value);
         }
     }
 };
@@ -240,7 +238,8 @@ dlc.TensorShape = class {
 
 dlc.Tensor = class {
 
-    constructor(type, data) {
+    constructor(name, type, data) {
+        this.name = name;
         this.type = type;
         if (data instanceof Uint8Array) {
             this.encoding = '<';
@@ -357,7 +356,7 @@ dlc.Container = class {
             delete this._metadata;
             const reader = text.Reader.open(stream);
             for (;;) {
-                const line = reader.read();
+                const line = reader.read('\n');
                 if (line === undefined) {
                     break;
                 }
@@ -435,6 +434,7 @@ dlc.Container = class {
                 case 0x0008: return 'int8';
                 case 0x0016: return 'int16';
                 case 0x0032: return 'int32';
+                case 0x0064: return 'int64';
                 case 0x0108: return 'int8';
                 case 0x0132: return 'int32';
                 case 0x0216: return 'float16';
@@ -442,6 +442,7 @@ dlc.Container = class {
                 case 0x0308: return 'qint8';
                 case 0x0316: return 'qint16';
                 case 0x0332: return 'qint32';
+                case 0x0404: return 'uint4';
                 case 0x0408: return 'uint8';
                 case 0x0416: return 'uint16';
                 case 0x0432: return 'uint32';
@@ -587,7 +588,13 @@ dlc.Container = class {
             graph.tensors.sort((a, b) => a.name.localeCompare(b.name));
             for (const tensor of graph.tensors) {
                 if (tensor.location === 4) {
-                    tensor.data = buffers ? buffers[index++].bytes : tensors.get(tensor.name).bytes;
+                    if (buffers && index < buffers.length) {
+                        tensor.data = buffers[index++].bytes;
+                    } else if (tensors.has(tensor.name)) {
+                        tensor.data = tensors.get(tensor.name).bytes;
+                    } else {
+                        throw new dlc.Error(`Unknown tensor `);
+                    }
                 }
             }
             for (let i = 0; i < graph.nodes.length; i++) {
@@ -596,7 +603,13 @@ dlc.Container = class {
                 for (const attribute of node.attributes) {
                     const tensor = attribute.tensor;
                     if (tensor) {
-                        tensor.data = buffers ? buffers[index++].bytes : tensors.get(tensor.name).bytes;
+                        if (buffers && index < buffers.length) {
+                            tensor.data = buffers[index++].bytes;
+                        } else if (tensors.has(tensor.name)) {
+                            tensor.data = tensors.get(tensor.name).bytes;
+                        } else {
+                            throw new dlc.Error(`Unknown tensor `);
+                        }
                     }
                 }
             }

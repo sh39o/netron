@@ -157,9 +157,11 @@ class Table {
         this.schema = schema;
         const line = `${Array.from(this.schema).join(',')}\n`;
         this.content = [line];
+        this.entries = [];
     }
 
     async add(row) {
+        this.entries.push(row);
         row = new Map(row);
         const line = `${Array.from(this.schema).map((key) => {
             const value = row.has(key) ? row.get(key) : '';
@@ -182,6 +184,11 @@ class Table {
             this.file = file;
         }
     }
+
+    summarize(name) {
+        const entries = this.entries.filter((entry) => entry.has(name));
+        return entries.map((entry) => entry.get(name)).reduce((a, c) => a + c, 0);
+    }
 }
 
 class Worker {
@@ -199,6 +206,7 @@ class Worker {
         this._events.error = (error) => this._error(error);
         this._worker = new worker_threads.Worker('./test/worker.js');
         for (let task = this._queue.pop(); task; task = this._queue.pop()) {
+            task.measures = this._measures ? new Map() : null;
             this._logger.update(this._identifier, null);
             /* eslint-disable no-await-in-loop */
             await new Promise((resolve) => {
@@ -211,6 +219,7 @@ class Worker {
         this._logger.delete(this._identifier);
         await this._worker.terminate();
     }
+
     _attach() {
         this._worker.on('message', this._events.message);
         this._worker.on('error', this._events.error);
@@ -233,7 +242,9 @@ class Worker {
                 break;
             }
             case 'complete': {
-                await this._measures.add(message.measures);
+                if (this._measures) {
+                    await this._measures.add(message.measures);
+                }
                 this._detach();
                 this._resolve();
                 delete this._resolve;
@@ -255,23 +266,30 @@ class Worker {
 const main = async () => {
     try {
         const args = process.argv.length > 2 ? process.argv.slice(2) : [];
+        const measure = args.length > 0 && args[0] === 'measure' ? args.shift() : null;
         const exists = await Promise.all(args.map((pattern) => access(pattern)));
         const paths = exists.length > 0 && exists.every((value) => value);
         const patterns = paths ? [] : args;
         const targets = paths ? args.map((path) => ({ target: path })) : await configuration();
         const queue = new Queue(targets, patterns);
-        const threads = inspector.url() ? 1 : undefined;
+        const threads = measure || inspector.url() ? 1 : undefined;
         const logger = new Logger(threads);
-        const measures = new Table(['name', 'download', 'load', 'validate', 'render']);
-        // await measures.log(dirname('..', 'dist', 'test', 'measures.csv'));
+        let measures = null;
+        if (measure) {
+            measures = new Table(['name', 'download', 'load', 'validate', 'render']);
+            await measures.log(dirname('..', 'dist', 'test', 'measures.csv'));
+        }
         if (threads === 1) {
             const worker = await import('./worker.js');
             for (let item = queue.pop(); item; item = queue.pop()) {
                 const target = new worker.Target(item);
+                target.measures = measures ? new Map() : null;
                 target.on('status', (_, message) => logger.update('', message));
                 /* eslint-disable no-await-in-loop */
                 await target.execute();
-                await measures.add(target.measures);
+                if (target.measures) {
+                    await measures.add(target.measures);
+                }
                 /* eslint-enable no-await-in-loop */
             }
         } else {
@@ -281,9 +299,27 @@ const main = async () => {
             const promises = workers.map((worker) => worker.start());
             await Promise.all(promises);
         }
+        if (measure) {
+            const values = {
+                download: measures.summarize('download'),
+                load: measures.summarize('load'),
+                validate: measures.summarize('validate'),
+                render: measures.summarize('render')
+            };
+            values.total = values.load + values.validate + values.render;
+            const pad1 = Math.max(...Object.keys(values).map((key) => key.length));
+            const pad2 = Math.max(...Object.values(values).map((value) => value.toFixed(2).indexOf('.')));
+            write('\n');
+            for (let [key, value] of Object.entries(values)) {
+                key = `${key}:`.padEnd(pad1 + 1);
+                value = `${value.toFixed(2)}`.padStart(pad2 + 3);
+                write(`${key} ${value}\n`);
+            }
+            write('\n');
+        }
     } catch (error) {
         exit(error);
     }
 };
 
-main();
+await main();

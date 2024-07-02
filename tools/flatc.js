@@ -1298,20 +1298,22 @@ const main = async (args) => {
         if (options.out) {
             await fs.writeFile(options.out, generator.content, 'utf-8');
         }
-    } catch (err) {
-        if (err instanceof flatc.Error && !options.verbose) {
-            process.stderr.write(`${err.message}\n`);
+    } catch (error) {
+        if (error instanceof flatc.Error && !options.verbose) {
+            process.stderr.write(`${error.message}\n`);
         } else {
-            process.stderr.write(`${err.stack}\n`);
+            process.stderr.write(`${error.stack}\n`);
         }
         process.exit(1);
     }
     process.exit(0);
 };
 
-if (typeof process === 'object' && Array.isArray(process.argv) && process.argv.length > 1) {
+if (typeof process === 'object' &&
+    Array.isArray(process.argv) && process.argv.length > 1 &&
+    path.basename(process.argv[1]) === 'flatc.js') {
     const args = process.argv.slice(2);
-    main(args);
+    await main(args);
 }
 
 export const Root = flatc.Root;

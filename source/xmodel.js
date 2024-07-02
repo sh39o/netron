@@ -163,9 +163,11 @@ xmodel.Subgraph = class {
 
 xmodel.Argument = class {
 
-    constructor(name, value) {
+    constructor(name, value, type, visible) {
         this.name = name;
         this.value = value;
+        this.type = type || null;
+        this.visible = visible !== false;
     }
 };
 
@@ -205,90 +207,34 @@ xmodel.Node = class {
             for (const [name, obj] of Object.entries(op_node.op_attr)) {
                 if (name === 'device') {
                     this.device = obj.string_value;
-                    continue;
-                }
-                if (name.startsWith('quant_in_') || name.startsWith('quant_out_')) {
-                    continue;
-                }
-                const value = xmodel.Utility.attribute(obj);
-                if (name === "type" && typeof obj.string_value === 'string') {
-                  this.chain.unshift(new xmodel.Node(metadata, { op_type: value.value.toLowerCase() }, values));
-                }
-                if (name === 'nonlinear' && value.value && value.value !== 'NONE' && value.value !== 0) {
-                    let activation = value.value;
-                    if (typeof activation === 'string') {
-                        activation = activation.toLowerCase();
-                    } else if (Number.isInteger(activation) && activation < 6) {
-                        activation = [ 'none', 'relu', 'prelu', 'leakyrelu', 'relu6', 'sigmoid'][activation];
+                } else if (name === "type" && typeof obj.string_value === 'string') {
+                    this.chain.unshift(new xmodel.Node(metadata, { op_type: value.value.toLowerCase() }, values));
+                } else if (name !== 'workload' && !name.startsWith('quant_in_') && !name.startsWith('quant_out_')) {
+                    const attr = xmodel.Utility.attribute(obj);
+                    if (name === 'nonlinear' && attr.value && attr.value !== 'NONE' && attr.value !== 0) {
+                        let activation = attr.value;
+                        if (typeof activation === 'string') {
+                            activation = activation.toLowerCase();
+                        } else if (Number.isInteger(activation) && activation < 5) {
+                            activation = ['none', 'relu', 'prelu', 'leakyrelu', 'relu6', 'sigmoid'][activation];
+                        } else {
+                            activation = JSON.stringify(activation);
+                        }
+                        const node = new xmodel.Node(metadata, { op_type: activation }, values);
+                        this.chain.push(node);
                     } else {
-                        activation = JSON.stringify(activation);
+                        const schema = metadata.attribute(this.type.name, name);
+                        const visible = (schema && schema.default !== undefined && schema.default === attr.value) ||
+                            (schema && Array.isArray(schema.default) && Array.isArray(this.value) && schema.default.length === attr.value.length && schema.default.every((value, index) => value === attr.value[index])) ? false : true;
+                        const attribute = new xmodel.Argument(name, attr.value, attr.type, visible);
+                        this.attributes.push(attribute);
                     }
-                    this.chain.push(new xmodel.Node(metadata, { op_type: activation }, values));
                 }
-                if (name === 'data' && value.value) {
-                    var np_value;
-                    var data = new Uint8Array(value.value);
-                    var data_type_str = op_node.op_attr.data_type.string_value.toUpperCase();
-                    switch (data_type_str) {
-                        case "XINT8":
-                        case "INT8":
-                            np_value = new Int8Array(data.buffer);
-                            break;
-                        case "XINT16":
-                        case "INT16":
-                            np_value = new Int16Array(data.buffer);
-                            break;
-                        case "XINT32":
-                        case "INT32":
-                            np_value = new Int32Array(data.buffer);
-                            break;
-                        case "XUINT8":
-                        case "UINT8":
-                            np_value = new Uint8Array(data.buffer);
-                            break;
-                        case "XUINT16":
-                        case "UINT16":
-                            np_value = new Uint16Array(data.buffer);
-                            break;
-                        case "XUINT32":
-                        case "UINT32":
-                            np_value = new Uint32Array(data.buffer);
-                            break;
-                        case "XINT64":
-                        case "INT64":
-                            np_value = new BigInt64Array(data.buffer);
-                            break;
-                        case "XUINT64":
-                        case "INT64":
-                            np_value = new BigUint64Array(data.buffer);
-                            break;
-                        case "FLOAT32":
-                            np_value = new Float32Array(data.buffer);
-                            break;
-                        case "FLOAT64":
-                            np_value = new Float64Array(data.buffer);
-                            break;
-                        case "BFLOAT16":
-                            const bfloat16Array = new Uint16Array(data.buffer);
-                            np_value = new Float32Array(bfloat16Array.length);
-                            for (let i = 0; i < bfloat16Array.length; i++) {
-                                np_value[i] = new Float32Array(new Uint16Array([0, bfloat16Array[i]]).buffer)[0];
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                    this.attributes.push(new xmodel.Attribute(metadata.attribute(this.type, name), name, {"type": "byte[]", "value": np_value}));
-                    continue;
-                }
-                const attribute = new xmodel.Attribute(metadata.attribute(this.type, name), name, value);
-                this.attributes.push(attribute);
             }
         }
         if (op_node.args) {
             for (const input of op_node.args) {
-                const args = input.arg_ops.map((arg_op) => values.map(arg_op));
-                const argument = new xmodel.Argument(input.arg_name, args);
+                const argument = new xmodel.Argument(input.arg_name, input.arg_ops.map((arg_op) => values.map(arg_op)));
                 this.inputs.push(argument);
             }
         }
@@ -299,28 +245,9 @@ xmodel.Node = class {
     }
 };
 
-xmodel.Attribute = class {
-
-    constructor(metadata, name, attribute) {
-        this.name = name;
-        this.type = attribute.type;
-        this.value = attribute.value;
-        if (metadata) {
-            if (metadata.default !== undefined) {
-                if (metadata.default === this.value) {
-                    this.visible = false;
-                }
-                if (Array.isArray(metadata.default) && Array.isArray(this.value) &&
-                    metadata.default.length === this.value.length && metadata.default.every((value, index) => value === this.value[index])) {
-                    this.visible = false;
-                }
-            }
-        }
-    }
-};
-
 xmodel.TensorType = class {
     constructor(tensor) {
+        let type = '';
         switch (tensor.data_type) {
             case 0: this.dataType = 'int'; break;
             case 1: this.dataType = 'uint'; break;
@@ -330,7 +257,7 @@ xmodel.TensorType = class {
             case 5: this.dataType = 'bfloat'; break;
             default: this.dataType = 'unknown'; break;
         }
-        this.dataType += tensor.tensor_bit_width.toString();
+        this.dataType = type + tensor.tensor_bit_width.toString();
         this.shape = new xmodel.TensorShape(tensor.tensor_dim);
         if (tensor.tensor_attr) {
             const attr = {};

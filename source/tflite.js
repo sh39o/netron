@@ -111,15 +111,26 @@ tflite.Model = class {
         let modelMetadata = null;
         for (const metadata of model.metadata) {
             const buffer = model.buffers[metadata.buffer];
+            let data = null;
+            const position = stream.position;
             if (buffer && buffer.data && buffer.data.length > 0) {
+                data = buffer.data;
+            } else if (buffer && buffer.offset !== 0n && buffer.size !== 0n) {
+                const offset = buffer.offset.toNumber();
+                const size = buffer.size.toNumber();
+                stream.seek(offset);
+                data = stream.read(size);
+            }
+            stream.seek(position);
+            if (data) {
                 switch (metadata.name) {
                     case 'min_runtime_version': {
                         const decoder = new TextDecoder();
-                        this.runtime = decoder.decode(buffer.data);
+                        this.runtime = decoder.decode(data);
                         break;
                     }
                     case 'TFLITE_METADATA': {
-                        const reader = flatbuffers.BinaryReader.open(buffer.data);
+                        const reader = flatbuffers.BinaryReader.open(data);
                         if (!reader || !tflite.schema.ModelMetadata.identifier(reader)) {
                             throw new tflite.Error('Invalid TensorFlow Lite metadata.');
                         }
@@ -131,7 +142,7 @@ tflite.Model = class {
                             this.version = modelMetadata.version;
                         }
                         if (modelMetadata.description) {
-                            this.description = this._description ? [this._description, modelMetadata.description].join(' ') : modelMetadata.description;
+                            this.description = this.description ? [this.description, modelMetadata.description].join(' ') : modelMetadata.description;
                         }
                         if (modelMetadata.author) {
                             this.metadata.push(new tflite.Argument('author', modelMetadata.author));
@@ -142,6 +153,9 @@ tflite.Model = class {
                         break;
                     }
                     default: {
+                        const value = data.length < 256 && data.every((c) => c >= 32 && c < 128) ? String.fromCharCode.apply(null, data) : '?';
+                        const argument = new tflite.Argument(metadata.name, value);
+                        this.metadata.push(argument);
                         break;
                     }
                 }
@@ -269,24 +283,23 @@ tflite.Signature = class {
 
 tflite.Node = class {
 
-    constructor(metadata, node, type, location, tensors) {
-        this._location = location;
-        this._type = type.custom ? { name: type.name } : metadata.type(type.name);
-        this._inputs = [];
-        this._outputs = [];
-        this._attributes = [];
+    constructor(metadata, node, type, identifier, tensors) {
+        this.name = '';
+        this.identifier = identifier;
+        this.type = type.custom ? { name: type.name } : metadata.type(type.name);
+        this.inputs = [];
+        this.outputs = [];
+        this.attributes = [];
         if (node) {
-            let inputs = [];
-            let outputs = [];
-            inputs = Array.from(node.inputs || new Int32Array(0));
-            outputs = Array.from(node.outputs || new Int32Array(0));
+            const attributes = [];
+            const inputs = Array.from(node.inputs || new Int32Array(0));
             for (let i = 0; i < inputs.length;) {
                 let count = 1;
                 let name = null;
                 let visible = true;
                 const values = [];
-                if (this._type && this._type.inputs && i < this._type.inputs.length) {
-                    const input = this._type.inputs[i];
+                if (this.type && this.type.inputs && i < this.type.inputs.length) {
+                    const input = this.type.inputs[i];
                     name = input.name;
                     if (input.list) {
                         count = inputs.length - i;
@@ -303,22 +316,23 @@ tflite.Node = class {
                 }
                 name = name ? name : (i + 1).toString();
                 i += count;
-                const argument = new tflite.Argument(name, values, visible);
-                this._inputs.push(argument);
+                const argument = new tflite.Argument(name, values, null, visible);
+                this.inputs.push(argument);
             }
+            const outputs = Array.from(node.outputs || new Int32Array(0));
             for (let i = 0; i < outputs.length; i++) {
                 const index = outputs[i];
                 const value = tensors.map(index);
                 const values = value ? [value] : [];
                 let name = (i + 1).toString();
-                if (this._type && this._type.outputs && i < this._type.outputs.length) {
-                    const output = this._type.outputs[i];
+                if (this.type && this.type.outputs && i < this.type.outputs.length) {
+                    const output = this.type.outputs[i];
                     if (output && output.name) {
                         name = output.name;
                     }
                 }
                 const argument = new tflite.Argument(name, values);
-                this._outputs.push(argument);
+                this.outputs.push(argument);
             }
             if (type.custom && node.custom_options && node.custom_options.length > 0) {
                 let decoded = false;
@@ -328,14 +342,12 @@ tflite.Node = class {
                         if (reader) {
                             const custom_options = reader.read();
                             if (Array.isArray(custom_options)) {
-                                const attribute = new tflite.Attribute(null, 'custom_options', custom_options);
-                                this._attributes.push(attribute);
+                                attributes.push([null, 'custom_options', custom_options]);
                                 decoded = true;
                             } else if (custom_options) {
                                 for (const [key, value] of Object.entries(custom_options)) {
                                     const schema = metadata.attribute(type.name, key);
-                                    const attribute = new tflite.Attribute(schema, key, value);
-                                    this._attributes.push(attribute);
+                                    attributes.push([schema, key, value]);
                                 }
                                 decoded = true;
                             }
@@ -346,8 +358,7 @@ tflite.Node = class {
                 }
                 if (!decoded) {
                     const schema = metadata.attribute(type.name, 'custom');
-                    const attribute = new tflite.Attribute(schema, 'custom', Array.from(node.custom_options));
-                    this._attributes.push(attribute);
+                    attributes.push([schema, 'custom', Array.from(node.custom_options)]);
                 }
             }
             const options = node.builtin_options;
@@ -360,94 +371,46 @@ tflite.Node = class {
                         const list = ['Unknown', 'Relu', 'ReluN1To1', 'Relu6', 'Tanh', 'SignBit'];
                         const type = list[value];
                         const node = new tflite.Node(metadata, null, { name: type }, null, []);
-                        this._chain = [node];
+                        this.chain = [node];
                     }
                     const schema = metadata.attribute(type.name, name);
-                    const attribute = new tflite.Attribute(schema, name, value);
-                    this._attributes.push(attribute);
+                    attributes.push([schema, name, value]);
                 }
             }
-        }
-    }
-
-    get type() {
-        return this._type;
-    }
-
-    get name() {
-        return '';
-    }
-
-    get location() {
-        return this._location;
-    }
-
-    get inputs() {
-        return this._inputs;
-    }
-
-    get outputs() {
-        return this._outputs;
-    }
-
-    get chain() {
-        return this._chain;
-    }
-
-    get attributes() {
-        return this._attributes;
-    }
-};
-
-tflite.Attribute = class {
-
-    constructor(metadata, name, value) {
-        this._name = name;
-        this._value = ArrayBuffer.isView(value) ? Array.from(value) : value;
-        this._type = metadata && metadata.type ? metadata.type : null;
-        if (this._name === 'fused_activation_function') {
-            this._visible = false;
-        }
-        if (this._type) {
-            this._value = tflite.Utility.enum(this._type, this._value);
-        }
-        if (metadata) {
-            if (metadata.visible === false) {
-                this._visible = false;
-            } else if (metadata.default !== undefined) {
-                value = this._value;
-                if (typeof value === 'function') {
-                    value = value();
+            this.attributes = attributes.map(([metadata, name, value]) => {
+                const type = metadata && metadata.type ? metadata.type : null;
+                value = ArrayBuffer.isView(value) ? Array.from(value) : value;
+                let visible = true;
+                if (name === 'fused_activation_function') {
+                    visible = false;
                 }
-                if (value === metadata.default) {
-                    this._visible = false;
+                if (type) {
+                    value = tflite.Utility.enum(type, value);
                 }
-            }
+                if (metadata) {
+                    if (metadata.visible === false) {
+                        visible = false;
+                    } else if (metadata.default !== undefined) {
+                        if (typeof value === 'function') {
+                            value = value();
+                        }
+                        if (value === metadata.default) {
+                            visible = false;
+                        }
+                    }
+                }
+                return new tflite.Argument(name, value, type, visible);
+            });
         }
-    }
-
-    get name() {
-        return this._name;
-    }
-
-    get type() {
-        return this._type;
-    }
-
-    get value() {
-        return this._value;
-    }
-
-    get visible() {
-        return this._visible !== false;
     }
 };
 
 tflite.Argument = class {
 
-    constructor(name, value, visible) {
+    constructor(name, value, type, visible) {
         this.name = name;
         this.value = value;
+        this.type = type || null;
         this.visible = visible !== false;
     }
 };
@@ -457,7 +420,7 @@ tflite.Value = class {
     constructor(index, tensor, initializer, description, denotation) {
         const name = tensor.name || '';
         this.name = `${name}\n${index}`;
-        this.location = index.toString();
+        this.identifier = index.toString();
         this.type = tensor.type !== undefined && tensor.shape !== undefined ? new tflite.TensorType(tensor, denotation) : null;
         this.initializer = initializer;
         this.description = description;
@@ -478,7 +441,7 @@ tflite.Value = class {
 tflite.Tensor = class {
 
     constructor(index, tensor, buffer, stream, is_variable) {
-        this.location = index.toString();
+        this.identifier = index.toString();
         this.name = tensor.name;
         this.type = new tflite.TensorType(tensor);
         this.category = is_variable ? 'Variable' : '';
@@ -532,8 +495,9 @@ tflite.Tensor = class {
 tflite.TensorType = class {
 
     constructor(tensor, denotation) {
+        const shape = tensor.shape_signature && tensor.shape_signature.length > 0 ? tensor.shape_signature : tensor.shape;
         this.dataType = tflite.Utility.dataType(tensor.type);
-        this.shape = new tflite.TensorShape(Array.from(tensor.shape || []));
+        this.shape = new tflite.TensorShape(Array.from(shape || []));
         this.denotation = denotation;
     }
 

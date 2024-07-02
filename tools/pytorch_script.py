@@ -49,20 +49,8 @@ schema_source_files = [
         re.compile(r'(aten::.*->\s*.*)"', re.MULTILINE)),
     ('torch/csrc/jit/runtime/register_special_ops.cpp',
         re.compile(r'(aten::.*->\s*.*)"', re.MULTILINE)),
-    ('caffe2/operators/copy_op.cc',
-        re.compile(r'(_caffe2::.*->\s*Tensor)', re.MULTILINE)),
-    ('caffe2/operators/batch_permutation_op.cc',
-        re.compile(r'(_caffe2::.*->\s*Tensor)', re.MULTILINE)),
-    ('caffe2/operators/collect_and_distribute_fpn_rpn_proposals_op.cc',
-        re.compile(r'"(_caffe2::[\w+]*\([\w"\s\[\],]*\)\s*->\s*\([\w"\s\[\],]*\))"', re.MULTILINE)),
-    ('caffe2/operators/box_with_nms_limit_op.cc',
-        re.compile(r'"(_caffe2::[\w+]*\([\w"\s\[\],]*\)\s*->\s*\([\w"\s\[\],]*\))"', re.MULTILINE)),
-    ('caffe2/operators/bbox_transform_op.cc',
-        re.compile(r'"(_caffe2::[\w+]*\([\w"\s\[\],]*\)\s*->\s*\([\w"\s\[\],]*\))"', re.MULTILINE)),
-    ('caffe2/operators/generate_proposals_op.cc',
-        re.compile(r'"(_caffe2::[\w+]*\([\w"\s\[\],]*\)\s*->\s*\([\w"\s\[\],]*\))"', re.MULTILINE)),
-    ('caffe2/operators/roi_align_op.cc',
-        re.compile(r'"(_caffe2::[\w+]*\([\w"\s\[\],]*\)\s*->.*)"', re.MULTILINE))
+    ('torch/jit/_shape_functions.py',
+        re.compile(r'(prim::.*->\s*.*)"', re.MULTILINE))
 ]
 
 known_schema_definitions = [
@@ -84,7 +72,7 @@ def _parse_schemas():
             definition = entry[2] + value if len(entry) > 2 else value
             schema = pytorch.Schema(definition)
             if schema.name in schemas:
-                raise KeyError()
+                raise KeyError(schema.name)
             schemas[schema.name] = schema
     for definition in known_schema_definitions:
         schema = pytorch.Schema(definition)
@@ -138,9 +126,12 @@ def _check_types(types, schemas):
     for key in list(types.keys()):
         if key.startswith('torch.nn'):
             types.pop(key)
-        if key.startswith('torchvision::') or \
+        if key.startswith('prim::') or \
+           key.startswith('torchvision::') or \
            key.startswith('torchaudio::') or \
            key.startswith('neuron::'):
+            types.pop(key)
+        if key.startswith('_caffe2::'):
             types.pop(key)
     types.pop('aten::fft')
     types.pop('aten::mul.ScalarT')

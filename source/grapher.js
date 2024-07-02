@@ -1,13 +1,11 @@
 
-import * as dagre from './dagre.js';
-
 const grapher = {};
 
 grapher.Graph = class {
 
     constructor(compound, layout) {
         this._layout = layout;
-        this._isCompound = compound;
+        this._compound = compound;
         this._nodes = new Map();
         this._edges = new Map();
         this._children = {};
@@ -23,7 +21,7 @@ grapher.Graph = class {
             value.label = node;
         } else {
             this._nodes.set(key, { v: key, label: node });
-            if (this._isCompound) {
+            if (this._compound) {
                 this._parent[key] = '\x00';
                 this._children[key] = {};
                 this._children['\x00'][key] = true;
@@ -33,10 +31,10 @@ grapher.Graph = class {
 
     setEdge(edge) {
         if (!this._nodes.has(edge.v)) {
-            throw new grapher.Error(`Invalid edge '${JSON.stringify(edge.v)}'.`);
+            throw new Error(`Invalid edge '${JSON.stringify(edge.v)}'.`);
         }
         if (!this._nodes.has(edge.w)) {
-            throw new grapher.Error(`Invalid edge '${JSON.stringify(edge.w)}'.`);
+            throw new Error(`Invalid edge '${JSON.stringify(edge.w)}'.`);
         }
         const key = `${edge.v}:${edge.w}`;
         if (!this._edges.has(key)) {
@@ -45,7 +43,7 @@ grapher.Graph = class {
     }
 
     setParent(node, parent) {
-        if (!this._isCompound) {
+        if (!this._compound) {
             throw new Error("Cannot set parent in a non-compound graph");
         }
         parent = String(parent);
@@ -72,12 +70,16 @@ grapher.Graph = class {
         return this._nodes.get(key);
     }
 
+    edge(v, w) {
+        return this._edges.get(`${v}:${w}`);
+    }
+
     get edges() {
         return this._edges;
     }
 
     parent(key) {
-        if (this._isCompound) {
+        if (this._compound) {
             const parent = this._parent[key];
             if (parent !== '\x00') {
                 return parent;
@@ -88,7 +90,7 @@ grapher.Graph = class {
 
     children(key) {
         key = key === undefined ? '\x00' : key;
-        if (this._isCompound) {
+        if (this._compound) {
             const children = this._children[key];
             if (children) {
                 return Object.keys(children);
@@ -188,8 +190,63 @@ grapher.Graph = class {
         }
     }
 
-    layout() {
-        dagre.layout(this, this._layout);
+    async layout(worker) {
+        let nodes = [];
+        for (const node of this.nodes.values()) {
+            nodes.push({
+                v: node.v,
+                width: node.label.width || 0,
+                height: node.label.height || 0,
+                parent: this.parent(node.v) });
+        }
+        let edges = [];
+        for (const edge of this.edges.values()) {
+            edges.push({
+                v: edge.v,
+                w: edge.w,
+                minlen: edge.label.minlen || 1,
+                weight: edge.label.weight || 1,
+                width: edge.label.width || 0,
+                height: edge.label.height || 0,
+                labeloffset: edge.label.labeloffset || 10,
+                labelpos: edge.label.labelpos || 'r'
+            });
+        }
+        const state = { /* log: true */ };
+        const layout = this._layout;
+        if (worker) {
+            const message = await worker.request({ type: 'dagre.layout', nodes, edges, layout, state }, 2500, 'This large graph layout might take a very long time to complete.');
+            if (message.type === 'cancel') {
+                return 'graph-layout-cancelled';
+            }
+            nodes = message.nodes;
+            edges = message.edges;
+            state.log = message.state.log;
+        } else {
+            const dagre = await import('./dagre.js');
+            dagre.layout(nodes, edges, layout, state);
+        }
+        if (state.log) {
+            const fs = await import('fs');
+            fs.writeFileSync(`dist/test/${this.identifier}.log`, state.log);
+        }
+        for (const node of nodes) {
+            const label = this.node(node.v).label;
+            label.x = node.x;
+            label.y = node.y;
+            if (this.children(node.v).length) {
+                label.width = node.width;
+                label.height = node.height;
+            }
+        }
+        for (const edge of edges) {
+            const label = this.edge(edge.v, edge.w).label;
+            label.points = edge.points;
+            if ('x' in edge) {
+                label.x = edge.x;
+                label.y = edge.y;
+            }
+        }
         for (const key of this.nodes.keys()) {
             const entry = this.node(key);
             if (this.children(key).length === 0) {
@@ -197,6 +254,7 @@ grapher.Graph = class {
                 node.layout();
             }
         }
+        return '';
     }
 
     update() {

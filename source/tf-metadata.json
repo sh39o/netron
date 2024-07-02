@@ -3845,6 +3845,12 @@
         "default": "low_priority_padding_with_max_batch_size"
       },
       {
+        "name": "batch_padding_policy",
+        "type": "string",
+        "description": "Must be one of the following: `PAD_UP`.",
+        "default": "PAD_UP"
+      },
+      {
         "name": "Tin",
         "type": "type[]",
         "description": "the types of tensors to be batched.",
@@ -10513,6 +10519,185 @@
       {
         "name": "gains",
         "type": 1
+      }
+    ]
+  },
+  {
+    "name": "ConvertToListOfSparseCoreCooTensors",
+    "attributes": [
+      {
+        "name": "sample_count",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_sc_per_chip",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "row_offset",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "col_offset",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "col_shift",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "num_sc_shards",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "stacked_table_sample_count",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "combiner",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "indices_or_row_splits",
+        "type": 3
+      },
+      {
+        "name": "values",
+        "type": 3
+      },
+      {
+        "name": "weights",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "row_ids_list",
+        "numberAttr": "num_sc_per_chip",
+        "type": 3
+      },
+      {
+        "name": "col_ids_list",
+        "numberAttr": "num_sc_per_chip",
+        "type": 3
+      },
+      {
+        "name": "gains_list",
+        "numberAttr": "num_sc_per_chip",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "ConvertToSparseCoreCsrWrappedCooTensor",
+    "attributes": [
+      {
+        "name": "sample_count_per_sc",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_replica",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_minibatches_per_sc",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_ids_per_chip_per_sample",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_vocab_size",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "feature_width",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_sc_per_chip",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      },
+      {
+        "name": "allow_id_dropping",
+        "type": "boolean"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "sorted_row_ids_list",
+        "numberAttr": "num_sc_per_chip",
+        "type": 3
+      },
+      {
+        "name": "sorted_col_ids_list",
+        "numberAttr": "num_sc_per_chip",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains_list",
+        "numberAttr": "num_sc_per_chip",
+        "type": 1
+      },
+      {
+        "name": "id_counts_list",
+        "numberAttr": "num_sc_per_chip",
+        "type": 3
+      },
+      {
+        "name": "splits",
+        "type": 9
+      }
+    ],
+    "outputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "row_pointers_unpadded_size",
+        "type": 3
+      },
+      {
+        "name": "ids_unpadded_size",
+        "type": 3
+      },
+      {
+        "name": "num_minibatches_per_sc",
+        "type": 3
       }
     ]
   },
@@ -17249,6 +17434,11 @@
         "name": "preserve_cardinality",
         "type": "boolean",
         "default": false
+      },
+      {
+        "name": "force_synchronous",
+        "type": "boolean",
+        "default": false
       }
     ],
     "inputs": [
@@ -18611,7 +18801,7 @@
     "outputs": [
       {
         "name": "backprops",
-        "description": "Backpropagated gradients below the FakeQuantWithMinMaxArgs operation:\n`gradients * (inputs >= min && inputs <= max)`.",
+        "description": "Backpropagated gradients below the FakeQuantWithMinMaxArgs operation:\n`gradients * (inputs >= min && inputs <= max)`.\n\n```\nimport tensorflow as tf\n\n# Define some sample data\ngradients = tf.random.uniform((2, 3), minval=-5.0, maxval=5.0, dtype=tf.float32)\ninputs = tf.random.uniform((2, 3), minval=-10.0, maxval=10.0, dtype=tf.float32)\n\n# Define quantization parameters (adjust as needed)\nmin_val = -2.0\nmax_val = 8.0\nnum_bits = 4  # Number of bits for quantization\n\n# Calculate gradients for fake quantization with specified parameters\noutput_gradients = tf.quantization.fake_quant_with_min_max_args_gradient(\n    gradients=gradients, inputs=inputs, min=min_val, max=max_val, num_bits=num_bits, narrow_range = False, name=None\n)\n\n# Print the original gradients and the gradients after the fake-quant operation\nprint(\"Original Gradients:\")\nprint(gradients)\nprint(\"\\nGradients after Fake-Quantization:\")\nprint(output_gradients)\n\n```\n#Original Gradients:\n#tf.Tensor(\n#[[ 1.242547    3.217492    3.568469  ]\n#[-0.55371046  0.23130894  2.608243  ]], shape=(2, 3), dtype=float32)\n\n#Gradients after Fake-Quantization:\n#tf.Tensor(\n#[[ 0.          3.217492    3.568469  ]\n# [-0.55371046  0.23130894  2.608243  ]], shape=(2, 3), dtype=float32)\n",
         "type": 1
       }
     ]
@@ -20656,7 +20846,7 @@
   {
     "name": "GatherNd",
     "summary": "Gather slices from `params` into a Tensor with shape specified by `indices`.",
-    "description": "`indices` is a K-dimensional integer tensor, best thought of as a\n(K-1)-dimensional tensor of indices into `params`, where each element defines a\nslice of `params`:\n\n    output[\\\\(i_0, ..., i_{K-2}\\\\)] = params[indices[\\\\(i_0, ..., i_{K-2}\\\\)]]\n\nWhereas in `tf.gather` `indices` defines slices into the `axis`\ndimension of `params`, in `tf.gather_nd`, `indices` defines slices into the\nfirst `N` dimensions of `params`, where `N = indices.shape[-1]`.\n\nThe last dimension of `indices` can be at most the rank of\n`params`:\n\n    indices.shape[-1] <= params.rank\n\nThe last dimension of `indices` corresponds to elements\n(if `indices.shape[-1] == params.rank`) or slices\n(if `indices.shape[-1] < params.rank`) along dimension `indices.shape[-1]`\nof `params`.  The output tensor has shape\n\n    indices.shape[:-1] + params.shape[indices.shape[-1]:]\n\nNote that on CPU, if an out of bound index is found, an error is returned.\nOn GPU, if an out of bound index is found, a 0 is stored in the\ncorresponding output value.\n\nSome examples below.\n\nSimple indexing into a matrix:\n\n```python\n    indices = [[0, 0], [1, 1]]\n    params = [['a', 'b'], ['c', 'd']]\n    output = ['a', 'd']\n```\n\nSlice indexing into a matrix:\n\n```python\n    indices = [[1], [0]]\n    params = [['a', 'b'], ['c', 'd']]\n    output = [['c', 'd'], ['a', 'b']]\n```\n\nIndexing into a 3-tensor:\n\n```python\n    indices = [[1]]\n    params = [[['a0', 'b0'], ['c0', 'd0']],\n              [['a1', 'b1'], ['c1', 'd1']]]\n    output = [[['a1', 'b1'], ['c1', 'd1']]]\n\n\n    indices = [[0, 1], [1, 0]]\n    params = [[['a0', 'b0'], ['c0', 'd0']],\n              [['a1', 'b1'], ['c1', 'd1']]]\n    output = [['c0', 'd0'], ['a1', 'b1']]\n\n\n    indices = [[0, 0, 1], [1, 0, 1]]\n    params = [[['a0', 'b0'], ['c0', 'd0']],\n              [['a1', 'b1'], ['c1', 'd1']]]\n    output = ['b0', 'b1']\n```\n\nBatched indexing into a matrix:\n\n```python\n    indices = [[[0, 0]], [[0, 1]]]\n    params = [['a', 'b'], ['c', 'd']]\n    output = [['a'], ['b']]\n```\n\nBatched slice indexing into a matrix:\n\n```python\n    indices = [[[1]], [[0]]]\n    params = [['a', 'b'], ['c', 'd']]\n    output = [[['c', 'd']], [['a', 'b']]]\n```\n\nBatched indexing into a 3-tensor:\n\n```python\n    indices = [[[1]], [[0]]]\n    params = [[['a0', 'b0'], ['c0', 'd0']],\n              [['a1', 'b1'], ['c1', 'd1']]]\n    output = [[[['a1', 'b1'], ['c1', 'd1']]],\n              [[['a0', 'b0'], ['c0', 'd0']]]]\n\n    indices = [[[0, 1], [1, 0]], [[0, 0], [1, 1]]]\n    params = [[['a0', 'b0'], ['c0', 'd0']],\n              [['a1', 'b1'], ['c1', 'd1']]]\n    output = [[['c0', 'd0'], ['a1', 'b1']],\n              [['a0', 'b0'], ['c1', 'd1']]]\n\n\n    indices = [[[0, 0, 1], [1, 0, 1]], [[0, 1, 1], [1, 1, 0]]]\n    params = [[['a0', 'b0'], ['c0', 'd0']],\n              [['a1', 'b1'], ['c1', 'd1']]]\n    output = [['b0', 'b1'], ['d0', 'c1']]\n```\n\nSee also `tf.gather` and `tf.batch_gather`.",
+    "description": "`indices` is a K-dimensional integer tensor, best thought of as a\n(K-1)-dimensional tensor of indices into `params`, where each element defines a\nslice of `params`:\n\n    output[\\\\(i_0, ..., i_{K-2}\\\\)] = params[indices[\\\\(i_0, ..., i_{K-2}\\\\)]]\n\nWhereas in `tf.gather` `indices` defines slices into the `axis`\ndimension of `params`, in `tf.gather_nd`, `indices` defines slices into the\nfirst `N` dimensions of `params`, where `N = indices.shape[-1]`.\n\nThe last dimension of `indices` can be at most the rank of\n`params`:\n\n    indices.shape[-1] <= params.rank\n\nThe last dimension of `indices` corresponds to elements\n(if `indices.shape[-1] == params.rank`) or slices\n(if `indices.shape[-1] < params.rank`) along dimension `indices.shape[-1]`\nof `params`.  The output tensor has shape\n\n    indices.shape[:-1] + params.shape[indices.shape[-1]:]\n\nIf `indices` contains any out-of-bound indices, depending on\n`bad_indices_policy`, the op will either return an error or ignore the\nout-of-bound indices. `bad_indices_policy` can be one of the following values:\n1. \"\" or \"DEFAULT\": raises on CPU and ignore on GPU. This is because\n   historically on CPU and GPU we handle errors in different ways, and for\n   backward compatibility we keep the default behavior.\n2. \"ERROR\": raises error; GPU does not support this value.\n3. \"IGNORE\": ignore error and set the corresponding output to 0;\n   supported on both CPU and GPU.\n\nSome examples below.\n\nSimple indexing into a matrix:\n\n```python\n    indices = [[0, 0], [1, 1]]\n    params = [['a', 'b'], ['c', 'd']]\n    output = ['a', 'd']\n```\n\nSlice indexing into a matrix:\n\n```python\n    indices = [[1], [0]]\n    params = [['a', 'b'], ['c', 'd']]\n    output = [['c', 'd'], ['a', 'b']]\n```\n\nIndexing into a 3-tensor:\n\n```python\n    indices = [[1]]\n    params = [[['a0', 'b0'], ['c0', 'd0']],\n              [['a1', 'b1'], ['c1', 'd1']]]\n    output = [[['a1', 'b1'], ['c1', 'd1']]]\n\n\n    indices = [[0, 1], [1, 0]]\n    params = [[['a0', 'b0'], ['c0', 'd0']],\n              [['a1', 'b1'], ['c1', 'd1']]]\n    output = [['c0', 'd0'], ['a1', 'b1']]\n\n\n    indices = [[0, 0, 1], [1, 0, 1]]\n    params = [[['a0', 'b0'], ['c0', 'd0']],\n              [['a1', 'b1'], ['c1', 'd1']]]\n    output = ['b0', 'b1']\n```\n\nBatched indexing into a matrix:\n\n```python\n    indices = [[[0, 0]], [[0, 1]]]\n    params = [['a', 'b'], ['c', 'd']]\n    output = [['a'], ['b']]\n```\n\nBatched slice indexing into a matrix:\n\n```python\n    indices = [[[1]], [[0]]]\n    params = [['a', 'b'], ['c', 'd']]\n    output = [[['c', 'd']], [['a', 'b']]]\n```\n\nBatched indexing into a 3-tensor:\n\n```python\n    indices = [[[1]], [[0]]]\n    params = [[['a0', 'b0'], ['c0', 'd0']],\n              [['a1', 'b1'], ['c1', 'd1']]]\n    output = [[[['a1', 'b1'], ['c1', 'd1']]],\n              [[['a0', 'b0'], ['c0', 'd0']]]]\n\n    indices = [[[0, 1], [1, 0]], [[0, 0], [1, 1]]]\n    params = [[['a0', 'b0'], ['c0', 'd0']],\n              [['a1', 'b1'], ['c1', 'd1']]]\n    output = [[['c0', 'd0'], ['a1', 'b1']],\n              [['a0', 'b0'], ['c1', 'd1']]]\n\n\n    indices = [[[0, 0, 1], [1, 0, 1]], [[0, 1, 1], [1, 1, 0]]]\n    params = [[['a0', 'b0'], ['c0', 'd0']],\n              [['a1', 'b1'], ['c1', 'd1']]]\n    output = [['b0', 'b1'], ['d0', 'c1']]\n```\n\nSee also `tf.gather` and `tf.batch_gather`.",
     "attributes": [
       {
         "name": "Tparams",
@@ -20666,6 +20856,11 @@
         "name": "Tindices",
         "type": "type",
         "description": "Must be one of the following: `int16`, `int32`, `int64`."
+      },
+      {
+        "name": "bad_indices_policy",
+        "type": "string",
+        "default": ""
       }
     ],
     "inputs": [
@@ -20691,7 +20886,7 @@
   {
     "name": "GatherV2",
     "summary": "Gather slices from `params` axis `axis` according to `indices`.",
-    "description": "`indices` must be an integer tensor of any dimension (usually 0-D or 1-D).\nProduces an output tensor with shape `params.shape[:axis] +\nindices.shape[batch_dims:] + params.shape[axis + 1:]` where:\n\n```python\n    # Scalar indices (output is rank(params) - 1).\n    output[a_0, ..., a_n, b_0, ..., b_n] =\n      params[a_0, ..., a_n, indices, b_0, ..., b_n]\n\n    # Vector indices (output is rank(params)).\n    output[a_0, ..., a_n, i, b_0, ..., b_n] =\n      params[a_0, ..., a_n, indices[i], b_0, ..., b_n]\n\n    # Higher rank indices (output is rank(params) + rank(indices) - 1).\n    output[a_0, ..., a_n, i, ..., j, b_0, ... b_n] =\n      params[a_0, ..., a_n, indices[i, ..., j], b_0, ..., b_n]\n```\n\n<div style=\"width:70%; margin:auto; margin-bottom:10px; margin-top:20px;\">\n<img style=\"width:100%\" src=\"https://www.tensorflow.org/images/Gather.png\" alt>\n</div>\n\nNote that on CPU, if an out of bound index is found, an error is returned.\nOn GPU, if an out of bound index is found, a 0 is stored in the\ncorresponding output value.\n\nSee also `tf.batch_gather` and `tf.gather_nd`.",
+    "description": "`indices` must be an integer tensor of any dimension (usually 0-D or 1-D).\nProduces an output tensor with shape `params.shape[:axis] +\nindices.shape[batch_dims:] + params.shape[axis + 1:]` where:\n\n```python\n    # Scalar indices (output is rank(params) - 1).\n    output[a_0, ..., a_n, b_0, ..., b_n] =\n      params[a_0, ..., a_n, indices, b_0, ..., b_n]\n\n    # Vector indices (output is rank(params)).\n    output[a_0, ..., a_n, i, b_0, ..., b_n] =\n      params[a_0, ..., a_n, indices[i], b_0, ..., b_n]\n\n    # Higher rank indices (output is rank(params) + rank(indices) - 1).\n    output[a_0, ..., a_n, i, ..., j, b_0, ... b_n] =\n      params[a_0, ..., a_n, indices[i, ..., j], b_0, ..., b_n]\n```\n\n<div style=\"width:70%; margin:auto; margin-bottom:10px; margin-top:20px;\">\n<img style=\"width:100%\" src=\"https://www.tensorflow.org/images/Gather.png\" alt>\n</div>\n\nNote that on CPU, if an out of bound index is found, an error is returned.\nOn GPU, if an out of bound index is found, a 0 is stored in the\ncorresponding output value.\n\nNote that on TPU, if any dimension of `params` is of size 0 then the output will\nbe the expected shape filled with zeros. On CPU and GPU an error will be\nreturned.\n\nSee also `tf.batch_gather` and `tf.gather_nd`.",
     "attributes": [
       {
         "name": "batch_dims",
@@ -21227,6 +21422,87 @@
         "name": "value",
         "description": "The tensor for the given handle.",
         "typeAttr": "dtype"
+      }
+    ]
+  },
+  {
+    "name": "GetStatsFromListOfSparseCoreCooTensors",
+    "attributes": [
+      {
+        "name": "sample_count_list",
+        "type": "int64[]"
+      },
+      {
+        "name": "col_offset_list",
+        "type": "int64[]"
+      },
+      {
+        "name": "num_replica",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_vocab_size",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "feature_width",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_sc_per_chip",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      },
+      {
+        "name": "N",
+        "type": "int64",
+        "minimum": 1
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_ids_list",
+        "numberAttr": "N",
+        "type": 3
+      },
+      {
+        "name": "col_ids_list",
+        "numberAttr": "N",
+        "type": 3
+      },
+      {
+        "name": "gains_list",
+        "numberAttr": "N",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": 3
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": 3
+      }
+    ]
+  },
+  {
+    "name": "GetTpuTaskId",
+    "summary": "An op returns the TPU task ID from TPU topology.",
+    "description": "This op is to return the TPU task ID from TPU topology.",
+    "outputs": [
+      {
+        "name": "tpu_task_id",
+        "description": "The TPU task ID from TPU topology.",
+        "type": 3
       }
     ]
   },
@@ -22687,6 +22963,10 @@
       {
         "name": "index_map_func_other_args",
         "typeListAttr": "Tindex_map_func_args"
+      },
+      {
+        "name": "output_cardinality",
+        "type": 9
       }
     ],
     "outputs": [
@@ -26342,6 +26622,11 @@
       },
       {
         "name": "preserve_cardinality",
+        "type": "boolean",
+        "default": false
+      },
+      {
+        "name": "force_synchronous",
         "type": "boolean",
         "default": false
       },
@@ -47240,7 +47525,7 @@
   {
     "name": "ScatterNd",
     "summary": "Scatters `updates` into a tensor of shape `shape` according to `indices`.",
-    "description": "Scatter sparse `updates` according to individual values at the specified\n`indices`. This op returns an output tensor with the `shape` you specify. This\nop is the inverse of the `tf.gather_nd` operator which extracts values or slices\nfrom a given tensor.\n\nThis operation is similar to `tf.tensor_scatter_nd_add`, except that the tensor\nis zero-initialized. Calling `tf.scatter_nd(indices, updates, shape)`\nis identical to calling\n`tf.tensor_scatter_nd_add(tf.zeros(shape, updates.dtype), indices, updates)`\n\nIf `indices` contains duplicates, the associated `updates` are accumulated\n(summed) into the output tensor.\n\n**WARNING**: For floating-point data types, the output may be nondeterministic.\nThis is because the order in which the updates are applied is nondeterministic\nand when floating-point numbers are added in different orders the resulting\nnumerical approximation error can be slightly different. However, the output\nwill be deterministic if op determinism is enabled via\n`tf.config.experimental.enable_op_determinism`.\n\n`indices` is an integer tensor containing indices into the output tensor. The\nlast dimension of `indices` can be at most the rank of `shape`:\n\n    indices.shape[-1] <= shape.rank\n\nThe last dimension of `indices` corresponds to indices of elements\n(if `indices.shape[-1] = shape.rank`) or slices\n(if `indices.shape[-1] < shape.rank`) along dimension `indices.shape[-1]` of\n`shape`.\n\n`updates` is a tensor with shape:\n\n    indices.shape[:-1] + shape[indices.shape[-1]:]\n\nThe simplest form of the scatter op is to insert individual elements in\na tensor by index. Consider an example where you want to insert 4 scattered\nelements in a rank-1 tensor with 8 elements.\n\n<div style=\"width:70%; margin:auto; margin-bottom:10px; margin-top:20px;\">\n<img style=\"width:100%\" src=\"https://www.tensorflow.org/images/ScatterNd1.png\" alt>\n</div>\n\nIn Python, this scatter operation would look like this:\n\n```python\n    indices = tf.constant([[4], [3], [1], [7]])\n    updates = tf.constant([9, 10, 11, 12])\n    shape = tf.constant([8])\n    scatter = tf.scatter_nd(indices, updates, shape)\n    print(scatter)\n```\n\nThe resulting tensor would look like this:\n\n    [0, 11, 0, 10, 9, 0, 0, 12]\n\nYou can also insert entire slices of a higher rank tensor all at once. For\nexample, you can insert two slices in the first dimension of a rank-3 tensor\nwith two matrices of new values.\n\n<div style=\"width:70%; margin:auto; margin-bottom:10px; margin-top:20px;\">\n<img style=\"width:100%\" src=\"https://www.tensorflow.org/images/ScatterNd2.png\" alt>\n</div>\n\nIn Python, this scatter operation would look like this:\n\n```python\n    indices = tf.constant([[1], [3]])\n    updates = tf.constant([[[5, 5, 5, 5], [6, 6, 6, 6],\n                            [7, 7, 7, 7], [8, 8, 8, 8]],\n                           [[5, 5, 5, 5], [6, 6, 6, 6],\n                            [7, 7, 7, 7], [8, 8, 8, 8]]])\n    shape = tf.constant([4, 4, 4])\n    scatter = tf.scatter_nd(indices, updates, shape)\n    print(scatter)\n```\n\nThe resulting tensor would look like this:\n\n    [[[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],\n     [[5, 5, 5, 5], [6, 6, 6, 6], [7, 7, 7, 7], [8, 8, 8, 8]],\n     [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],\n     [[5, 5, 5, 5], [6, 6, 6, 6], [7, 7, 7, 7], [8, 8, 8, 8]]]\n\nNote that on CPU, if an out of bound index is found, an error is returned.\nOn GPU, if an out of bound index is found, the index is ignored.",
+    "description": "Scatter sparse `updates` according to individual values at the specified\n`indices`. This op returns an output tensor with the `shape` you specify. This\nop is the inverse of the `tf.gather_nd` operator which extracts values or slices\nfrom a given tensor.\n\nThis operation is similar to `tf.tensor_scatter_nd_add`, except that the tensor\nis zero-initialized. Calling `tf.scatter_nd(indices, updates, shape)`\nis identical to calling\n`tf.tensor_scatter_nd_add(tf.zeros(shape, updates.dtype), indices, updates)`\n\nIf `indices` contains duplicates, the associated `updates` are accumulated\n(summed) into the output tensor.\n\n**WARNING**: For floating-point data types, the output may be nondeterministic.\nThis is because the order in which the updates are applied is nondeterministic\nand when floating-point numbers are added in different orders the resulting\nnumerical approximation error can be slightly different. However, the output\nwill be deterministic if op determinism is enabled via\n`tf.config.experimental.enable_op_determinism`.\n\n`indices` is an integer tensor containing indices into the output tensor. The\nlast dimension of `indices` can be at most the rank of `shape`:\n\n    indices.shape[-1] <= shape.rank\n\nThe last dimension of `indices` corresponds to indices of elements\n(if `indices.shape[-1] = shape.rank`) or slices\n(if `indices.shape[-1] < shape.rank`) along dimension `indices.shape[-1]` of\n`shape`.\n\n`updates` is a tensor with shape:\n\n    indices.shape[:-1] + shape[indices.shape[-1]:]\n\nThe simplest form of the scatter op is to insert individual elements in\na tensor by index. Consider an example where you want to insert 4 scattered\nelements in a rank-1 tensor with 8 elements.\n\n<div style=\"width:70%; margin:auto; margin-bottom:10px; margin-top:20px;\">\n<img style=\"width:100%\" src=\"https://www.tensorflow.org/images/ScatterNd1.png\" alt>\n</div>\n\nIn Python, this scatter operation would look like this:\n\n```python\n    indices = tf.constant([[4], [3], [1], [7]])\n    updates = tf.constant([9, 10, 11, 12])\n    shape = tf.constant([8])\n    scatter = tf.scatter_nd(indices, updates, shape)\n    print(scatter)\n```\n\nThe resulting tensor would look like this:\n\n    [0, 11, 0, 10, 9, 0, 0, 12]\n\nYou can also insert entire slices of a higher rank tensor all at once. For\nexample, you can insert two slices in the first dimension of a rank-3 tensor\nwith two matrices of new values.\n\n<div style=\"width:70%; margin:auto; margin-bottom:10px; margin-top:20px;\">\n<img style=\"width:100%\" src=\"https://www.tensorflow.org/images/ScatterNd2.png\" alt>\n</div>\n\nIn Python, this scatter operation would look like this:\n\n```python\n    indices = tf.constant([[1], [3]])\n    updates = tf.constant([[[5, 5, 5, 5], [6, 6, 6, 6],\n                            [7, 7, 7, 7], [8, 8, 8, 8]],\n                           [[5, 5, 5, 5], [6, 6, 6, 6],\n                            [7, 7, 7, 7], [8, 8, 8, 8]]])\n    shape = tf.constant([4, 4, 4])\n    scatter = tf.scatter_nd(indices, updates, shape)\n    print(scatter)\n```\n\nThe resulting tensor would look like this:\n\n    [[[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],\n     [[5, 5, 5, 5], [6, 6, 6, 6], [7, 7, 7, 7], [8, 8, 8, 8]],\n     [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],\n     [[5, 5, 5, 5], [6, 6, 6, 6], [7, 7, 7, 7], [8, 8, 8, 8]]]\n\nIf `indices` contains any out-of-bound indices, depending on\n`bad_indices_policy`, the op will either return an error or ignore the\nout-of-bound indices. `bad_indices_policy` can be one of the following values:\n1. \"\" or \"DEFAULT\": raises on CPU and ignore on GPU. This is because\n   historically on CPU and GPU we handle errors in different ways, and for\n   backward compatibility we keep the default behavior.\n2. \"ERROR\": raises error; GPU does not support this value.\n3. \"IGNORE\": ignore the bad indices; supported on both CPU and GPU.",
     "attributes": [
       {
         "name": "T",
@@ -47250,6 +47535,11 @@
         "name": "Tindices",
         "type": "type",
         "description": "Must be one of the following: `int16`, `int32`, `int64`."
+      },
+      {
+        "name": "bad_indices_policy",
+        "type": "string",
+        "default": ""
       }
     ],
     "inputs": [
@@ -50177,6 +50467,93 @@
         "name": "backprops",
         "description": "The gradients: `gradients / (1 + abs(features)) ** 2`.",
         "typeAttr": "T"
+      }
+    ]
+  },
+  {
+    "name": "SortListOfSparseCoreCooTensors",
+    "attributes": [
+      {
+        "name": "sample_count_list",
+        "type": "int64[]"
+      },
+      {
+        "name": "col_offset_list",
+        "type": "int64[]"
+      },
+      {
+        "name": "num_replica",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_vocab_size",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "feature_width",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_sc_per_chip",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      },
+      {
+        "name": "N",
+        "type": "int64",
+        "minimum": 1
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_ids_list",
+        "numberAttr": "N",
+        "type": 3
+      },
+      {
+        "name": "col_ids_list",
+        "numberAttr": "N",
+        "type": 3
+      },
+      {
+        "name": "gains_list",
+        "numberAttr": "N",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "sorted_row_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_col_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "id_counts",
+        "type": 3
       }
     ]
   },
@@ -57321,7 +57698,7 @@
       {
         "name": "out_type",
         "type": "type",
-        "description": "The numeric type to interpret each string in `string_tensor` as. Must be one of the following: `float32`, `float64`, `int32`, `int64`.",
+        "description": "The numeric type to interpret each string in `string_tensor` as. Must be one of the following: `float32`, `float64`, `int32`, `int64`, `uint32`, `uint64`.",
         "default": {
           "type": "type",
           "value": 1
@@ -61415,6 +61792,7 @@
   },
   {
     "name": "Transpose",
+    "category": "Transform",
     "summary": "Shuffle dimensions of x according to a permutation.",
     "description": "The output `y` has the same rank as `x`. The shapes of `x` and `y` satisfy:\n  `y.shape[i] == x.shape[perm[i]] for i in [0, 1, ..., rank(x) - 1]`",
     "attributes": [
@@ -63504,6 +63882,27 @@
     ]
   },
   {
+    "name": "UpdateTaskIdAndGlobalCoreArray",
+    "summary": "An op to update the task ID and global core array.",
+    "description": "This op is to update the task ID and global core array.",
+    "attributes": [
+      {
+        "name": "task_count",
+        "type": "int64",
+        "description": "The number of tasks.",
+        "minimum": 1
+      }
+    ],
+    "inputs": [
+      {
+        "name": "tpu_task_id_to_shard_id",
+        "description": "An array of int32 that maps TPU task ID to shard ID.",
+        "numberAttr": "task_count",
+        "type": 3
+      }
+    ]
+  },
+  {
     "name": "UpperBound",
     "summary": "Applies upper_bound(sorted_search_values, values) along each row.",
     "description": "Each set of rows with the same index in (sorted_inputs, values) is treated\nindependently.  The resulting row is the equivalent of calling\n`np.searchsorted(sorted_inputs, values, side='right')`.\n\nThe result is not a global index to the entire\n`Tensor`, but rather just the index in the last dimension.\n\nA 2-D example:\n  sorted_sequence = [[0, 3, 9, 9, 10],\n                     [1, 2, 3, 4, 5]]\n  values = [[2, 4, 9],\n            [0, 2, 6]]\n\n  result = UpperBound(sorted_sequence, values)\n\n  result == [[1, 2, 4],\n             [0, 2, 5]]",
@@ -65064,6 +65463,83 @@
     ]
   },
   {
+    "name": "XlaSparseDenseMatmulGradWithAdagradAndStaticBufferSize",
+    "attributes": [
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      }
+    ]
+  },
+  {
     "name": "XlaSparseDenseMatmulGradWithAdagradMomentumAndCsrInput",
     "attributes": [
       {
@@ -65159,6 +65635,111 @@
     ]
   },
   {
+    "name": "XlaSparseDenseMatmulGradWithAdagradMomentumAndStaticBufferSize",
+    "attributes": [
+      {
+        "name": "use_nesterov",
+        "type": "boolean"
+      },
+      {
+        "name": "exponent",
+        "type": "float32"
+      },
+      {
+        "name": "beta1",
+        "type": "float32"
+      },
+      {
+        "name": "beta2",
+        "type": "float32"
+      },
+      {
+        "name": "epsilon",
+        "type": "float32"
+      },
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "momenta",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      },
+      {
+        "name": "updated_momenta",
+        "type": 1
+      }
+    ]
+  },
+  {
     "name": "XlaSparseDenseMatmulGradWithAdamAndCsrInput",
     "attributes": [
       {
@@ -65186,6 +65767,107 @@
         "name": "clip_weight_max",
         "type": "float32",
         "default": "NaN"
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "momenta",
+        "type": 1
+      },
+      {
+        "name": "velocity",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_momenta",
+        "type": 1
+      },
+      {
+        "name": "updated_velocity",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithAdamAndStaticBufferSize",
+    "attributes": [
+      {
+        "name": "use_sum_inside_sqrt",
+        "type": "boolean"
+      },
+      {
+        "name": "beta1",
+        "type": "float32"
+      },
+      {
+        "name": "beta2",
+        "type": "float32"
+      },
+      {
+        "name": "epsilon",
+        "type": "float32"
+      },
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
       },
       {
         "name": "table_name",
@@ -65345,6 +66027,111 @@
     ]
   },
   {
+    "name": "XlaSparseDenseMatmulGradWithFtrlAndStaticBufferSize",
+    "attributes": [
+      {
+        "name": "multiply_linear_by_learning_rate",
+        "type": "boolean"
+      },
+      {
+        "name": "beta",
+        "type": "float32"
+      },
+      {
+        "name": "learning_rate_power",
+        "type": "float32"
+      },
+      {
+        "name": "l1_regularization_strength",
+        "type": "float32"
+      },
+      {
+        "name": "l2_regularization_strength",
+        "type": "float32"
+      },
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "linear",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      },
+      {
+        "name": "updated_linear",
+        "type": 1
+      }
+    ]
+  },
+  {
     "name": "XlaSparseDenseMatmulGradWithSgdAndCsrInput",
     "attributes": [
       {
@@ -65356,6 +66143,75 @@
         "name": "clip_weight_max",
         "type": "float32",
         "default": "NaN"
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithSgdAndStaticBufferSize",
+    "attributes": [
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
       },
       {
         "name": "table_name",
@@ -65423,6 +66279,75 @@
         "name": "quantization_config_num_buckets",
         "type": "int64",
         "minimum": 0
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "activations",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulWithStaticBufferSize",
+    "attributes": [
+      {
+        "name": "input_size",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "quantization_config_low",
+        "type": "float32"
+      },
+      {
+        "name": "quantization_config_high",
+        "type": "float32"
+      },
+      {
+        "name": "quantization_config_num_buckets",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
       },
       {
         "name": "table_name",

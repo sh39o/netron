@@ -7,6 +7,7 @@ import * as worker_threads from 'worker_threads';
 import * as base from '../source/base.js';
 import * as zip from '../source/zip.js';
 import * as tar from '../source/tar.js';
+import * as python from '../source/python.js';
 import * as view from '../source/view.js';
 
 const access = async (path) => {
@@ -44,10 +45,10 @@ const host = {};
 
 host.TestHost = class {
 
-    constructor(window) {
-        this.errors = [];
-        this.window = window;
-        this.document = window.document;
+    constructor(window, environment) {
+        this._window = window;
+        this._environment = environment;
+        this._errors = [];
         host.TestHost.source = host.TestHost.source || dirname('..', 'source');
     }
 
@@ -57,11 +58,20 @@ host.TestHost = class {
     async start() {
     }
 
+    get window() {
+        return this._window;
+    }
+
+    get document() {
+        return this._window.document;
+    }
+
+    get errors() {
+        return this._errors;
+    }
+
     environment(name) {
-        if (name === 'zoom') {
-            return 'none';
-        }
-        return null;
+        return this._environment[name];
     }
 
     screen(/* name */) {
@@ -72,6 +82,15 @@ host.TestHost = class {
         return await import(`file://${file}`);
     }
 
+    worker(id) {
+        const file = path.join(host.TestHost.source, `${id}.js`);
+        const worker = new worker_threads.Worker(file);
+        worker.addEventListener = (type, listener) => {
+            worker.on(type, (message) => listener({ data: message }));
+        };
+        return worker;
+    }
+
     async request(file, encoding, basename) {
         const pathname = path.join(basename || host.TestHost.source, file);
         const exists = await access(pathname);
@@ -79,8 +98,7 @@ host.TestHost = class {
             throw new Error(`The file '${file}' does not exist.`);
         }
         if (encoding) {
-            const buffer = await fs.readFile(pathname, encoding);
-            return buffer;
+            return await fs.readFile(pathname, encoding);
         }
         const buffer = await fs.readFile(pathname, null);
         return new base.BinaryStream(buffer);
@@ -90,7 +108,10 @@ host.TestHost = class {
     }
 
     exception(error /*, fatal */) {
-        this.errors.push(error);
+        this._errors.push(error);
+    }
+
+    message() {
     }
 };
 
@@ -116,15 +137,15 @@ host.TestHost.Context = class {
         return this._entries;
     }
 
-    request(file, encoding, base) {
+    async request(file, encoding, base) {
         return this._host.request(file, encoding, base === undefined ? this._folder : base);
     }
 
-    require(id) {
+    async require(id) {
         return this._host.require(id);
     }
 
-    exception(error, fatal) {
+    error(error, fatal) {
         this._host.exception(error, fatal);
     }
 };
@@ -152,7 +173,7 @@ class DOMTokenList {
 
     add(...tokens) {
         const value = this._element.getAttribute('class') || '';
-        tokens = new Set(value.split(' ').contact(tokens));
+        tokens = new Set(value.split(' ').concat(tokens));
         this._element.setAttribute('class', Array.from(tokens).join(' '));
     }
 
@@ -178,6 +199,14 @@ class HTMLElement {
 
     }
 
+    get childNodes() {
+        return this._childNodes;
+    }
+
+    get firstChild() {
+        return this._childNodes.length > 0 ? this._childNodes[0] : null;
+    }
+
     get lastChild() {
         const index = this._childNodes.length - 1;
         if (index >= 0) {
@@ -188,6 +217,13 @@ class HTMLElement {
 
     appendChild(node) {
         this._childNodes.push(node);
+    }
+
+    insertBefore(newNode, referenceNode) {
+        const index = this._childNodes.indexOf(referenceNode);
+        if (index !== -1) {
+            this._childNodes.splice(index, 0, newNode);
+        }
     }
 
     removeChild(node) {
@@ -316,7 +352,7 @@ export class Target {
         this.events = {};
         this.tags = new Set(this.tags);
         this.folder = item.type ? path.normalize(dirname('..', 'third_party' , 'test', item.type)) : process.cwd();
-        this.measures = new Map([['name', this.name]]);
+        this.assert = !this.assert || Array.isArray(this.assert) ? this.assert : [this.assert];
     }
 
     on(event, callback) {
@@ -337,9 +373,19 @@ export class Target {
     }
 
     async execute() {
+        if (this.measures) {
+            this.measures.set('name', this.name);
+        }
         await zip.Archive.import();
         this.window = this.window || new Window();
-        this.host = await new host.TestHost(this.window);
+        const environment = {
+            zoom: 'none',
+            measure: this.measures ? true : false
+        };
+        this.host = await new host.TestHost(this.window, environment);
+        this.view = new view.View(this.host);
+        this.view.options.attributes = true;
+        this.view.options.initializers = true;
         const time = async (method) => {
             const start = process.hrtime.bigint();
             let err = null;
@@ -349,7 +395,9 @@ export class Target {
                 err = error;
             }
             const duration = Number(process.hrtime.bigint() - start) / 1e9;
-            this.measures.set(method.name, duration);
+            if (this.measures) {
+                this.measures.set(method.name, duration);
+            }
             if (err) {
                 throw err;
             }
@@ -529,7 +577,7 @@ export class Target {
         this.model = await modelFactoryService.open(context);
     }
 
-    validate() {
+    async validate() {
         if (!this.model.format || (this.format && this.format !== this.model.format)) {
             throw new Error(`Invalid model format '${this.model.format}'.`);
         }
@@ -593,35 +641,44 @@ export class Target {
                 }
                 if (value.initializer) {
                     value.initializer.type.toString();
-                    const tensor = new view.Tensor(value.initializer);
-                    if (tensor.encoding !== '<' && tensor.encoding !== '>' && tensor.encoding !== '|') {
-                        throw new Error(`Tensor encoding '${tensor.encoding}' is not implemented.`);
-                    }
-                    if (tensor.layout && (tensor.layout !== 'sparse' && tensor.layout !== 'sparse.coo')) {
-                        throw new Error(`Tensor layout '${tensor.layout}' is not implemented.`);
-                    }
-                    if (!tensor.empty) {
-                        if (tensor.type && tensor.type.dataType === '?') {
-                            throw new Error('Tensor data type is not defined.');
-                        } else if (tensor.type && !tensor.type.shape) {
-                            throw new Error('Tensor shape is not defined.');
-                        } else {
-                            tensor.toString();
-                            /*
-                            const python = await import('../source/python.js');
-                            const tensor = argument.initializer;
-                            if (tensor.type && tensor.type.dataType !== '?') {
-                                let data_type = tensor.type.dataType;
-                                switch (data_type) {
-                                    case 'boolean': data_type = 'bool'; break;
+                    const tensor = new base.Tensor(value.initializer);
+                    if (!this.tags.has('skip-tensor-value')) {
+                        if (tensor.encoding !== '<' && tensor.encoding !== '>' && tensor.encoding !== '|') {
+                            throw new Error(`Tensor encoding '${tensor.encoding}' is not implemented.`);
+                        }
+                        if (tensor.layout && (tensor.layout !== 'sparse' && tensor.layout !== 'sparse.coo')) {
+                            throw new Error(`Tensor layout '${tensor.layout}' is not implemented.`);
+                        }
+                        if (!tensor.empty) {
+                            if (tensor.type && tensor.type.dataType === '?') {
+                                throw new Error('Tensor data type is not defined.');
+                            } else if (tensor.type && !tensor.type.shape) {
+                                throw new Error('Tensor shape is not defined.');
+                            } else {
+                                tensor.toString();
+                                if (this.tags.has('validation')) {
+                                    const size = tensor.type.shape.dimensions.reduce((a, b) => a * b, 1);
+                                    if (tensor.type && tensor.type.dataType !== '?' && size < 8192) {
+                                        let data_type = '?';
+                                        switch (tensor.type.dataType) {
+                                            case 'boolean': data_type = 'bool'; break;
+                                            case 'bfloat16': data_type = 'float32'; break;
+                                            case 'float8e5m2': data_type = 'float16'; break;
+                                            case 'float8e5m2fnuz': data_type = 'float16'; break;
+                                            case 'float8e4m3fn': data_type = 'float16'; break;
+                                            case 'float8e4m3fnuz': data_type = 'float16'; break;
+                                            case 'int4': data_type = 'int8'; break;
+                                            default: data_type = tensor.type.dataType; break;
+                                        }
+                                        Target.execution = Target.execution || new python.Execution();
+                                        const execution = Target.execution;
+                                        const bytes = execution.invoke('io.BytesIO', []);
+                                        const dtype = execution.invoke('numpy.dtype', [data_type]);
+                                        const array = execution.invoke('numpy.asarray', [tensor.value, dtype]);
+                                        execution.invoke('numpy.save', [bytes, array]);
+                                    }
                                 }
-                                const execution = new python.Execution();
-                                const bytes = execution.invoke('io.BytesIO', []);
-                                const dtype = execution.invoke('numpy.dtype', [ data_type ]);
-                                const array = execution.invoke('numpy.asarray', [ tensor.value, dtype ]);
-                                execution.invoke('numpy.save', [ bytes, array ]);
                             }
-                            */
                         }
                     }
                 } else if (value.name.length === 0) {
@@ -682,15 +739,19 @@ export class Target {
                 for (const input of node.inputs) {
                     input.name.toString();
                     input.name.length;
-                    for (const value of input.value) {
-                        validateValue(value);
+                    if (!input.type || input.type.endsWith('*')) {
+                        for (const value of input.value) {
+                            validateValue(value);
+                        }
                     }
                 }
                 for (const output of node.outputs) {
                     output.name.toString();
                     output.name.length;
-                    for (const value of output.value) {
-                        validateValue(value);
+                    if (!output.type || output.type.endsWith('*')) {
+                        for (const value of output.value) {
+                            validateValue(value);
+                        }
                     }
                 }
                 if (node.chain) {
@@ -699,32 +760,35 @@ export class Target {
                         chain.name.length;
                     }
                 }
-                // new dialog.NodeSidebar(host, node);
+                const sidebar = new view.NodeSidebar(this.view, node);
+                sidebar.render();
             }
+            const sidebar = new view.ModelSidebar(this.view, this.model, graph);
+            sidebar.render();
         };
         /* eslint-enable no-unused-expressions */
         for (const graph of this.model.graphs) {
-            validateGraph(graph);
+            /* eslint-disable no-await-in-loop */
+            await validateGraph(graph);
+            /* eslint-enable no-await-in-loop */
         }
     }
 
     async render() {
-        const current = new view.View(this.host);
-        current.options.attributes = true;
-        current.options.initializers = true;
         for (const graph of this.model.graphs) {
             const signatures = Array.isArray(graph.signatures) && graph.signatures.length > 0 ? graph.signatures : [graph];
             for (const signature of signatures) {
                 /* eslint-disable no-await-in-loop */
-                await current.renderGraph(this.model, graph, signature, current.options);
+                await this.view.renderGraph(this.model, graph, signature, this.view.options);
                 /* eslint-enable no-await-in-loop */
             }
         }
     }
 }
 
-const main = () => {
-    worker_threads.parentPort.on('message', async (message) => {
+if (!worker_threads.isMainThread) {
+    worker_threads.parentPort.addEventListener('message', async (e) => {
+        const message = e.data;
         const response = {};
         try {
             const target = new Target(message);
@@ -734,6 +798,9 @@ const main = () => {
                 message = { type: 'status', ...message };
                 worker_threads.parentPort.postMessage(message);
             });
+            if (message.measures) {
+                target.measures = new Map();
+            }
             await target.execute();
             response.measures = target.measures;
         } catch (error) {
@@ -752,8 +819,4 @@ const main = () => {
         }
         worker_threads.parentPort.postMessage(response);
     });
-};
-
-if (!worker_threads.isMainThread) {
-    main();
 }

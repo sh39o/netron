@@ -40,10 +40,10 @@ mlnet.Model = class {
 mlnet.Graph = class {
 
     constructor(metadata, reader) {
-        this._inputs = [];
-        this._outputs = [];
-        this._nodes = [];
-        this._groups = false;
+        this.inputs = [];
+        this.outputs = [];
+        this.nodes = [];
+        this.groups = false;
         const values = new Map();
         values.map = (name, type) => {
             if (!values.has(name)) {
@@ -56,7 +56,7 @@ mlnet.Graph = class {
         if (reader.schema && reader.schema.inputs) {
             for (const input of reader.schema.inputs) {
                 const argument = new mlnet.Argument(input.name, [values.map(input.name, new mlnet.TensorType(input.type))]);
-                this._inputs.push(argument);
+                this.inputs.push(argument);
             }
         }
         const createNode = (scope, group, transformer) => {
@@ -79,11 +79,11 @@ mlnet.Graph = class {
                 }
             }
             const node = new mlnet.Node(metadata, group, transformer, values);
-            this._nodes.push(node);
+            this.nodes.push(node);
         };
         /* eslint-disable no-use-before-define */
         const loadChain = (scope, name, chain) => {
-            this._groups = true;
+            this.groups = true;
             const group = name.split('/').splice(1).join('/');
             for (const childTransformer of chain) {
                 loadTransformer(scope, group, childTransformer);
@@ -112,29 +112,14 @@ mlnet.Graph = class {
             loadTransformer(scope, '', reader.transformerChain);
         }
     }
-
-    get groups() {
-        return this._groups;
-    }
-
-    get inputs() {
-        return this._inputs;
-    }
-
-    get outputs() {
-        return this._outputs;
-    }
-
-    get nodes() {
-        return this._nodes;
-    }
 };
 
 mlnet.Argument = class {
 
-    constructor(name, value) {
+    constructor(name, value, type) {
         this.name = name;
         this.value = value;
+        this.type = type || null;
     }
 };
 
@@ -146,25 +131,26 @@ mlnet.Value = class {
         }
         this.name = name;
         this.type = type;
+        this.initializer = null;
     }
 };
 
 mlnet.Node = class {
 
     constructor(metadata, group, transformer, values) {
-        this._metadata = metadata;
-        this._group = group;
-        this._name = transformer.__name__;
-        this._inputs = [];
-        this._outputs = [];
-        this._attributes = [];
+        this.group = group;
+        this.name = transformer.__name__;
+        this.inputs = [];
+        this.outputs = [];
+        this.attributes = [];
         const type = transformer.__type__;
-        this._type = metadata.type(type) || { name: type };
+        this.type = metadata.type(type) || { name: type };
         if (transformer.inputs) {
             let i = 0;
             for (const input of transformer.inputs) {
-                const argument = new mlnet.Argument(i.toString(), [values.map(input.name)]);
-                this._inputs.push(argument);
+                const value = values.map(input.name);
+                const argument = new mlnet.Argument(i.toString(), [value]);
+                this.inputs.push(argument);
                 i++;
             }
         }
@@ -172,71 +158,20 @@ mlnet.Node = class {
             let i = 0;
             for (const output of transformer.outputs) {
                 const argument = new mlnet.Argument(i.toString(), [values.map(output.name)]);
-                this._outputs.push(argument);
+                this.outputs.push(argument);
                 i++;
             }
         }
-        for (const key of Object.keys(transformer).filter((key) => !key.startsWith('_') && key !== 'inputs' && key !== 'outputs')) {
-            const attribute = new mlnet.Attribute(metadata.attribute(type, this._name), key, transformer[key]);
-            this._attributes.push(attribute);
-        }
-    }
-
-    get group() {
-        return this._group;
-    }
-
-    get type() {
-        return this._type;
-    }
-
-    get name() {
-        return this._name;
-    }
-
-    get inputs() {
-        return this._inputs;
-    }
-
-    get outputs() {
-        return this._outputs;
-    }
-
-    get attributes() {
-        return this._attributes;
-    }
-};
-
-mlnet.Attribute = class {
-
-    constructor(schema, name, value) {
-        this.name = name;
-        this.value = value;
-        if (schema) {
-            if (schema.type) {
-                this.type = schema.type;
+        for (const [name, obj] of Object.entries(transformer).filter(([key]) => !key.startsWith('_') && key !== 'inputs' && key !== 'outputs')) {
+            const schema = metadata.attribute(transformer.__type__, name);
+            let value = obj;
+            let type = null;
+            if (schema) {
+                type = schema.type ? schema.type : null;
+                value = mlnet.Utility.enum(type, value);
             }
-            if (this.type) {
-                let type = mlnet;
-                const id = this.type.split('.');
-                while (type && id.length > 0) {
-                    type = type[id.shift()];
-                }
-                if (type) {
-                    mlnet.Attribute._reverseMap = mlnet.Attribute._reverseMap || {};
-                    let reverse = mlnet.Attribute._reverseMap[this.type];
-                    if (!reverse) {
-                        reverse = {};
-                        for (const key of Object.keys(type)) {
-                            reverse[type[key.toString()]] = key;
-                        }
-                        mlnet.Attribute._reverseMap[this.type] = reverse;
-                    }
-                    if (Object.prototype.hasOwnProperty.call(reverse, this.value)) {
-                        this.value = reverse[this.value];
-                    }
-                }
-            }
+            const attribute = new mlnet.Argument(name, value, type);
+            this.attributes.push(attribute);
         }
     }
 };
@@ -2302,6 +2237,33 @@ mlnet.CdfColumnFunction = class {
 mlnet.MultiClassNetPredictor = class {};
 
 mlnet.ProtonNNMCPred = class {};
+
+mlnet.Utility = class {
+
+    static enum(type, value) {
+        if (type) {
+            mlnet.Utility._enums = mlnet.Utility._enums || new Map();
+            if (!mlnet.Utility._enums.has(type)) {
+                let obj = mlnet;
+                const id = type.split('.');
+                while (obj && id.length > 0) {
+                    obj = obj[id.shift()];
+                }
+                if (obj) {
+                    const entries = new Map(Object.entries(obj).map(([key, value]) => [value, key]));
+                    mlnet.Utility._enums.set(type, entries);
+                } else {
+                    mlnet.Utility._enums.set(type, new Map());
+                }
+            }
+            const map = mlnet.Utility._enums.get(type);
+            if (map.has(value)) {
+                return map.get(value);
+            }
+        }
+        return value;
+    }
+};
 
 mlnet.Error = class extends Error {
 

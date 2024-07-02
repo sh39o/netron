@@ -87,6 +87,7 @@
   {
     "name": "Attention",
     "module": "keras.layers",
+    "category": "Attention",
     "description": "Dot-product attention layer, a.k.a. Luong-style attention.\n\nInputs are a list with 2 or 3 elements:\n1. A `query` tensor of shape `(batch_size, Tq, dim)`.\n2. A `value` tensor of shape `(batch_size, Tv, dim)`.\n3. A optional `key` tensor of shape `(batch_size, Tv, dim)`. If none\n    supplied, `value` will be used as a `key`.\n\nThe calculation follows the steps:\n1. Calculate attention scores using `query` and `key` with shape\n    `(batch_size, Tq, Tv)`.\n2. Use scores to calculate a softmax distribution with shape\n    `(batch_size, Tq, Tv)`.\n3. Use the softmax distribution to create a linear combination of `value`\n    with shape `(batch_size, Tq, dim)`.",
     "attributes": [
       {
@@ -2523,6 +2524,10 @@
       {
         "description": "Expected key corresponding to this input when passing data as\n        a dictionary.",
         "name": "name"
+      },
+      {
+        "name": "optional",
+        "description": "Boolean, whether the input is optional or not.\n        An optional input can accept `None` values."
       }
     ],
     "examples": [
@@ -3266,6 +3271,7 @@
   {
     "name": "MultiHeadAttention",
     "module": "keras.layers",
+    "category": "Attention",
     "description": "MultiHeadAttention layer.\n\nThis is an implementation of multi-headed attention as described in the\npaper \"Attention is all you Need\"\n[Vaswani et al., 2017](https://arxiv.org/abs/1706.03762).\nIf `query`, `key,` `value` are the same, then\nthis is self-attention. Each timestep in `query` attends to the\ncorresponding sequence in `key`, and returns a fixed-width vector.\n\nThis layer first projects `query`, `key` and `value`. These are\n(effectively) a list of tensors of length `num_attention_heads`, where the\ncorresponding shapes are `(batch_size, <query dimensions>, key_dim)`,\n`(batch_size, <key/value dimensions>, key_dim)`,\n`(batch_size, <key/value dimensions>, value_dim)`.\n\nThen, the query and key tensors are dot-producted and scaled. These are\nsoftmaxed to obtain attention probabilities. The value tensors are then\ninterpolated by these probabilities, then concatenated back to a single\ntensor.\n\nFinally, the result tensor with the last dimension as `value_dim` can take\na linear projection and return.",
     "attributes": [
       {
@@ -3323,6 +3329,10 @@
       {
         "description": "Constraint for dense layer kernels.",
         "name": "bias_constraint"
+      },
+      {
+        "name": "seed",
+        "description": "Optional integer to seed the dropout layer."
       }
     ],
     "examples": [
@@ -3368,7 +3378,7 @@
     "description": "Permutes the dimensions of the input according to a given pattern.\n\nUseful e.g. connecting RNNs and convnets.",
     "attributes": [
       {
-        "description": "Tuple of integers. Permutation pattern does not include the\n        batch dimension. Indexing starts at 1.\n        For instance, `(2, 1)` permutes the first and second dimensions\n        of the input.",
+        "description": "Tuple of integers. Permutation pattern does not include the\n        batch dimension. Indexing starts at 1.\n        For instance, `(1, 3, 2)` permutes the second and third dimensions\n        of the input.",
         "name": "dims"
       }
     ],
@@ -4385,7 +4395,7 @@
     ],
     "examples": [
       {
-        "code": ">>> input_shape = (2, 2, 3)\n>>> x = np.arange(np.prod(input_shape)).reshape(input_shape)\n>>> x\n[[[ 0  1  2]\n  [ 3  4  5]]\n [[ 6  7  8]\n  [ 9 10 11]]]\n>>> y = keras.layers.UpSampling1D(size=2)(x)\n>>> y\n[[[ 0.  1.  2.]\n  [ 0.  1.  2.]\n  [ 3.  4.  5.]\n  [ 3.  4.  5.]]"
+        "code": ">>> input_shape = (2, 2, 3)\n>>> x = np.arange(np.prod(input_shape)).reshape(input_shape)\n>>> x\n[[[ 0  1  2]\n  [ 3  4  5]]\n [[ 6  7  8]\n  [ 9 10 11]]]\n>>> y = keras.layers.UpSampling1D(size=2)(x)\n>>> y\n[[[ 0.  1.  2.]\n  [ 0.  1.  2.]\n  [ 3.  4.  5.]\n  [ 3.  4.  5.]]\n [[ 6.  7.  8.]\n  [ 6.  7.  8.]\n  [ 9. 10. 11.]\n  [ 9. 10. 11.]]]"
       }
     ]
   },
@@ -4558,6 +4568,7 @@
   },
   {
     "name": "Attention",
+    "category": "Attention",
     "module": "keras.layers",
     "inputs": [
       {

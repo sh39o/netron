@@ -2,19 +2,26 @@
 // Experimental
 // contributor @tucan9389
 
-import * as text from './text.js';
-
 const mlir = {};
 
 mlir.ModelFactory = class {
 
     match(context) {
-        context.type = 'mlir';
+        try {
+            const reader = context.read('text', 0x10000);
+            for (let line = reader.read('\n'); line !== undefined; line = reader.read('\n')) {
+                if (/module\s+(\w+\s+)?{/.test(line) || /tensor<\w+>/.test(line)) {
+                    context.type = 'mlir';
+                    return;
+                }
+            }
+        } catch {
+            // continue regardless of error
+        }
     }
 
     async open(context) {
-        const stream = context.stream;
-        const decoder = text.Decoder.open(stream);
+        const decoder = context.read('text.decoder');
         const parser = new mlir.Parser(decoder);
         const obj = parser.read();
         return new mlir.Model(obj);
@@ -218,9 +225,10 @@ mlir.Graph = class {
 
 mlir.Argument = class {
 
-    constructor(name, value) {
+    constructor(name, value, type) {
         this.name = name;
         this.value = value;
+        this.type = type || null;
     }
 };
 
@@ -253,21 +261,11 @@ mlir.Node = class {
         this.outputs = outputs || [];          // [mlir.Parameter]
         this.attributes = [];                  // [mlir.Attribute]
         if (attributes) {
-            for (const key of Object.keys(attributes)) {
-                const value = attributes[key];
-                const attribute = new mlir.Attribute(key, value);
+            for (const [name, value] of Object.entries(attributes)) {
+                const attribute = new mlir.Argument(name, value, 'string');
                 this.attributes.push(attribute);
             }
         }
-    }
-};
-
-mlir.Attribute = class {
-
-    constructor(name, value) {
-        this.name = name;
-        this.type = 'string';
-        this.value = value;
     }
 };
 
@@ -1016,7 +1014,7 @@ mlir.Parser = class {
                 }
                 break;
             default:
-                throw new mlir.Error(`Unexpected operation name '${JSON.stringify(this._current)}' ${this._tokenizer.location()}`);
+                throw new mlir.Error(`Unexpected operation '${this._current.value}' ${this._tokenizer.location()}`);
         }
         return value;
     }
