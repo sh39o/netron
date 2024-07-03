@@ -86,7 +86,7 @@ xmodel.Graph = class {
             this.op_map.set(node.name, node);
         }
 
-        let subg_name = this.root_subg.subgraph_name;
+        const subg_name = this.root_subg.subgraph_name;
         if (this.root_subg.subg_child.length > 0) {
             const subg_map = new Map();
             this.set_group(this.root_subg, this, subg_name, subg_map);
@@ -109,12 +109,12 @@ xmodel.Graph = class {
         const children = subg.subg_child;
         if (children.length > 0) {
             for (const child of children) {
-                const cur_subg_name = subg_name + "/" + child.subgraph_name.replace(/\//g, "_");
+                const cur_subg_name = `${subg_name}/${child.subgraph_name.replace(/\//g, "_")}`;
                 this.set_group(child, graph, cur_subg_name, subg_map);
             }
         } else {
-            let ops = subg.op_name;
-            var cur_subg_name = subg_name;
+            const ops = subg.op_name;
+            const cur_subg_name = subg_name;
             for (const op of ops) {
                 const xmodel_op = this.get_node(op);
                 xmodel_subg.ops.push(xmodel_op);
@@ -125,7 +125,7 @@ xmodel.Graph = class {
                     if (cur === '') {
                         cur = sub;
                     } else {
-                        cur += '/' + sub;
+                        cur += `/${sub}`;
                     }
                     this.get_node(op).groups.set(cur, graph.groups.get(cur));
                 }
@@ -151,15 +151,17 @@ xmodel.Subgraph = class {
     constructor(subgraph) {
         this.name = subgraph.subgraph_name;
         this.attributes = [];
-        this.parent;
         this.children = [];
         this.ops = [];
-
-        Object.entries(subgraph.subg_attr).forEach(([key, value]) => {
-            this.attributes.push(new xmodel.Argument(key, xmodel.Utility.attribute(value)));
-        });
+        if (subgraph.subg_attr) {
+            for (const [name, obj] of Object.entries(subgraph.subg_attr)) {
+                const attr = xmodel.Utility.attribute(obj);
+                const attribute = new xmodel.Argument(name, attr.value, attr.type, true);
+                this.attributes.push(attribute);
+            }
+        }
     }
-}
+};
 
 xmodel.Argument = class {
 
@@ -208,7 +210,7 @@ xmodel.Node = class {
                 if (name === 'device') {
                     this.device = obj.string_value;
                 } else if (name === "type" && typeof obj.string_value === 'string') {
-                    this.chain.unshift(new xmodel.Node(metadata, { op_type: value.value.toLowerCase() }, values));
+                    this.chain.unshift(new xmodel.Node(metadata, { op_type: obj.string_value.toLowerCase() }, values));
                 } else if (name !== 'workload' && !name.startsWith('quant_in_') && !name.startsWith('quant_out_')) {
                     const attr = xmodel.Utility.attribute(obj);
                     if (name === 'nonlinear' && attr.value && attr.value !== 'NONE' && attr.value !== 0) {
@@ -249,13 +251,13 @@ xmodel.TensorType = class {
     constructor(tensor) {
         let type = '';
         switch (tensor.data_type) {
-            case 0: this.dataType = 'int'; break;
-            case 1: this.dataType = 'uint'; break;
-            case 2: this.dataType = 'xint'; break;
-            case 3: this.dataType = 'xuint'; break;
-            case 4: this.dataType = 'float'; break;
-            case 5: this.dataType = 'bfloat'; break;
-            default: this.dataType = 'unknown'; break;
+            case 0: type = 'int'; break;
+            case 1: type = 'uint'; break;
+            case 2: type = 'xint'; break;
+            case 3: type = 'xuint'; break;
+            case 4: type = 'float'; break;
+            case 5: type = 'bfloat'; break;
+            default: type = 'unknown'; break;
         }
         this.dataType = type + tensor.tensor_bit_width.toString();
         this.shape = new xmodel.TensorShape(tensor.tensor_dim);
@@ -270,20 +272,15 @@ xmodel.TensorType = class {
             }
             const denotation = [`tensor name: ${tensor.tensor_name}`];
             Object.keys(attr)
-              .sort()
-              .forEach((key) => {
-                let value = attr[key];
-                if (
-                  typeof value === "object" &&
-                  "value" in value &&
-                  value.value.length > 0 &&
-                  value.value.constructor.name.endsWith("Array")
-                ) {
-                  value = "[" + value.value.join(",") + "]";
-                }
-                denotation.push(`${key}: ${value}`);
-              });
-            this.denotation = '\n' + denotation.join('\n');
+                .sort()
+                .forEach((key) => {
+                    let value = attr[key];
+                    if (typeof value === "object" && "value" in value && value.value.length > 0 && value.value.constructor.name.endsWith("Array")) {
+                        value = `[${value.value.join(",")}]`;
+                    }
+                    denotation.push(`${key}: ${value}`);
+                });
+            this.denotation = `\n${denotation.join('\n')}`;
         }
     }
 
@@ -392,7 +389,7 @@ xmodel.Utility = class {
             case 'map_string_2_bytes':
                 return { type: 'map<string,Bytes>', value: value.value};
             default:
-                throw new xmodel.Error("Unsupported attribute type '" + type + "'.");
+                throw new xmodel.Error(`Unsupported attribute type '${  type  }'.`);
         }
     }
 };

@@ -1019,25 +1019,33 @@ view.View = class {
     showSubgraphProperties(subgraph) {
         if (subgraph) {
             try {
-                const subgraphSidebar = new view.SubgraphSideBar(this._host, subgraph);
-                const content = subgraphSidebar.render();
-                this._sidebar.open(subgraphSidebar.render(), "Subgraph Properties");
+                const sidebar = new view.SubgraphSideBar(this, subgraph);
+                sidebar.on('focus', (sender, value) => {
+                    this._graph.focus([value]);
+                });
+                sidebar.on('blur', (sender, value) => {
+                    this._graph.blur([value]);
+                });
+                sidebar.on('select', (sender, value) => {
+                    this.scrollTo(this._graph.select([value]));
+                });
+                sidebar.on('activate', (sender, value) => {
+                    this.scrollTo(this._graph.activate(value));
+                });
+                this._sidebar.open(sidebar, "Subgraph Properties");
             } catch (error) {
-                if (error) {
-                    error.context = this._model.identifier;
-                }
                 this.error(error, 'Error showing subgraph properties.', null);
             }
         }
     }
 
-    showNodeProperties(node, input) {
+    showNodeProperties(node) {
         if (node) {
             try {
                 if (this._menu) {
                     this._menu.close();
                 }
-                const sidebar = new view.NodeSidebar(this, node, this._sidebar);
+                const sidebar = new view.NodeSidebar(this, node);
                 sidebar.on('show-documentation', async (/* sender, e */) => {
                     await this.showDefinition(node.type);
                 });
@@ -2679,30 +2687,20 @@ view.NodeSidebar = class extends view.ObjectSidebar {
 
     addGroup(name, group) {
         const item = new view.GroupView(
-            this._view,
-            "subg name",
-            new view.TextView(this._view, name.split('/').pop()), group);
+            this._view, name.split('/').pop(), group);
         this.addEntry("subg name", item);
     }
 };
 view.GroupView = class extends view.Control {
 
-    constructor(context, name, value, group) {
+    constructor(context, value, group) {
         super(context);
         this._context = context;
-        this._name = name;
         this._value = value;
         this._elements = [];
-
-        const nameElement = this.createElement('div', 'sidebar-item-name');
-        const input = this.createElement('input');
-        input.setAttribute('type', 'text');
-        input.setAttribute('value', name);
-        input.setAttribute('title', name);
-        input.setAttribute('readonly', 'true');
-        nameElement.appendChild(input);
-
-        const valueElement = this.createElement('div', 'sidebar-item-value-list');
+        const value_view = new view.TextView(this._view, value);
+        // const value_view = new view.ArgumentView(this._view, value);
+        const valueElement = this.createElement('div', 'sidebar-item-value');
         valueElement.addEventListener("mouseover", () => {
             valueElement.style.textDecoration = 'underline';
         });
@@ -2712,28 +2710,19 @@ view.GroupView = class extends view.Control {
         valueElement.addEventListener('click', () => {
             this.handleClick(group);
         });
-        for (const element of value.render()) {
+        for (const element of value_view.render()) {
             valueElement.appendChild(element);
         }
-
         this.element = this.createElement('div', 'sidebar-item');
-        this.element.appendChild(nameElement);
         this.element.appendChild(valueElement);
         this._elements.push(this.element);
     }
-
-    get name() {
-        return this._name;
-    }
-
     render() {
         return this._elements;
     }
-
     toggle() {
         this._value.toggle();
     }
-
     handleClick(subgraph) {
         const subgraphSidebar = new view.SubgraphSideBar(this._context, subgraph);
         this._view._sidebar.open(subgraphSidebar, "Subgraph Properties");
@@ -3585,11 +3574,35 @@ view.SubgraphSideBar = class extends view.ObjectSidebar {
 
     addArgument(name, argument, source) {
         const value = new view.ArgumentView(this._view, argument, source);
+        if (argument.type === 'string[]' || argument.type === 'byte[]') {
+            const button = this.createElement('div', 'sidebar-item-value-button');
+            button.classList.add('sidebar-item-value-button-context');
+            button.setAttribute('style', 'float: right;');
+            button.innerHTML = '&#x1F4BE;';
+            button.addEventListener('click', async () => {
+                await this.export(argument);
+            });
+            this.element.appendChild(button);
+        }
         value.on('focus', (sender, value) => this.emit('focus', value));
         value.on('blur', (sender, value) => this.emit('blur', value));
         value.on('select', (sender, value) => this.emit('select', value));
         value.on('activate', (sender, value) => this.emit('activate', value));
         this.addEntry(name, value);
+    }
+
+    export(attr) {
+        if (attr.type === 'string[]') {
+            const content = attr.value.join('\n');
+            const blob = new Blob([content], { type : 'text/plan'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${this._subgraph.name}_${attr.name}.txt`;
+            document.body.append(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        }
     }
 
     // addAttribute(name, attribute) {
