@@ -3646,6 +3646,13 @@
     "link":     "https://github.com/lutzroeder/netron/issues/711"
   },
   {
+    "type":     "numpy",
+    "target":   "void.npy",
+    "source":   "https://github.com/user-attachments/files/16075808/void.npy.zip[void.npy]",
+    "format":   "NumPy Array",
+    "link":     "https://github.com/lutzroeder/netron/issues/711"
+  },
+  {
     "type":     "onednn",
     "target":   "f8_matmul.json",
     "source":   "https://github.com/lutzroeder/netron/files/14018893/f8_matmul.json.zip[f8_matmul.json]",
