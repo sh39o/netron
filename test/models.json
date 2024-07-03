@@ -3640,6 +3640,14 @@
   },
   {
     "type":     "numpy",
+    "target":   "struct.npy",
+    "source":   "https://github.com/user-attachments/files/16075809/struct.npy.zip[struct.npy]",
+    "format":   "NumPy Array",
+    "error":    "Unexpected token '(', ...\" \"<U10\"], (\"age\", \"<\"... is not valid JSON",
+    "link":     "https://github.com/lutzroeder/netron/issues/711"
+  },
+  {
+    "type":     "numpy",
     "target":   "tensor.npy",
     "source":   "https://github.com/lutzroeder/netron/files/6225732/tensor.npy.zip[tensor.npy]",
     "format":   "NumPy Array",
