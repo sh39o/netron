@@ -1037,7 +1037,7 @@ view.View = class {
                 if (this._menu) {
                     this._menu.close();
                 }
-                const sidebar = new view.NodeSidebar(this, node, this.sidebar);
+                const sidebar = new view.NodeSidebar(this, node, this._sidebar);
                 sidebar.on('show-documentation', async (/* sender, e */) => {
                     await this.showDefinition(node.type);
                 });
@@ -2587,10 +2587,9 @@ view.ObjectSidebar = class extends view.Control {
 
 view.NodeSidebar = class extends view.ObjectSidebar {
 
-    constructor(context, node, sidebar) {
+    constructor(context, node) {
         super(context);
         this._node = node;
-        this.this._sidebar = sidebar;
     }
 
     render() {
@@ -2643,7 +2642,7 @@ view.NodeSidebar = class extends view.ObjectSidebar {
         if (node.group && node.groups) {
             this.addHeader("Subgraphs");
             node.groups.forEach((group, name) => {
-                this._addGroup(name, group, this._sidebar);
+                this.addGroup(name, group);
             });
         }
 
@@ -2678,53 +2677,49 @@ view.NodeSidebar = class extends view.ObjectSidebar {
         this.emit('select', this._node);
     }
 
-    _addGroup(name, group, sidebar) {
+    addGroup(name, group) {
         const item = new view.GroupView(
-            this._host,
+            this._view,
             "subg name",
-            new view.ValueTextView(this._host, name.split('/').pop()), group, sidebar
-          );
-        this._container.appendChild(item.render());
+            new view.TextView(this._view, name.split('/').pop()), group);
+        this.addEntry("subg name", item);
     }
 };
-view.GroupView = class {
+view.GroupView = class extends view.Control {
 
-    constructor(host, name, value, group, sidebar) {
-        this._host = host;
+    constructor(context, name, value, group) {
+        super(context);
+        this._context = context;
         this._name = name;
         this._value = value;
-        this._sidebar = sidebar;
+        this._elements = [];
 
-        const nameElement = this._host.document.createElement('div');
-        nameElement.className = 'sidebar-item-name';
+        const nameElement = this.createElement('div', 'sidebar-item-name');
+        const input = this.createElement('input');
+        input.setAttribute('type', 'text');
+        input.setAttribute('value', name);
+        input.setAttribute('title', name);
+        input.setAttribute('readonly', 'true');
+        nameElement.appendChild(input);
 
-        const nameInputElement = this._host.document.createElement('input');
-        nameInputElement.setAttribute('type', 'text');
-        nameInputElement.setAttribute('value', name);
-        nameInputElement.setAttribute('title', name);
-        nameInputElement.setAttribute('readonly', 'true');
-        nameElement.appendChild(nameInputElement);
-
-        const valueElement = this._host.document.createElement('div');
-        valueElement.className = 'sidebar-item-value-list';
+        const valueElement = this.createElement('div', 'sidebar-item-value-list');
         valueElement.addEventListener("mouseover", () => {
             valueElement.style.textDecoration = 'underline';
         });
         valueElement.addEventListener("mouseout", () => {
             valueElement.style.textDecoration = 'none';
-        })
-        valueElement.addEventListener('click', () => {
-            this._handleClick(group);
         });
-
+        valueElement.addEventListener('click', () => {
+            this.handleClick(group);
+        });
         for (const element of value.render()) {
             valueElement.appendChild(element);
         }
 
-        this._element = this._host.document.createElement('div');
-        this._element.className = 'sidebar-item';
-        this._element.appendChild(nameElement);
-        this._element.appendChild(valueElement);
+        this.element = this.createElement('div', 'sidebar-item');
+        this.element.appendChild(nameElement);
+        this.element.appendChild(valueElement);
+        this._elements.push(this.element);
     }
 
     get name() {
@@ -2732,21 +2727,16 @@ view.GroupView = class {
     }
 
     render() {
-        return this._element;
+        return this._elements;
     }
 
     toggle() {
         this._value.toggle();
     }
 
-    _handleClick(subgraph) {
-        try {
-            const subgraphSidebar = new view.SubgraphSideBar(this._host, subgraph);
-            const content = subgraphSidebar.render();
-            this._sidebar.open(content, "Subgraph Properties");
-        } catch (error) {
-            this.error(error, 'Error showing subgraph properties.', null);
-        }
+    handleClick(subgraph) {
+        const subgraphSidebar = new view.SubgraphSideBar(this._context, subgraph);
+        this._view._sidebar.open(subgraphSidebar, "Subgraph Properties");
     }
 };
 
@@ -3567,100 +3557,83 @@ view.ModelSidebar = class extends view.ObjectSidebar {
     }
 };
 
-view.SubgraphSideBar = class extends view.Control {
+view.SubgraphSideBar = class extends view.ObjectSidebar {
 
-    constructor(host, subgraph) {
-        super();
-        this._host = host;
+    constructor(context, subgraph) {
+        super(context);
         this._subgraph = subgraph;
-        this._elements = [];
-        this._attributes = [];
-
-        const container = this._host.document.createElement('div');
-        container.className = 'sidebar-subgraph';
-        this._elements.push(container);
-
+    }
+    render () {
+        const subgraph = this._subgraph;
         if (subgraph.name) {
-            this._addProperty('name', new view.ValueTextView(this._host, subgraph.name));
+            this.addProperty('name', subgraph.name);
         }
-
         if (subgraph.description) {
-            this._addProperty('description', new view.ValueTextView(this._host, subgraph.description));
+            this.addProperty('description', subgraph.description);
         }
-
         const attributes = subgraph.attributes;
         if (attributes && attributes.length > 0) {
             const sortedAttributes = subgraph.attributes.slice();
-            sortedAttributes.sort((a, b) => {
-                const au = a.name.toUpperCase();
-                const bu = b.name.toUpperCase();
-                return (au < bu) ? -1 : (au > bu) ? 1 : 0;
-            });
-            this._addHeader('Subgraph Attributes');
+            sortedAttributes.sort((a, b) => 
+                a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+            this.addHeader('Subgraph Attributes');
             for (const attribute of sortedAttributes) {
-                this._addAttribute(attribute.name, attribute);
+                this.addArgument(attribute.name, attribute, 'attribute');
             }
         }
     }
 
-    render() {
-        return this._elements;
+    addArgument(name, argument, source) {
+        const value = new view.ArgumentView(this._view, argument, source);
+        value.on('focus', (sender, value) => this.emit('focus', value));
+        value.on('blur', (sender, value) => this.emit('blur', value));
+        value.on('select', (sender, value) => this.emit('select', value));
+        value.on('activate', (sender, value) => this.emit('activate', value));
+        this.addEntry(name, value);
     }
 
-    _addHeader(title) {
-        const element = this._host.document.createElement('div');
-        element.className = 'sidebar-header';
-        element.innerText = title;
-        this._elements[0].appendChild(element);
-    }
-
-    _addProperty(name, value) {
-        const item = new view.NameValueView(this._host, name, value);
-        this._elements[0].appendChild(item.render());
-    }
-
-    _addAttribute(name, attribute) {
-        const value = new view.AttributeView(this._host, attribute.value);
-        if (attribute.value.type === 'string[]') {
-            const saveButton = this._host.document.createElement('div');
-            saveButton.className = 'sidebar-item-value-expander';
-            saveButton.innerHTML = '&#x1F4BE;';
-            saveButton.addEventListener('click', () => {
-                const content = attribute.value.value.join('\n');
-                const blob = new Blob([content], { type: 'text/plain' });
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = this._subgraph.name + "_" + name + ".txt";
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(a.href);
-            });
-            value._element.appendChild(saveButton);
-        } else if (attribute.value.type === 'byte[]') {
-            const saveButton = this._host.document.createElement('div');
-            saveButton.className = 'sidebar-item-value-expander';
-            saveButton.innerHTML = '&#x1F4BE;';
-            saveButton.addEventListener('click', () => {
-                const byteData = new Uint8Array(attribute.value.value);
-                const blob = new Blob([byteData], { type: 'application/octet-stream' });
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = this._subgraph.name + "_" + name + ".bin";
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(a.href);
-            });
-            value._element.appendChild(saveButton);
-        }
-        value.on('show-graph', (sender, graph) => {
-            this.emit('show-graph', graph);
-        });
-        const item = new view.NameValueView(this._host, name, value);
-        this._attributes.push(item);
-        this._elements[0].appendChild(item.render());
-    }
+    // addAttribute(name, attribute) {
+    //     const value = new view.TextView(this._view, attribute.value);
+    //     if (attribute.value.type === 'string[]') {
+    //         const saveButton = this.createElement('div');
+    //         saveButton.className = 'sidebar-item-value-expander';
+    //         saveButton.innerHTML = '&#x1F4BE;';
+    //         saveButton.addEventListener('click', () => {
+    //             const content = attribute.value.value.join('\n');
+    //             const blob = new Blob([content], { type: 'text/plain' });
+    //             const a = document.createElement('a');
+    //             a.href = URL.createObjectURL(blob);
+    //             a.download = this._subgraph.name + "_" + name + ".txt";
+    //             document.body.appendChild(a);
+    //             a.click();
+    //             document.body.removeChild(a);
+    //             URL.revokeObjectURL(a.href);
+    //         });
+    //         value.appendChild(saveButton);
+    //     } else if (attribute.value.type === 'byte[]') {
+    //         const saveButton = this.createElement('div');
+    //         saveButton.className = 'sidebar-item-value-expander';
+    //         saveButton.innerHTML = '&#x1F4BE;';
+    //         saveButton.addEventListener('click', () => {
+    //             const byteData = new Uint8Array(attribute.value.value);
+    //             const blob = new Blob([byteData], { type: 'application/octet-stream' });
+    //             const a = document.createElement('a');
+    //             a.href = URL.createObjectURL(blob);
+    //             a.download = this._subgraph.name + "_" + name + ".bin";
+    //             document.body.appendChild(a);
+    //             a.click();
+    //             document.body.removeChild(a);
+    //             URL.revokeObjectURL(a.href);
+    //         });
+    //         value.appendChild(saveButton);
+    //     }
+    //     value.on('show-graph', (sender, graph) => {
+    //         this.emit('show-graph', graph);
+    //     });
+    //     const item = new view.NameValueView(this._host, name, value);
+    //     this._attributes.push(item);
+    //     this._elements[0].appendChild(item.render());
+    // }
 };
 
 view.DocumentationSidebar = class extends view.Control {
