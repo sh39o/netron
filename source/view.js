@@ -1890,9 +1890,9 @@ view.Graph = class extends grapher.Graph {
                 }
             }
         }
-        if (this._isCompound instanceof Map) {
-            this.on("click", (_, subg_name) =>
-            this.view.showSubgraphProperties(this._isCompound.get(subg_name))
+        if (this._compound instanceof Map) {
+            this.on("click", (_, subgraph) =>
+                this.view.showSubgraphProperties(this._compound.get(subgraph))
             );
         }
         if (Array.isArray(outputs)) {

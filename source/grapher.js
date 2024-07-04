@@ -274,28 +274,28 @@ grapher.Graph = class {
                 node.rectangle.setAttribute('width', node.width);
                 node.rectangle.setAttribute('height', node.height);
                 if (
-                    typeof this._isCompound === "object" &&
-                    this._isCompound instanceof Map &&
-                    this._isCompound.get(nodeId) &&
-                    this._isCompound.get(nodeId).attributes
+                    typeof this._compound === "object" &&
+                    this._compound instanceof Map &&
+                    this._compound.get(nodeId) &&
+                    this._compound.get(nodeId).attributes
                 ) {
-                    const device = this._isCompound.get(nodeId).attributes.find((attr) => attr.name === "device");
-                    const tiling_idx = this._isCompound.get(nodeId).attributes.find((attr) => attr.name === "tiling_idx");
-                    const pdi = this._isCompound.get(nodeId).attributes.find((attr) => attr.name === "type" && attr.value.value === "PDI");
-                    const root = this._isCompound.get(nodeId).name === "root";
+                    const device = this._compound.get(nodeId).attributes.find((attr) => attr.name === "device");
+                    const tiling_idx = this._compound.get(nodeId).attributes.find((attr) => attr.name === "tiling_idx");
+                    const pdi = this._compound.get(nodeId).attributes.find((attr) => attr.name === "type" && attr.value === "PDI");
+                    const root = this._compound.get(nodeId).name === "root";
                     let label_name = null;
                     let font_size = "10px";
                     if (root) {
                         label_name = "ROOT";
                         font_size = "15px";
                     } else if (device) {
-                        label_name = device.value.value;
+                        label_name = device.value;
                         font_size = "12px";
                     } else if (tiling_idx) {
-                        label_name = `tile ${tiling_idx.value.value}`;
+                        label_name = `tile ${tiling_idx.value}`;
                         font_size = "11px";
                     } else if (pdi) {
-                        label_name = this._isCompound.get(nodeId).name.replace("_subgraph", "");
+                        label_name = `${this._compound.get(nodeId).name} : ${this._compound.get(nodeId).attributes.find((attr) => attr.name === 'name').value}`;
                         font_size = "11px";
                     }
                     if (label_name) {

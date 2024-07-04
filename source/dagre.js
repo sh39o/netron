@@ -1947,24 +1947,12 @@ dagre.layout = (nodes, edges, layout, state) => {
                 const label = node.label;
                 const t = g.node(label.borderTop).label;
                 const b = g.node(label.borderBottom).label;
-                const l = label.borderLeft
-                      .map((nodeId) => g.node(nodeId))
-                      .reduce(
-                        (minNode, node) =>
-                          !minNode || node.label.x < minNode.label.x
-                            ? node
-                            : minNode,
-                        null
-                      ).label;
-                const r = label.borderRight
-                        .map((nodeId) => g.node(nodeId))
-                        .reduce(
-                        (maxNode, node) =>
-                            !maxNode || node.label.x > maxNode.label.x
-                            ? node
-                            : maxNode,
-                        null
-                        ).label;
+                // const l = g.node(label.borderLeft[label.borderLeft.length - 1]).label;
+                // const r = g.node(label.borderRight[label.borderRight.length - 1]).label;
+                const l = label.borderLeft.map((nodeId) => g.node(nodeId)).reduce(
+                    (minNode, node) => !minNode || node.label.x < minNode.label.x ? node : minNode, null).label;
+                const r = label.borderRight.map((nodeId) => g.node(nodeId)).reduce(
+                    (maxNode, node) => !maxNode || node.label.x > maxNode.label.x ? node : maxNode, null).label;
 
                 label.width = Math.abs(r.x - l.x);
                 label.height = Math.abs(b.y - t.y);
