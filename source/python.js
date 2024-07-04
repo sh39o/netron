@@ -2456,6 +2456,16 @@ python.Execution = class {
                         }
                         return list;
                     }
+                    case 'V': {
+                        const data = this.data;
+                        const itemsize = this.dtype.itemsize;
+                        let offset = 0;
+                        for (let i = 0; i < size; i++) {
+                            list[i] = data.slice(offset, offset + itemsize);
+                            offset += itemsize;
+                        }
+                        return list;
+                    }
                     case 'T': {
                         return this.data;
                     }

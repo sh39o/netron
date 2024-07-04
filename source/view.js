@@ -4307,18 +4307,6 @@ view.Formatter = class {
         if (value && typeof value === 'bigint') {
             return value.toString();
         }
-        if (value && (value instanceof Float32Array || value instanceof Float64Array ||
-            value instanceof Int8Array || value instanceof Uint8Array ||
-            value instanceof Int16Array || value instanceof Uint16Array ||
-            value instanceof Int32Array || value instanceof Uint32Array)) {
-            let valueStr = '';
-            if (value.length > 64) {
-                valueStr = [...value.slice(0, 64)].toString() + ", ...";
-            } else {
-                valueStr = [...value].toString();
-            }
-            return valueStr;
-        }
         if (Number.isNaN(value)) {
             return 'NaN';
         }
@@ -4349,22 +4337,6 @@ view.Formatter = class {
                 return value ? value.toString() : '(null)';
             case 'type[]':
                 return value ? value.map((item) => item.toString()).join(', ') : '(null)';
-            case 'map<string,Bytes>':
-                var res = '';
-                Object.keys(value).sort().forEach((key) => {
-                    let valueStr = '';
-                    if (value[key].value.length > 64) {
-                        valueStr = [...value[key].value.slice(0, 64)].toString() + ", ...";
-                    } else {
-                        valueStr = [...value[key].value].toString();
-                    }
-                    res += `${key}: ` + valueStr + "\n";
-                });
-                return res;
-            case 'byte[]':
-                return [...value].toString();
-            case 'string[]':
-                return value.join("\n");
             default:
                 break;
         }
