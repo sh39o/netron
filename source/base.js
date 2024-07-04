@@ -589,7 +589,8 @@ base.Tensor = class {
             ['boolean', 1],
             ['qint8', 1], ['qint16', 2], ['qint32', 4],
             ['quint8', 1], ['quint16', 2], ['quint32', 4],
-            ['xint8', 1],
+            ['xint8', 1], ['xuint8', 1], ['xint16', 2], ['xuint16', 2],
+            ['xint32', 4], ['xuint32', 4], ['xint64', 8], ['xuint64', 8],
             ['int8', 1], ['int16', 2], ['int32', 4], ['int64', 8],
             ['uint8', 1], ['uint16', 2], ['uint32', 4,], ['uint64', 8],
             ['float16', 2], ['float32', 4], ['float64', 8], ['bfloat16', 2],
@@ -661,11 +662,11 @@ base.Tensor = class {
             case '<':
             case '>': {
                 const value = this._decodeData(context, 0, 0);
-                return base.Tensor._stringify(value, '', '    ');
+                return base.Tensor._prettierStringify(context, value);
             }
             case '|': {
                 const value = this._decodeValues(context, 0, 0);
-                return base.Tensor._stringify(value, '', '    ');
+                return base.Tensor._prettierStringify(context, value);
             }
             default: {
                 throw new Error(`Unsupported tensor encoding '${context.encoding}'.`);
@@ -831,17 +832,20 @@ base.Tensor = class {
                     break;
                 case 'qint16':
                 case 'int16':
+                case 'xint16':
                     for (; offset < max; offset += stride) {
                         results.push(view.getInt16(offset, this._littleEndian));
                     }
                     break;
                 case 'qint32':
                 case 'int32':
+                case 'xint32':
                     for (; offset < max; offset += stride) {
                         results.push(view.getInt32(offset, this._littleEndian));
                     }
                     break;
                 case 'int64':
+                case 'xint64':
                     for (; offset < max; offset += stride) {
                         results.push(view.getBigInt64(offset, this._littleEndian));
                     }
@@ -853,23 +857,27 @@ base.Tensor = class {
                     break;
                 case 'quint8':
                 case 'uint8':
+                case 'xuint8':
                     for (; offset < max; offset += stride) {
                         results.push(view.getUint8(offset));
                     }
                     break;
                 case 'quint16':
                 case 'uint16':
+                case 'xuint16':
                     for (; offset < max; offset += stride) {
                         results.push(view.getUint16(offset, true));
                     }
                     break;
                 case 'quint32':
                 case 'uint32':
+                case 'xuint32':
                     for (; offset < max; offset += stride) {
                         results.push(view.getUint32(offset, true));
                     }
                     break;
                 case 'uint64':
+                case 'xuint64':
                     for (; offset < max; offset += stride) {
                         results.push(view.getBigUint64(offset, true));
                     }
@@ -994,38 +1002,68 @@ base.Tensor = class {
         return results;
     }
 
-    static _stringify(value, indentation, indent) {
-        if (Array.isArray(value)) {
-            const result = [];
-            result.push(`${indentation}[`);
-            const items = value.map((item) => base.Tensor._stringify(item, indentation + indent, indent));
-            if (items.length > 0) {
-                result.push(items.join(',\n'));
+    static _prettierStringify(context, value) {
+        const fixCount = context.dataType.toLowerCase().includes('float') ? 8 : null;
+        const lineDiv = context.dataType.toLowerCase().includes('float') ? 3 : 12;
+        const result = base.Tensor._stringify(value, '', ' ', fixCount, lineDiv);
+        function countStartingBrackets(str) {
+            const matches = str.match(/^\[+/);
+            if (matches) {
+                return matches[0].length;
             }
-            result.push(`${indentation}]`);
-            return result.join('\n');
+            return 0;
+        }
+        const dimension = countStartingBrackets(result);
+        const prettier = result.replace(/],\s*\]/g, ']]').replace(/],\[/g, '],\n[').replace(/],\.\.\.,/g, '],\n...,\n').replace(/]],\n/g, ']],\n\n');
+        const slice = prettier.split("\n");
+        for (let i = 0; i < slice.length; i++) {
+            const start_brackets = countStartingBrackets(slice[i]);
+            slice[i] = ' '.repeat(dimension - start_brackets) + slice[i];
+        }
+        return slice.join('\n');
+    }
+
+    static _stringify(value, indentation, indent, fixCount, lineDiv) {
+        if (Array.isArray(value)) {
+            let result = "";
+            result += "[";
+            const items = value.map((item) => base.Tensor._stringify(item, indentation + indent, indent, fixCount, lineDiv));
+            if (items.length > 0) {
+                if (items.length > lineDiv * 2) {
+                    result += `${items.slice(0, lineDiv).join(',')},...,\n${items.slice(-lineDiv,).join(',')}`;
+                } else if (items.length > lineDiv && items.length <= lineDiv * 2) {
+                    result += `${items.slice(0, lineDiv).join(',')},\n${items.slice(lineDiv,).join(',')}`;
+                } else {
+                    result += items.join(',');
+                }
+            }
+            result += "]";
+            return result;
         }
         if (value === null) {
-            return `${indentation}null`;
+            return "null";
         }
         switch (typeof value) {
             case 'boolean':
-                return indentation + value.toString();
+                return value.toString();
             case 'string':
-                return `${indentation}"${value}"`;
+                return value;
             case 'number':
                 if (value === Infinity) {
-                    return `${indentation}Infinity`;
+                    return "Infinity";
                 }
                 if (value === -Infinity) {
-                    return `${indentation}-Infinity`;
+                    return "-Infinity";
                 }
                 if (isNaN(value)) {
-                    return `${indentation}NaN`;
+                    return "NaN";
                 }
-                return indentation + value.toString();
+                if (fixCount) {
+                    return value.toFixed(fixCount).toString();
+                }
+                return value.toString();
             case 'bigint':
-                return indentation + value.toString();
+                return value.toString();
             default:
                 if (value instanceof Uint8Array) {
                     let content = '';
@@ -1033,12 +1071,12 @@ base.Tensor = class {
                         const x = value[i];
                         content += x >= 32 && x <= 126 ? String.fromCharCode(x) : `\\x${x.toString(16).padStart(2, '0')}`;
                     }
-                    return  `${indentation}"${content}"`;
+                    return  content;
                 }
                 if (value && value.toString) {
-                    return indentation + value.toString();
+                    return value.toString();
                 }
-                return `${indentation}(undefined)`;
+                return `(undefined)`;
         }
     }
 

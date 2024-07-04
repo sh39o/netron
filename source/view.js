@@ -1,4 +1,3 @@
-
 import * as base from './base.js';
 import * as zip from './zip.js';
 import * as tar from './tar.js';
@@ -1017,6 +1016,29 @@ view.View = class {
         }
     }
 
+    showSubgraphProperties(subgraph) {
+        if (subgraph) {
+            try {
+                const sidebar = new view.SubgraphSideBar(this, subgraph);
+                sidebar.on('focus', (sender, value) => {
+                    this._graph.focus([value]);
+                });
+                sidebar.on('blur', (sender, value) => {
+                    this._graph.blur([value]);
+                });
+                sidebar.on('select', (sender, value) => {
+                    this.scrollTo(this._graph.select([value]));
+                });
+                sidebar.on('activate', (sender, value) => {
+                    this.scrollTo(this._graph.activate(value));
+                });
+                this._sidebar.open(sidebar, "Subgraph Properties");
+            } catch (error) {
+                this.error(error, 'Error showing subgraph properties.', null);
+            }
+        }
+    }
+
     showNodeProperties(node) {
         if (node) {
             try {
@@ -1862,11 +1884,16 @@ view.Graph = class extends grapher.Graph {
                         }
                     }
                     if (groupName) {
-                        createCluster(`${groupName}\ngroup`);
-                        this.setParent(viewNode.name, `${groupName}\ngroup`);
+                        createCluster(groupName);
+                        this.setParent(viewNode.name, groupName);
                     }
                 }
             }
+        }
+        if (this._compound instanceof Map) {
+            this.on("click", (_, subgraph) =>
+                this.view.showSubgraphProperties(this._compound.get(subgraph))
+            );
         }
         if (Array.isArray(outputs)) {
             for (const output of outputs) {
@@ -2619,6 +2646,14 @@ view.NodeSidebar = class extends view.ObjectSidebar {
                 this.addArgument(attribute.name, attribute, 'attribute');
             }
         }
+
+        if (node.group && node.groups) {
+            this.addHeader("Subgraphs");
+            node.groups.forEach((group, name) => {
+                this.addGroup(name, group);
+            });
+        }
+
         const inputs = node.inputs;
         if (Array.isArray(inputs) && inputs.length > 0) {
             this.addHeader('Inputs');
@@ -2648,6 +2683,49 @@ view.NodeSidebar = class extends view.ObjectSidebar {
 
     activate() {
         this.emit('select', this._node);
+    }
+
+    addGroup(name, group) {
+        const item = new view.GroupView(
+            this._view, name.split('/').pop(), group);
+        this.addEntry("subg name", item);
+    }
+};
+view.GroupView = class extends view.Control {
+
+    constructor(context, value, group) {
+        super(context);
+        this._context = context;
+        this._value = value;
+        this._elements = [];
+        const value_view = new view.TextView(this._view, value);
+        // const value_view = new view.ArgumentView(this._view, value);
+        const valueElement = this.createElement('div', 'sidebar-item-value');
+        valueElement.addEventListener("mouseover", () => {
+            valueElement.style.textDecoration = 'underline';
+        });
+        valueElement.addEventListener("mouseout", () => {
+            valueElement.style.textDecoration = 'none';
+        });
+        valueElement.addEventListener('click', () => {
+            this.handleClick(group);
+        });
+        for (const element of value_view.render()) {
+            valueElement.appendChild(element);
+        }
+        this.element = this.createElement('div', 'sidebar-item');
+        this.element.appendChild(valueElement);
+        this._elements.push(this.element);
+    }
+    render() {
+        return this._elements;
+    }
+    toggle() {
+        this._value.toggle();
+    }
+    handleClick(subgraph) {
+        const subgraphSidebar = new view.SubgraphSideBar(this._context, subgraph);
+        this._view._sidebar.open(subgraphSidebar, "Subgraph Properties");
     }
 };
 
@@ -3468,6 +3546,109 @@ view.ModelSidebar = class extends view.ObjectSidebar {
     }
 };
 
+view.SubgraphSideBar = class extends view.ObjectSidebar {
+
+    constructor(context, subgraph) {
+        super(context);
+        this._subgraph = subgraph;
+    }
+    render () {
+        const subgraph = this._subgraph;
+        if (subgraph.name) {
+            this.addProperty('name', subgraph.name);
+        }
+        if (subgraph.description) {
+            this.addProperty('description', subgraph.description);
+        }
+        const attributes = subgraph.attributes;
+        if (attributes && attributes.length > 0) {
+            const sortedAttributes = subgraph.attributes.slice();
+            sortedAttributes.sort((a, b) => 
+                a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+            this.addHeader('Subgraph Attributes');
+            for (const attribute of sortedAttributes) {
+                this.addArgument(attribute.name, attribute, 'attribute');
+            }
+        }
+    }
+
+    addArgument(name, argument, source) {
+        const value = new view.ArgumentView(this._view, argument, source);
+        if (argument.type === 'string[]' || argument.type === 'byte[]') {
+            const button = this.createElement('div', 'sidebar-item-value-button');
+            button.classList.add('sidebar-item-value-button-context');
+            button.setAttribute('style', 'float: right;');
+            button.innerHTML = '&#x1F4BE;';
+            button.addEventListener('click', async () => {
+                await this.export(argument);
+            });
+            this.element.appendChild(button);
+        }
+        value.on('focus', (sender, value) => this.emit('focus', value));
+        value.on('blur', (sender, value) => this.emit('blur', value));
+        value.on('select', (sender, value) => this.emit('select', value));
+        value.on('activate', (sender, value) => this.emit('activate', value));
+        this.addEntry(name, value);
+    }
+
+    export(attr) {
+        if (attr.type === 'string[]') {
+            const content = attr.value.join('\n');
+            const blob = new Blob([content], { type : 'text/plan'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${this._subgraph.name}_${attr.name}.txt`;
+            document.body.append(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        }
+    }
+
+    // addAttribute(name, attribute) {
+    //     const value = new view.TextView(this._view, attribute.value);
+    //     if (attribute.value.type === 'string[]') {
+    //         const saveButton = this.createElement('div');
+    //         saveButton.className = 'sidebar-item-value-expander';
+    //         saveButton.innerHTML = '&#x1F4BE;';
+    //         saveButton.addEventListener('click', () => {
+    //             const content = attribute.value.value.join('\n');
+    //             const blob = new Blob([content], { type: 'text/plain' });
+    //             const a = document.createElement('a');
+    //             a.href = URL.createObjectURL(blob);
+    //             a.download = this._subgraph.name + "_" + name + ".txt";
+    //             document.body.appendChild(a);
+    //             a.click();
+    //             document.body.removeChild(a);
+    //             URL.revokeObjectURL(a.href);
+    //         });
+    //         value.appendChild(saveButton);
+    //     } else if (attribute.value.type === 'byte[]') {
+    //         const saveButton = this.createElement('div');
+    //         saveButton.className = 'sidebar-item-value-expander';
+    //         saveButton.innerHTML = '&#x1F4BE;';
+    //         saveButton.addEventListener('click', () => {
+    //             const byteData = new Uint8Array(attribute.value.value);
+    //             const blob = new Blob([byteData], { type: 'application/octet-stream' });
+    //             const a = document.createElement('a');
+    //             a.href = URL.createObjectURL(blob);
+    //             a.download = this._subgraph.name + "_" + name + ".bin";
+    //             document.body.appendChild(a);
+    //             a.click();
+    //             document.body.removeChild(a);
+    //             URL.revokeObjectURL(a.href);
+    //         });
+    //         value.appendChild(saveButton);
+    //     }
+    //     value.on('show-graph', (sender, graph) => {
+    //         this.emit('show-graph', graph);
+    //     });
+    //     const item = new view.NameValueView(this._host, name, value);
+    //     this._attributes.push(item);
+    //     this._elements[0].appendChild(item.render());
+    // }
+};
+
 view.DocumentationSidebar = class extends view.Control {
 
     constructor(context, type) {
@@ -3623,7 +3804,7 @@ view.FindSidebar = class extends view.Control {
             this._terms = [term];
         } else {
             this._exact = false;
-            this._terms = this._state.query.trim().toLowerCase().split(' ').map((term) => term.trim()).filter((term) => term.length > 0);
+            this._terms = this._state.query.trim().toLowerCase().split(';').map((term) => term.trim()).filter((term) => term.length > 0);
         }
     }
 
@@ -3648,22 +3829,29 @@ view.FindSidebar = class extends view.Control {
         if (value.type && !this._exact) {
             for (const term of this._terms) {
                 if (value.type.dataType && term === value.type.dataType.toLowerCase()) {
-                    return true;
+                    continue;
                 }
                 if (value.type.shape) {
                     if (term === value.type.shape.toString().toLowerCase()) {
-                        return true;
+                        continue;
                     }
                     if (value.type.shape && Array.isArray(value.type.shape.dimensions)) {
                         const dimensions = value.type.shape.dimensions.map((dimension) => dimension ? dimension.toString().toLowerCase() : '');
                         if (term === dimensions.join(',')) {
-                            return true;
+                            continue;
                         }
                         if (dimensions.some((dimension) => term === dimension)) {
-                            return true;
+                            continue;
                         }
                     }
+                    if (value.type.denotation) {
+                        if (value.type.denotation.toLowerCase().includes(term)) {
+                            continue;
+                        }
+                    }
+                    return false;
                 }
+                return true;
             }
         }
         return false;

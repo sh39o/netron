@@ -11,6 +11,7 @@ grapher.Graph = class {
         this._children = {};
         this._children['\x00'] = {};
         this._parent = {};
+        this._events = {};
     }
 
     setNode(node) {
@@ -102,6 +103,19 @@ grapher.Graph = class {
         return null;
     }
 
+    on(event, callback) {
+        this._events[event] = this._events[event] || [];
+        this._events[event].push(callback);
+    }
+
+    emit(event, data) {
+        if (this._events && this._events[event]) {
+            for (const callback of this._events[event]) {
+                callback(this, data);
+            }
+        }
+    }
+
     build(document, origin) {
         const createGroup = (name) => {
             const element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -146,13 +160,16 @@ grapher.Graph = class {
                 // cluster
                 node.rectangle = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
                 if (node.rx) {
-                    node.rectangle.setAttribute('rx', entry.rx);
+                    node.rectangle.setAttribute('rx', node.rx);
                 }
                 if (node.ry) {
-                    node.rectangle.setAttribute('ry', entry.ry);
+                    node.rectangle.setAttribute('ry', node.ry);
                 }
                 node.element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
                 node.element.setAttribute('class', 'cluster');
+                node.element.addEventListener("click", () =>
+                    this.emit("click", node.name)
+                );
                 node.element.appendChild(node.rectangle);
                 clusterGroup.appendChild(node.element);
             }
@@ -256,6 +273,42 @@ grapher.Graph = class {
                 node.rectangle.setAttribute('y', - node.height / 2);
                 node.rectangle.setAttribute('width', node.width);
                 node.rectangle.setAttribute('height', node.height);
+                if (
+                    typeof this._compound === "object" &&
+                    this._compound instanceof Map &&
+                    this._compound.get(nodeId) &&
+                    this._compound.get(nodeId).attributes
+                ) {
+                    const device = this._compound.get(nodeId).attributes.find((attr) => attr.name === "device");
+                    const tiling_idx = this._compound.get(nodeId).attributes.find((attr) => attr.name === "tiling_idx");
+                    const pdi = this._compound.get(nodeId).attributes.find((attr) => attr.name === "type" && attr.value === "PDI");
+                    const root = this._compound.get(nodeId).name === "root";
+                    let label_name = null;
+                    let font_size = "10px";
+                    if (root) {
+                        label_name = "ROOT";
+                        font_size = "15px";
+                    } else if (device) {
+                        label_name = device.value;
+                        font_size = "12px";
+                    } else if (tiling_idx) {
+                        label_name = `tile ${tiling_idx.value}`;
+                        font_size = "11px";
+                    } else if (pdi) {
+                        label_name = `${this._compound.get(nodeId).name} : ${this._compound.get(nodeId).attributes.find((attr) => attr.name === 'name').value}`;
+                        font_size = "11px";
+                    }
+                    if (label_name) {
+                        const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        textElement.textContent = label_name;
+                        textElement.setAttribute("text-anchor", "middle");
+                        textElement.setAttribute("alignment-baseline", "bottom");
+                        textElement.setAttribute("x", -node.width / 2 - 10);
+                        textElement.setAttribute("y", -node.height / 2 + 10);
+                        textElement.style.fontSize = font_size;
+                        node.element.appendChild(textElement);
+                    }
+                }
             }
         }
         for (const edge of this.edges.values()) {
