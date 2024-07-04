@@ -1719,6 +1719,7 @@ view.Graph = class extends grapher.Graph {
         this.options = options;
         this._nodeKey = 0;
         this._values = new Map();
+        this._tensors = new Map();
         this._table = new Map();
         this._selection = new Set();
     }
@@ -1765,8 +1766,15 @@ view.Graph = class extends grapher.Graph {
     }
 
     createTensor(value) {
-        const obj = new view.Tensor(this, value);
-        this._table.set(value, obj);
+        if (this._tensors.has(value)) {
+            const obj = this._tensors.get(value);
+            this._table.set(value, obj);
+        } else {
+            const obj = new view.Tensor(this, value);
+            this._tensors.set(value, obj);
+            this._table.set(value, obj);
+        }
+        return this._tensors.get(value);
     }
 
     add(graph, signature) {
@@ -1962,12 +1970,8 @@ view.Node = class extends grapher.Node {
     _add(node) {
         const options = this.context.options;
         const header =  this.header();
-        const styles = ['node-item-type'];
         const type = node.type;
         const category = type && type.category ? type.category : '';
-        if (category) {
-            styles.push(`node-item-type-${category.toLowerCase()}`);
-        }
         if (typeof type.name !== 'string' || !type.name.split) { // #416
             const error = new view.Error(`Unsupported node type '${JSON.stringify(type.name)}'.`);
             if (this.context.model && this.context.model.identifier) {
@@ -1980,6 +1984,7 @@ view.Node = class extends grapher.Node {
         if (content.length > 24) {
             content = `${content.substring(0, 12)}\u2026${content.substring(content.length - 12, content.length)}`;
         }
+        const styles = category ? ['node-item-type', `node-item-type-${category.toLowerCase()}`] : ['node-item-type'];
         const title = header.add(null, styles, content, tooltip);
         title.on('click', () => {
             this.context.activate(node);
@@ -1992,24 +1997,42 @@ view.Node = class extends grapher.Node {
             // this._expand = header.add(null, styles, '+', null);
             // this._expand.on('click', () => this.toggle());
         }
-        const initializers = [];
-        let hiddenInitializers = false;
-        if (options.weights) {
-            if (Array.isArray(node.inputs)) {
-                for (const input of node.inputs) {
-                    if (input.visible !== false && input.value.length === 1 && input.value[0].initializer) {
-                        initializers.push(input);
+        let current = null;
+        const list = () => {
+            if (!current) {
+                current = this.list();
+                current.on('click', () => this.context.activate(node));
+            }
+            return current;
+        };
+        let hiddenTensors = false;
+        const tensors = [];
+        const objects = [];
+        const attributes = [];
+        if (Array.isArray(node.inputs)) {
+            for (const input of node.inputs) {
+                switch (input.type) {
+                    case 'graph':
+                    case 'object':
+                    case 'object[]':
+                    case 'function':
+                    case 'function[]': {
+                        objects.push(input);
+                        break;
                     }
-                    if ((input.visible === false || input.value.length > 1) &&
-                        (!input.type || input.type.endsWith('*')) && input.value.some((value) => value.initializer)) {
-                        hiddenInitializers = true;
+                    default: {
+                        if (options.weights && input.visible !== false && input.value.length === 1 && input.value[0].initializer) {
+                            tensors.push(input);
+                        } else if (options.weights && (input.visible === false || input.value.length > 1) && (!input.type || input.type.endsWith('*')) && input.value.some((value) => value.initializer)) {
+                            hiddenTensors = true;
+                        } else if (options.attributes && input.visible !== false && input.type && !input.type.endsWith('*')) {
+                            attributes.push(input);
+                        }
                     }
                 }
             }
         }
-        const objects = [];
-        const attributes = [];
-        if (Array.isArray(node.attributes) && node.attributes.length > 0) {
+        if (Array.isArray(node.attributes)) {
             for (const attribute of node.attributes) {
                 switch (attribute.type) {
                     case 'graph':
@@ -2027,78 +2050,59 @@ view.Node = class extends grapher.Node {
                     }
                 }
             }
+        }
+        if (attributes.length > 0) {
             attributes.sort((a, b) => a.name.toUpperCase().localeCompare(b.name.toUpperCase()));
         }
-        if (Array.isArray(node.inputs)) {
-            for (const input of node.inputs) {
-                switch (input.type) {
-                    case 'graph':
-                    case 'object':
-                    case 'object[]':
-                    case 'function':
-                    case 'function[]': {
-                        objects.push(input);
-                        break;
-                    }
-                    default: {
-                        break;
-                    }
+        for (const argument of tensors) {
+            const [value] = argument.value;
+            const type = value.type;
+            let shape = '';
+            let separator = '';
+            if (type && type.shape && type.shape.dimensions && Array.isArray(type.shape.dimensions)) {
+                shape = `\u3008${type.shape.dimensions.map((d) => (d !== null && d !== undefined) ? d : '?').join('\u00D7')}\u3009`;
+                if (type.shape.dimensions.length === 0 && value.initializer) {
+                    const formatter = new view.Formatter(value.initializer, 'tensor');
+                    shape = formatter.toString();
+                    separator = ' = ';
                 }
+            }
+            const item = list().argument(argument.name, shape);
+            item.tooltip = type ? type.toString() : '';
+            item.separator = separator;
+            list().add(item);
+        }
+        if (hiddenTensors) {
+            const item = list().argument('\u3008\u2026\u3009', '');
+            list().add(item);
+        }
+        for (const attribute of attributes) {
+            if (attribute.visible !== false) {
+                let value = new view.Formatter(attribute.value, attribute.type).toString();
+                if (value && value.length > 12) {
+                    value = `${value.substring(0, 12)}\u2026`;
+                }
+                const item = list().argument(attribute.name, value);
+                item.tooltip = attribute.type;
+                item.separator = ' = ';
+                list().add(item);
             }
         }
-        if (initializers.length > 0 || hiddenInitializers || attributes.length > 0 || objects.length > 0) {
-            const list = this.list();
-            list.on('click', () => this.context.activate(node));
-            for (const argument of initializers) {
-                const [value] = argument.value;
-                const type = value.type;
-                let shape = '';
-                let separator = '';
-                if (type && type.shape && type.shape.dimensions && Array.isArray(type.shape.dimensions)) {
-                    shape = `\u3008${type.shape.dimensions.map((d) => (d !== null && d !== undefined) ? d : '?').join('\u00D7')}\u3009`;
-                    if (type.shape.dimensions.length === 0 && value.initializer) {
-                        try {
-                            const tensor = new base.Tensor(value.initializer);
-                            const encoding = tensor.encoding;
-                            if ((encoding === '<' || encoding === '>' || encoding === '|') && !tensor.empty && tensor.type.dataType !== '?') {
-                                shape = tensor.toString();
-                                if (shape && shape.length > 10) {
-                                    shape = `${shape.substring(0, 10)}\u2026`;
-                                }
-                                separator = ' = ';
-                            }
-                        } catch (error) {
-                            this.context.view.exception(error, false);
-                        }
-                    }
-                }
-                list.add(argument.name, shape, type ? type.toString() : '', separator);
+        for (const argument of objects) {
+            if (argument.type === 'graph') {
+                const node = this.context.createNode(null, argument.value);
+                const item = list().argument(argument.name, node);
+                list().add(item);
             }
-            if (hiddenInitializers) {
-                list.add('\u3008\u2026\u3009', '', null, '');
+            if (argument.type === 'function' || argument.type === 'object') {
+                const node = this.context.createNode(argument.value);
+                const item = list().argument(argument.name, node);
+                list().add(item);
             }
-            for (const attribute of attributes) {
-                if (attribute.visible !== false) {
-                    let value = new view.Formatter(attribute.value, attribute.type).toString();
-                    if (value && value.length > 25) {
-                        value = `${value.substring(0, 25)}\u2026`;
-                    }
-                    list.add(attribute.name, value, attribute.type, ' = ');
-                }
-            }
-            for (const attribute of objects) {
-                if (attribute.type === 'graph') {
-                    const node = this.context.createNode(null, attribute.value);
-                    list.add(attribute.name, node, '', '');
-                }
-                if (attribute.type === 'function' || attribute.type === 'object') {
-                    const node = this.context.createNode(attribute.value);
-                    list.add(attribute.name, node, '', '');
-                }
-                if (attribute.type === 'function[]' || attribute.type === 'object[]') {
-                    const nodes = attribute.value.map((value) => this.context.createNode(value));
-                    list.add(attribute.name, nodes, '', '');
-                }
+            if (argument.type === 'function[]' || argument.type === 'object[]') {
+                const nodes = argument.value.map((value) => this.context.createNode(value));
+                const item = list().argument(argument.name, nodes);
+                list().add(item);
             }
         }
         if (Array.isArray(node.nodes) && node.nodes.length > 0) {
@@ -4139,11 +4143,21 @@ view.Formatter = class {
                 return value ? value.name : '(null)';
             case 'graph[]':
                 return value ? value.map((graph) => graph.name).join(', ') : '(null)';
-            case 'tensor':
-                if (value && value.type && value.type.shape && value.type.shape.dimensions && value.type.shape.dimensions.length === 0) {
-                    return value.toString();
+            case 'tensor': {
+                const type = value.type;
+                if (type && type.shape && type.shape.dimensions && Array.isArray(type.shape.dimensions) && type.shape.dimensions.length === 0) {
+                    const tensor = new base.Tensor(value);
+                    const encoding = tensor.encoding;
+                    if ((encoding === '<' || encoding === '>' || encoding === '|') && !tensor.empty && tensor.type.dataType !== '?') {
+                        let content = tensor.toString();
+                        if (content && content.length > 10) {
+                            content = `${content.substring(0, 10)}\u2026`;
+                        }
+                        return content;
+                    }
                 }
-                return '[...]';
+                return '[\u2026]';
+            }
             case 'object':
             case 'function':
                 return value.type.name;

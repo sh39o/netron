@@ -277,7 +277,7 @@ grapher.Node = class {
     }
 
     list() {
-        const block = new grapher.Node.List();
+        const block = new grapher.ArgumentList();
         this._blocks.push(block);
         return block;
     }
@@ -524,17 +524,19 @@ grapher.Node.Header.Entry = class {
     }
 };
 
-grapher.Node.List = class {
+grapher.ArgumentList = class {
 
     constructor() {
         this._items = [];
         this._events = {};
     }
 
-    add(name, value, tooltip, separator) {
-        const item = new grapher.Node.List.Item(name, value, tooltip, separator);
-        this._items.push(item);
-        return item;
+    argument(name, value) {
+        return new grapher.Argument(name, value);
+    }
+
+    add(value) {
+        this._items.push(value);
     }
 
     on(event, callback) {
@@ -553,7 +555,7 @@ grapher.Node.List = class {
     build(document, parent) {
         this._document = document;
         this.element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        this.element.setAttribute('class', 'node-attribute-list');
+        this.element.setAttribute('class', 'node-argument-list');
         if (this._events.click) {
             this.element.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -564,38 +566,7 @@ grapher.Node.List = class {
         this.element.appendChild(this.background);
         parent.appendChild(this.element);
         for (const item of this._items) {
-            const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-            group.setAttribute('class', 'node-attribute');
-            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            text.setAttribute('xml:space', 'preserve');
-            if (item.tooltip) {
-                const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-                title.textContent = item.tooltip;
-                text.appendChild(title);
-            }
-            const colon = item.type === 'node' || item.type === 'node[]';
-            const name = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-            name.textContent =  colon ? `${item.name}:` : item.name;
-            if (item.separator.trim() !== '=' && !colon) {
-                name.style.fontWeight = 'bold';
-            }
-            text.appendChild(name);
-            group.appendChild(text);
-            this.element.appendChild(group);
-            item.group = group;
-            item.text = text;
-            if (item.type === 'node') {
-                const node = item.value;
-                node.build(document, item.group);
-            } else if (item.type === 'node[]') {
-                for (const node of item.value) {
-                    node.build(document, item.group);
-                }
-            } else {
-                const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                tspan.textContent = item.separator + item.value;
-                item.text.appendChild(tspan);
-            }
+            item.build(document, this.element);
         }
         if (!this.first) {
             this.line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -697,17 +668,57 @@ grapher.Node.List = class {
     }
 };
 
-grapher.Node.List.Item = class {
+grapher.Argument = class {
 
-    constructor(name, value, tooltip, separator) {
+    constructor(name, value) {
         this.name = name;
         this.value = value;
-        this.tooltip = tooltip;
-        this.separator = separator;
         if (value instanceof grapher.Node) {
             this.type = 'node';
         } else if (Array.isArray(value) && value.every((value) => value instanceof grapher.Node)) {
             this.type = 'node[]';
+        }
+    }
+
+    build(document, parent) {
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.setAttribute('class', 'node-argument');
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('xml:space', 'preserve');
+        if (this.tooltip) {
+            const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+            title.textContent = this.tooltip;
+            text.appendChild(title);
+        }
+        const colon = this.type === 'node' || this.type === 'node[]';
+        const name = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        name.textContent =  colon ? `${this.name}:` : this.name;
+        if (this.separator && this.separator.trim() !== '=' && !colon) {
+            name.style.fontWeight = 'bold';
+        }
+        text.appendChild(name);
+        group.appendChild(text);
+        parent.appendChild(group);
+        this.group = group;
+        this.text = text;
+        switch (this.type) {
+            case 'node': {
+                const node = this.value;
+                node.build(document, this.group);
+                break;
+            }
+            case 'node[]': {
+                for (const node of this.value) {
+                    node.build(document, this.group);
+                }
+                break;
+            }
+            default: {
+                const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                tspan.textContent = (this.separator || '') + this.value;
+                this.text.appendChild(tspan);
+                break;
+            }
         }
     }
 };
@@ -947,4 +958,4 @@ grapher.Edge.Path = class {
     }
 };
 
-export const { Graph, Node, Edge } = grapher;
+export const { Graph, Node, Edge, Argument } = grapher;
