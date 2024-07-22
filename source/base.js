@@ -1004,7 +1004,7 @@ base.Tensor = class {
 
     static _prettierStringify(context, value) {
         const fixCount = context.dataType.toLowerCase().includes('float') ? 8 : null;
-        const lineDiv = context.dataType.toLowerCase().includes('float') ? 3 : 12;
+        const lineDiv = context.dataType.toLowerCase().includes('float') ? 4 : 12;
         const result = base.Tensor._stringify(value, '', ' ', fixCount, lineDiv);
         function countStartingBrackets(str) {
             const matches = str.match(/^\[+/);

@@ -241,11 +241,11 @@ python.Parser = class {
             node.expression = this._expression(-1, [], true);
             return node;
         }
-        node = this._eat('id', 'print');
-        if (node) {
-            node.expression = this._expression(-1, [], true);
-            return node;
-        }
+        // node = this._eat('id', 'print');
+        // if (node) {
+        //     node.expression = this._expression(-1, [], true);
+        //     return node;
+        // }
         node = this._eat('id', 'if');
         if (node) {
             node.condition = this._expression();
@@ -1808,6 +1808,7 @@ python.Execution = class {
         this.registerFunction('operator.ne');
         this.registerFunction('operator.floordiv');
         this.registerFunction('operator.sub');
+        this.registerFunction('sys.path.append', () => {});
         this.registerFunction('sys.path.insert', () => {});
         this.registerType('argparse.Namespace', class {
             constructor(args) {
@@ -2096,6 +2097,8 @@ python.Execution = class {
         this.registerType('gensim.models.keyedvectors.KeyedVectors', class {});
         this.registerType('gensim.models.keyedvectors.Vocab', class {});
         this.registerType('gensim.models.keyedvectors.Word2VecKeyedVectors', class {});
+        this.registerType('gensim.models.ldamodel.LdaState', class {});
+        this.registerType('gensim.models.ldamulticore.LdaMulticore', class {});
         this.registerType('gensim.models.phrases.Phrases', class {});
         this.registerType('gensim.models.tfidfmodel.TfidfModel', class {});
         this.registerType('gensim.models.word2vec.Vocab', class {});
@@ -2112,6 +2115,7 @@ python.Execution = class {
                 Object.assign(this, obj);
             }
         });
+        this.registerType('joblib._store_backends.FileSystemStoreBackend', class {});
         this.registerType('joblib.numpy_pickle.NumpyArrayWrapper', class {
 
             __read__(unpickler) {
@@ -2314,6 +2318,7 @@ python.Execution = class {
         this.registerType('megengine.module.qat.elemwise.Elemwise', class {});
         this.registerType('megengine.module.sequential.Sequential', class {});
         this.registerType('megengine.quantization.fake_quant.FakeQuantize', class {});
+        this.registerType('megengine.quantization.fake_quant.LSQ', class {});
         this.registerType('megengine.quantization.fake_quant.TQT', class {});
         this.registerType('megengine.quantization.utils.QParams', class {});
         this.registerType('megengine.quantization.utils.QuantMode', class {});
@@ -2698,6 +2703,7 @@ python.Execution = class {
         this.registerType('sklearn.cluster.k_means_.MiniBatchKMeans', class {});
         this.registerType('sklearn.compose._column_transformer._RemainderColsList', class {});
         this.registerType('sklearn.compose._column_transformer.ColumnTransformer', class {});
+        this.registerType('sklearn.compose._column_transformer.make_column_selector', class {});
         this.registerType('sklearn.compose._target.TransformedTargetRegressor', class {});
         this.registerType('sklearn.cross_decomposition._pls.PLSRegression', class {});
         this.registerType('sklearn.decomposition._fastica.FastICA', class {});
@@ -3684,9 +3690,11 @@ python.Execution = class {
             }
             return undefined;
         });
-        this.registerFunction('dill._dill._create_type', (/* typeobj */) => {
-            // return execution.invoke(typeobj, Array.from(arguments).slice(1));
-            throw new python.Error("'dill._dill._create_type' not implemented.");
+        this.registerFunction('dill._dill._create_type', (typeobj, ...args) => {
+            const [name, bases, dict] = args;
+            const type = class extends bases[0] {};
+            const identifier = dict.__module__ ? `${dict.__module__}.${name}` : name;
+            return self.registerType(identifier, Object.assign(type, dict));
         });
         this.registerFunction('dill._dill._eval_repr');
         this.registerFunction('dill._dill._get_attr', (self, name) => {
@@ -3855,6 +3863,7 @@ python.Execution = class {
         this.registerFunction('numpy._core.multiarray._reconstruct', (subtype, shape, dtype) => {
             return numpy.ndarray.__new__(subtype, shape, dtype);
         });
+        this.registerFunction('numpy._core.multiarray.scalar');
         this.registerFunction('numpy._core._internal._convert_to_stringdtype_kwargs', () => {
             return new numpy.dtypes.StringDType();
         });
@@ -3920,6 +3929,7 @@ python.Execution = class {
         this.registerFunction('numpy.core._multiarray_umath.cbrt');
         this.registerFunction('numpy.core._multiarray_umath.greater');
         this.registerFunction('numpy.core._multiarray_umath.less');
+        this.registerFunction('numpy.core._multiarray_umath.log');
         this.registerFunction('numpy.core._multiarray_umath.scalar', (dtype, rawData) => {
             let data = rawData;
             if (typeof rawData === 'string') {
@@ -4030,6 +4040,9 @@ python.Execution = class {
             file.write(encoder.encode(header));
             file.write(arr.tobytes());
         });
+        this.registerFunction('numpy.amin');
+        this.registerFunction('numpy.amax');
+        this.registerFunction('numpy.std');
         this.registerFunction('numpy.asarray', (a, dtype) => {
             const encode = (context, data, dim) => {
                 const size = context.shape[dim];
@@ -4169,6 +4182,7 @@ python.Execution = class {
         this.registerFunction('sklearn.feature_selection._univariate_selection.f_regression');
         this.registerFunction('sklearn.metrics.scorer._passthrough_scorer');
         this.registerFunction('sklearn.metrics._classification.accuracy_score');
+        this.registerFunction('sklearn.metrics._classification.balanced_accuracy_score');
         this.registerFunction('sklearn.metrics._classification.f1_score');
         this.registerFunction('sklearn.metrics._classification.precision_score');
         this.registerFunction('sklearn.metrics._classification.recall_score');
@@ -4215,6 +4229,9 @@ python.Execution = class {
         });
         torch.nn.Module = torch.nn.modules.module.Module;
         torch.nn.modules.Module = torch.nn.modules.module.Module;
+        this.registerType('torch._C._TensorBase', class extends builtins.object {});
+        this.registerType('torch._C._TensorMeta', class extends builtins.type {});
+        this.registerType('torch._C._VariableFunctionsClass', class extends builtins.object {});
         this.registerType('torch.ao.quantization.fake_quantize.FakeQuantize', class {});
         this.registerType('torch.ao.quantization.fake_quantize.FusedMovingAvgObsFakeQuantize', class {});
         this.registerType('torch.ao.quantization.observer._PartialWrapper', class {});
@@ -4252,7 +4269,7 @@ python.Execution = class {
         this.registerFunction('torch.distributed._shard.sharded_tensor.pre_load_state_dict_hook');
         this.registerFunction('torch.distributed._shard.sharded_tensor.state_dict_hook');
         this.registerType('torch.distributed.algorithms.join._JoinConfig', class {});
-        this.registerType('torch.distributed._tensor.api.DTensor', class {});
+        this.registerType('torch.distributed._tensor.api.DTensor', class extends torch._C._TensorMeta {});
         this.registerType('torch.distributed._tensor.placement_types.DTensorSpec', class {});
         this.registerType('torch.distributed._tensor.placement_types.Shard', class {});
         this.registerType('torch.distributed._tensor.placement_types.TensorMeta', class {});
@@ -4566,6 +4583,7 @@ python.Execution = class {
         this.registerType('torch.quantization.observer.MinMaxObserver', class {});
         this.registerType('torch.quantization.observer.MovingAverageMinMaxObserver', class {});
         this.registerType('torch.quantization.observer.MovingAveragePerChannelMinMaxObserver', class {});
+        this.registerFunction('torch.quantization.observer._with_args');
         this.registerType('torch.quantization.qconfig.QConfig', class {});
         this.registerType('torch.quantization.stubs.DeQuantStub', class {});
         this.registerType('torch.quantization.stubs.QuantStub', class {});
@@ -4582,6 +4600,7 @@ python.Execution = class {
         this.registerType('torch.utils.data.sampler.BatchSampler', class {});
         this.registerType('torch.utils.data.sampler.RandomSampler', class {});
         this.registerType('torch.utils.data.sampler.SequentialSampler', class {});
+        this.registerType('torch.utils.data.sampler.SubsetRandomSampler', class {});
         this.registerType('torch.fx.experimental.symbolic_shapes.ShapeEnv', class {
             create_symintnode(/* sym, hint, source */) {
                 return new torch.SymInt();
@@ -5344,8 +5363,8 @@ python.Execution = class {
             list.splice(index, 0, value);
             return value;
         });
-        this.registerFunction('torch.replace', (value) => {
-            return value;
+        this.registerFunction('torch.replace', (value, oldvalue, newvalue /*, max */) => {
+            return value.replace(oldvalue, newvalue);
         });
         this.registerFunction('torch.dict', (args) => {
             const obj = {};
@@ -5417,6 +5436,11 @@ python.Execution = class {
                 }
                 return text;
             }).join('');
+        });
+        this.registerFunction('torch.strip', (self, chars) => {
+            chars = chars || '\\n\\t\\f\\v';
+            const regex = new RegExp(`[${chars}]`, 'g');
+            return self.replace(regex, '');
         });
         this.registerFunction('torch.gt', (left, right) => {
             if ((typeof left === 'number' || left instanceof Number) && (typeof right === 'number' || right instanceof Number)) {
@@ -6697,8 +6721,6 @@ python.Execution = class {
                 this.node = node;
             }
         });
-        this.registerType('torch._C._TensorBase', class {});
-        this.registerType('torch._C._VariableFunctionsClass', class {});
         this.register('torch.nn').Module = this.register('torch.nn.modules.module').Module;
         this.register('torch.optim').Adam = this.register('torch.optim.adam').Adam;
         this.register('torch.nn').ReLU = this.register('torch.nn.modules.activation').ReLU;
@@ -6756,8 +6778,9 @@ python.Execution = class {
         this.registerType('fastcore.dispatch._TypeDict', class {});
         this.registerType('fastcore.dispatch.TypeDispatch', class {});
         this.registerType('fastcore.foundation.L', class {});
-        this.registerType('fastcore.transform.Pipeline', class {});
-        this.registerType('fastcore.transform.Transform', class {});
+        this.registerType('fastcore.transform.Pipeline', class extends builtins.object {});
+        this.registerType('fastcore.transform.Transform', class extends builtins.object {});
+        this.registerType('fastcore.transform.DisplayedTransform', class extends fastcore.transform.Transform {});
         this.registerType('fastcore.transform.ItemTransform', class extends fastcore.transform.Transform {});
         this.registerType('fastai.basic_train.Learner', class {});
         this.registerType('fastai.basic_train.Recorder', class {});
@@ -6791,6 +6814,8 @@ python.Execution = class {
         this.registerFunction('fastai.callback.hook._hook_inner');
         this.registerType('fastai.callback.hook.Hook', class extends builtins.object {});
         this.registerType('fastai.callback.hook.Hooks', class extends builtins.object {});
+        this.registerType('fastai.callback.mixup.MixHandler', class extends fastai.callback.core.Callback {});
+        this.registerType('fastai.callback.mixup.CutMix', class extends fastai.callback.mixup.MixHandler {});
         this.registerType('fastai.callback.progress.ProgressCallback', class {});
         this.registerType('fastai.callback.progress.ShowGraphCallback', class {});
         this.registerType('fastai.callback.tracker.EarlyStoppingCallback', class {});
@@ -6845,6 +6870,7 @@ python.Execution = class {
         this.registerType('fastai.losses.CrossEntropyLossFlat', class extends fastai.losses.BaseLoss {});
         this.registerType('fastai.losses.FocalLoss', class extends fastai.torch_core.Module {});
         this.registerType('fastai.losses.FocalLossFlat', class extends fastai.losses.BaseLoss {});
+        this.registerType('fastai.losses.LabelSmoothingCrossEntropy', class extends fastai.torch_core.Module {});
         this.registerType('fastai.metrics.AccumMetric', class extends fastai.learner.Metric {});
         this.registerType('fastai.metrics.Dice', class {});
         this.registerType('fastai.metrics.JaccardCoeff', class {});
@@ -6860,6 +6886,7 @@ python.Execution = class {
         this.registerFunction('fastai.optimizer.adam_step');
         this.registerFunction('fastai.optimizer.average_grad');
         this.registerFunction('fastai.optimizer.average_sqr_grad');
+        this.registerFunction('fastai.optimizer.RAdam');
         this.registerFunction('fastai.optimizer.step_stat');
         this.registerFunction('fastai.optimizer.weight_decay');
         this.registerType('fastai.tabular.core.Categorify', class {});
@@ -6878,6 +6905,8 @@ python.Execution = class {
         this.registerType('fastai.vision.augment._BrightnessLogit', class {});
         this.registerType('fastai.vision.augment._ContrastLogit', class {});
         this.registerType('fastai.vision.augment._WarpCoord', class {});
+        this.registerType('fastai.vision.augment.RandTransform', class extends fastcore.transform.DisplayedTransform {});
+        this.registerType('fastai.vision.augment.AffineCoordTfm', class extends fastai.vision.augment.RandTransform {});
         this.registerType('fastai.vision.augment.Brightness', class {});
         this.registerType('fastai.vision.augment.flip_mat', class {});
         this.registerType('fastai.vision.augment.Flip', class {});
@@ -6885,6 +6914,7 @@ python.Execution = class {
         this.registerType('fastai.vision.augment.Resize', class {});
         this.registerType('fastai.vision.augment.rotate_mat', class {});
         this.registerFunction('fastai.vision.augment.TensorImage.lighting');
+        this.registerType('fastai.vision.augment.Warp', class extends fastai.vision.augment.AffineCoordTfm {});
         this.registerType('fastai.vision.augment.zoom_mat', class {});
         this.registerType('fastai.vision.core.PILImage', class {});
         this.registerType('fastai.vision.core.PILMask', class {});

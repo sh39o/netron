@@ -91,6 +91,13 @@
   },
   {
     "type":     "_",
+    "target":   "invalid.tflite",
+    "source":   "https://github.com/user-attachments/files/16322406/invalid.tflite.zip[invalid.tflite]",
+    "error":    "Invalid file content. File contains TensorFlow Lite model data.",
+    "link":     "https://github.com/lutzroeder/netron/issues/458"
+  },
+  {
+    "type":     "_",
     "target":   "invalid_git_lfs.mlmodel",
     "source":   "https://github.com/lutzroeder/netron/files/4432767/invalid_git_lfs.mlmodel.zip[invalid_git_lfs.mlmodel]",
     "error":    "Invalid file content. File contains Git LFS header.",
@@ -150,6 +157,20 @@
     "target":   "random.onnx",
     "source":   "https://github.com/lutzroeder/netron/files/7449479/random.onnx.zip[random.onnx]",
     "error":    "Unsupported file content (746d6c20786d6c6e733d22687474703a) for extension '.onnx'.",
+    "link":     "https://github.com/lutzroeder/netron/issues/458"
+  },
+  {
+    "type":     "_",
+    "target":   "tokenizer.json",
+    "source":   "https://github.com/user-attachments/files/16203071/tokenizer.json.zip[tokenizer.json]",
+    "error":    "Invalid file content. File contains Tokenizers data.",
+    "link":     "https://github.com/lutzroeder/netron/issues/458"
+  },
+  {
+    "type":     "_",
+    "target":   "tokenizer.model",
+    "source":   "https://github.com/user-attachments/files/16203080/tokenizer.model.zip[tokenizer.model]",
+    "error":    "Invalid file content. File contains Tokenizer data.",
     "link":     "https://github.com/lutzroeder/netron/issues/458"
   },
   {
@@ -2102,6 +2123,14 @@
   },
   {
     "type":     "hailo",
+    "target":   "llama.hn",
+    "source":   "https://github.com/user-attachments/files/16163387/llama.hn.zip[llama.hn]",
+    "format":   "Hailo NN",
+    "tags":     "skip-render",
+    "link":     "https://github.com/lutzroeder/netron/issues/1058"
+  },
+  {
+    "type":     "hailo",
     "target":   "resnet_v1_8.hn",
     "source":   "https://github.com/lutzroeder/netron/files/11015765/resnet_v1_8.zip[resnet_v1_8.hn]",
     "format":   "Hailo NN",
@@ -2112,6 +2141,13 @@
     "target":   "resnet_v1_8.har",
     "source":   "https://github.com/lutzroeder/netron/files/11015765/resnet_v1_8.zip[resnet_v1_8_quantized.har]",
     "format":   "Hailo Archive v3.23.0",
+    "link":     "https://github.com/lutzroeder/netron/issues/1058"
+  },
+  {
+    "type":     "hailo",
+    "target":   "VD_M_sRGB_4k_Apr03.har",
+    "source":   "https://github.com/user-attachments/files/16163445/VD_M_sRGB_4k_Apr03.har.zip[VD_M_sRGB_4k_Apr03.har]",
+    "format":   "Hailo Archive v3.26.0",
     "link":     "https://github.com/lutzroeder/netron/issues/1058"
   },
   {
@@ -3505,6 +3541,13 @@
     "link":     "https://github.com/Tencent/ncnn"
   },
   {
+    "type":     "ncnn",
+    "target":   "v5lite-i8e.param,v5lite-i8e.bin",
+    "source":   "https://github.com/user-attachments/files/16321516/v5lite-i8e.zip[v5lite-i8e.param,v5lite-i8e.bin]",
+    "format":   "ncnn",
+    "link":     "https://github.com/Tencent/ncnn"
+  },
+  {
     "type":     "nnabla",
     "target":   "Resnet-18.nnp",
     "source":   "https://nnabla.org/pretrained-models/nnp_models/imagenet/Resnet-18/Resnet-18.nnp",
@@ -4728,7 +4771,7 @@
     "target":   "dill_custom_class.pkl",
     "source":   "https://github.com/lutzroeder/netron/files/13035743/dill_custom_class.pkl.zip[dill_custom_class.pkl]",
     "format":   "Pickle",
-    "error":    "'dill._dill._create_type' not implemented.\nUnknown type name '__builtin__.__main__'.",
+    "error":    "Unknown type name '__builtin__.__main__'.\nUnsupported Pickle type '__main__.CustomClass'.",
     "link":     "https://github.com/lutzroeder/netron/issues/901"
   },
   {
@@ -4792,6 +4835,13 @@
     "format":   "Pickle",
     "error":    "Unsupported Pickle type 'gensim.models.word2vec.Word2Vec'.",
     "link":     "https://github.com/lutzroeder/netron/issues/901"
+  },
+  {
+    "type":     "pnnx",
+    "target":   "demo_net.pnnx.param,demo_net.pnnx.bin",
+    "source":   "https://github.com/user-attachments/files/16325286/demo_net.pnnx.zip[demo_net.pnnx.param,demo_net.pnnx.bin]",
+    "format":   "PNNX",
+    "link":     "https://github.com/lutzroeder/netron/issues/296"
   },
   {
     "type":     "pytorch",
@@ -4886,6 +4936,13 @@
     "source":   "https://github.com/lutzroeder/netron/files/5435851/boolean.zip[boolean.pkl.pth]",
     "format":   "PyTorch v0.1.10",
     "link":     "https://github.com/lutzroeder/netron/issues/472"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "coco128-yolov8n-seg_output.torchscript.ptl",
+    "source":   "https://github.com/user-attachments/files/16091260/coco128-yolov8n-seg_output.torchscript.ptl.zip[coco128-yolov8n-seg_output.torchscript.ptl]",
+    "format":   "TorchScript v1.6",
+    "link":     "https://github.com/lutzroeder/netron/issues/1067"
   },
   {
     "type":     "pytorch",
@@ -5276,6 +5333,7 @@
     "source":   "https://github.com/lutzroeder/netron/files/11149538/model.ptl.zip[model.ptl]",
     "format":   "TorchScript v1.6",
     "assert":   "model.graphs[0].nodes[0].inputs[1].type == 'object'",
+    "tags":     "validation",
     "link":     "https://github.com/lutzroeder/netron/issues/1067"
   },
   {
@@ -5313,6 +5371,22 @@
     "source":   "https://github.com/lutzroeder/netron/files/7406443/mobilenetv2-quant_full.zip[mobilenetv2-quant_full/mobilenetv2-quant_full-cpu.pt]",
     "format":   "TorchScript v1.6",
     "link":     "https://github.com/lutzroeder/netron/issues/644"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "model_static_cpu.pt",
+    "source":   "https://github.com/user-attachments/files/16091311/model_static_cpu.pt.zip[model_static_cpu.pt]",
+    "format":   "TorchScript v1.6",
+    "tags":     "skip-render",
+    "link":     "https://github.com/lutzroeder/netron/issues/842"
+  },
+  {
+    "type":     "pytorch",
+    "target":   "model_dynamic_cpu.pt",
+    "source":   "https://github.com/user-attachments/files/16091313/model_dynamic_cpu.pt.zip[model_dynamic_cpu.pt]",
+    "format":   "TorchScript v1.6",
+    "tags":     "skip-render",
+    "link":     "https://github.com/lutzroeder/netron/issues/842"
   },
   {
     "type":     "pytorch",
@@ -5437,30 +5511,16 @@
   {
     "type":     "pytorch",
     "target":   "pedestrian_interaction_position_embedding.pt",
-    "source":   "https://raw.githubusercontent.com/ApolloAuto/apollo/master/modules/prediction/data/pedestrian_interaction_position_embedding.pt",
+    "source":   "https://github.com/user-attachments/files/16120032/pedestrian_interaction_position_embedding.pt.zip[pedestrian_interaction_position_embedding.pt]",
     "format":   "TorchScript v1.0",
-    "link":     "https://github.com/ApolloAuto/apollo"
-  },
-  {
-    "type":     "pytorch",
-    "target":   "pedestrian_interaction_prediction_layer.pt",
-    "source":   "https://raw.githubusercontent.com/ApolloAuto/apollo/master/modules/prediction/data/pedestrian_interaction_prediction_layer.pt",
-    "format":   "TorchScript v1.0",
-    "link":     "https://github.com/ApolloAuto/apollo"
+    "link":     "https://github.com/lutzroeder/netron/issues/842"
   },
   {
     "type":     "pytorch",
     "target":   "pedestrian_interaction_single_lstm.pt",
-    "source":   "https://raw.githubusercontent.com/ApolloAuto/apollo/master/modules/prediction/data/pedestrian_interaction_single_lstm.pt",
+    "source":   "https://github.com/user-attachments/files/16120033/pedestrian_interaction_single_lstm.pt.zip[pedestrian_interaction_single_lstm.pt]",
     "format":   "TorchScript v1.0",
-    "link":     "https://github.com/ApolloAuto/apollo"
-  },
-  {
-    "type":     "pytorch",
-    "target":   "pedestrian_interaction_social_embedding.pt",
-    "source":   "https://raw.githubusercontent.com/ApolloAuto/apollo/master/modules/prediction/data/pedestrian_interaction_social_embedding.pt",
-    "format":   "TorchScript v1.1",
-    "link":     "https://github.com/ApolloAuto/apollo"
+    "link":     "https://github.com/lutzroeder/netron/issues/842"
   },
   {
     "type":     "pytorch",
@@ -5770,7 +5830,7 @@
     "source":   "https://github.com/lutzroeder/netron/files/9541426/sparse_coo.pth.zip[sparse_coo.pth]",
     "format":   "PyTorch v1.6",
     "assert":   "model.graphs[0].nodes[0].inputs[0].value[0].type.layout == 'sparse.coo'",
-    "tag":      "validation",
+    "tags":     "validation",
     "link":     "https://github.com/lutzroeder/netron/issues/720"
   },
   {
@@ -5838,7 +5898,7 @@
     "target":   "tensor-and-integer-in-tuple.pt",
     "source":   "https://github.com/user-attachments/files/15879202/tensor-and-integer-in-tuple.pt.zip[tensor-and-integer-in-tuple.pt]",
     "format":   "PyTorch v1.6",
-    "assert":   "model.graphs[0].nodes[0].attributes[0].value == 234",
+    "assert":   "model.graphs[0].nodes[0].inputs[1].value == 234",
     "link":     "https://github.com/lutzroeder/netron/issues/543"
   },
   {
@@ -5865,10 +5925,19 @@
   },
   {
     "type":     "pytorch",
+    "target":   "TestSerialization.test_lstm.traced.pt",
+    "source":   "https://github.com/user-attachments/files/16121906/TestSerialization.test_lstm.traced.pt.zip[TestSerialization.test_lstm.traced.pt]",
+    "format":   "TorchScript v1.6",
+    "assert":   "model.graphs[0].nodes.length == 3",
+    "link":     "https://github.com/lutzroeder/netron/issues/1067"
+  },
+  {
+    "type":     "pytorch",
     "target":   "TFModel_traced_eager_quant.pt",
     "source":   "https://github.com/lutzroeder/netron/files/10867120/TFModel_traced_eager_quant.pt.zip[TFModel_traced_eager_quant.pt]",
-    "error":    "Unknown type name '__torch__.torch.classes.rnn.CellParamsBase'.",
-    "link":     "https://github.com/lutzroeder/netron/issues/969"
+    "format":   "TorchScript v1.6",
+    "assert":   "model.graphs[0].nodes.length == 35",
+    "link":     "https://github.com/lutzroeder/netron/issues/1067"
   },
   {
     "type":     "pytorch",
@@ -6589,6 +6658,14 @@
     "type":     "tensorrt",
     "target":   "retinaface_1.trt",
     "source":   "https://github.com/lutzroeder/netron/files/12022977/retinaface_1.trt.zip[retinaface_1.trt]",
+    "format":   "TensorRT Engine",
+    "error":    "Invalid file content. File contains undocumented TensorRT engine data.",
+    "link":     "https://github.com/lutzroeder/netron/issues/725"
+  },
+  {
+    "type":     "tensorrt",
+    "target":   "yolov8n.engine",
+    "source":   "https://github.com/user-attachments/files/16322456/yolov8n.engine.zip[yolov8n.engine]",
     "format":   "TensorRT Engine",
     "error":    "Invalid file content. File contains undocumented TensorRT engine data.",
     "link":     "https://github.com/lutzroeder/netron/issues/725"
@@ -7464,15 +7541,6 @@
     "format":   "TensorFlow Lite v3",
     "tags":     "quantization",
     "link":     "https://github.com/kosslab-kr/Tizen-NN-Runtime"
-  },
-  {
-     "type":     "tnn",
-     "target":   "instance_normalization.tnnproto",
-     "source":   "https://github.com/lutzroeder/netron/files/5124180/instance_normalization.zip[instance_normalization.tnnproto]",
-     "format":   "TNN",
-     "assert":   "model.graphs[0].nodes[0].inputs.length == 1",
-     "tags":     "validation",
-     "link":     "https://github.com/lutzroeder/netron/pull/583"
   },
   {
     "type":     "tnn",

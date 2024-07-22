@@ -90,10 +90,15 @@ openvino.ModelFactory = class {
                 break;
             }
             case 'openvino.bin': {
-                const file = `${base}.xml`;
-                const content = await context.fetch(file, null);
-                stream = content.stream;
-                bin = context.stream.peek();
+                try {
+                    const file = `${base}.xml`;
+                    const content = await context.fetch(file, null);
+                    stream = content.stream;
+                    bin = context.stream.peek();
+                } catch (error) {
+                    const message = error && error.message ? error.message : error.toString();
+                    throw new openvino.Error(`OpenVINO model definition required (${message.replace(/\.$/, '')}).`);
+                }
                 break;
             }
             default: {
@@ -305,7 +310,7 @@ openvino.Graph = class {
             }
             for (const layer of layers) {
                 if (layer.blobs.length === 0) {
-                    for (let i = layer.input.length - 1; i > 0; i--) {
+                    for (let i = layer.input.length - 1; i >= 0; i--) {
                         const input = layer.input[i];
                         const to = `${layer.id}:${input.id}`;
                         const from = edges[to] || back_edges[to];
@@ -768,6 +773,9 @@ openvino.TensorType = class {
     constructor(precision, shape) {
         precision = precision ? precision.toLowerCase() : precision;
         switch (precision) {
+            case 'f4e2m1':  this.dataType = 'float4e2m1'; break;
+            case 'f8e4m3':  this.dataType = 'float8e4m3'; break;
+            case 'f8e5m2':  this.dataType = 'float8e5m2'; break;
             case 'f16':     this.dataType = 'float16'; break;
             case 'f32':     this.dataType = 'float32'; break;
             case 'f64':     this.dataType = 'float64'; break;
@@ -789,7 +797,6 @@ openvino.TensorType = class {
             case 'bool':    this.dataType = 'boolean'; break;
             case 'boolean': this.dataType = 'boolean'; break;
             case 'bin':     this.dataType = 'bit'; break;
-            case 'f8e4m3':  this.dataType = 'float8e4m3'; break;
             case 'string':  this.dataType = 'string'; break;
             case '':        this.dataType = '?'; break;
             case null:      this.dataType = '?'; break;
