@@ -3174,6 +3174,18 @@ view.TensorView = class extends view.Expander {
             line.classList.add('sidebar-item-disable-select');
             line.innerHTML = '&nbsp';
             this.element.appendChild(line);
+
+            const value = this._value;
+            if (this._host.save && value.type.shape && value.type.shape.dimensions && value.type.shape.dimensions.length > 0) {
+                const button = this.createElement('div', 'sidebar-item-value-button');
+                button.classList.add('sidebar-item-value-button-context');
+                button.setAttribute('style', 'float: left;');
+                button.innerHTML = '&#x1F4BE;';
+                button.addEventListener('click', async () => {
+                    await this.export();
+                });
+                this.element.appendChild(button);
+            }
         }
         return super.render();
     }
@@ -3205,16 +3217,16 @@ view.TensorView = class extends view.Expander {
             content.innerHTML = 'Tensor shape is not defined.';
         } else {
             content.innerHTML = tensor.toString();
-            if (this._host.save && value.type.shape && value.type.shape.dimensions && value.type.shape.dimensions.length > 0) {
-                this._saveButton = this.createElement('div', 'sidebar-item-value-button');
-                this._saveButton.classList.add('sidebar-item-value-button-context');
-                this._saveButton.setAttribute('style', 'float: right;');
-                this._saveButton.innerHTML = '&#x1F4BE;';
-                this._saveButton.addEventListener('click', async () => {
-                    await this.export();
-                });
-                content.insertBefore(this._saveButton, content.firstChild);
-            }
+            // if (this._host.save && value.type.shape && value.type.shape.dimensions && value.type.shape.dimensions.length > 0) {
+            //     this._saveButton = this.createElement('div', 'sidebar-item-value-button');
+            //     this._saveButton.classList.add('sidebar-item-value-button-context');
+            //     this._saveButton.setAttribute('style', 'float: right;');
+            //     this._saveButton.innerHTML = '&#x1F4BE;';
+            //     this._saveButton.addEventListener('click', async () => {
+            //         await this.export();
+            //     });
+            //     content.insertBefore(this._saveButton, content.firstChild);
+            // }
         }
         return content;
     }
@@ -3597,8 +3609,8 @@ view.SubgraphSideBar = class extends view.ObjectSidebar {
         const attributes = subgraph.attributes;
         if (attributes && attributes.length > 0) {
             const sortedAttributes = subgraph.attributes.slice();
-            sortedAttributes.sort((a, b) => 
-                a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+            sortedAttributes.sort((a, b) =>
+                a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
             this.addHeader('Subgraph Attributes');
             for (const attribute of sortedAttributes) {
                 this.addArgument(attribute.name, attribute, 'attribute');
@@ -3628,7 +3640,7 @@ view.SubgraphSideBar = class extends view.ObjectSidebar {
     export(attr) {
         if (attr.type === 'string[]') {
             const content = attr.value.join('\n');
-            const blob = new Blob([content], { type : 'text/plan'});
+            const blob = new Blob([content], { type : 'text/plan' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = `${this._subgraph.name}_${attr.name}.txt`;
@@ -3636,51 +3648,18 @@ view.SubgraphSideBar = class extends view.ObjectSidebar {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(a.href);
+        } else if (attr.type === 'byte[]') {
+            const byteData = new Uint8Array(attr.value);
+            const blob = new Blob([byteData], { type : 'application/octet-stream' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${this._subgraph.name}_${attr.name}.bin`;
+            document.body.append(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
         }
     }
-
-    // addAttribute(name, attribute) {
-    //     const value = new view.TextView(this._view, attribute.value);
-    //     if (attribute.value.type === 'string[]') {
-    //         const saveButton = this.createElement('div');
-    //         saveButton.className = 'sidebar-item-value-expander';
-    //         saveButton.innerHTML = '&#x1F4BE;';
-    //         saveButton.addEventListener('click', () => {
-    //             const content = attribute.value.value.join('\n');
-    //             const blob = new Blob([content], { type: 'text/plain' });
-    //             const a = document.createElement('a');
-    //             a.href = URL.createObjectURL(blob);
-    //             a.download = this._subgraph.name + "_" + name + ".txt";
-    //             document.body.appendChild(a);
-    //             a.click();
-    //             document.body.removeChild(a);
-    //             URL.revokeObjectURL(a.href);
-    //         });
-    //         value.appendChild(saveButton);
-    //     } else if (attribute.value.type === 'byte[]') {
-    //         const saveButton = this.createElement('div');
-    //         saveButton.className = 'sidebar-item-value-expander';
-    //         saveButton.innerHTML = '&#x1F4BE;';
-    //         saveButton.addEventListener('click', () => {
-    //             const byteData = new Uint8Array(attribute.value.value);
-    //             const blob = new Blob([byteData], { type: 'application/octet-stream' });
-    //             const a = document.createElement('a');
-    //             a.href = URL.createObjectURL(blob);
-    //             a.download = this._subgraph.name + "_" + name + ".bin";
-    //             document.body.appendChild(a);
-    //             a.click();
-    //             document.body.removeChild(a);
-    //             URL.revokeObjectURL(a.href);
-    //         });
-    //         value.appendChild(saveButton);
-    //     }
-    //     value.on('show-graph', (sender, graph) => {
-    //         this.emit('show-graph', graph);
-    //     });
-    //     const item = new view.NameValueView(this._host, name, value);
-    //     this._attributes.push(item);
-    //     this._elements[0].appendChild(item.render());
-    // }
 };
 
 view.DocumentationSidebar = class extends view.Control {
@@ -4399,6 +4378,25 @@ view.Formatter = class {
                 return value ? value.toString() : '(null)';
             case 'type[]':
                 return value ? value.map((item) => item.toString()).join(', ') : '(null)';
+            case 'map<string,Bytes>': {
+                if (!value) {
+                    return '(null)';
+                }
+                const result = Object.entries(value).map(([key, byteArray]) => {
+                    const suffix = byteArray.value.length > 256 ? ' ...' : '';
+                    return `Key: ${key}\nFirst 256 Bytes (Hex): ${Array.from(byteArray.value.slice(0, 256))
+                        .map((byte) => byte.toString(16).padStart(2, '0').toUpperCase())
+                        .join(' ')
+                    }${suffix}`;
+                }).join('\n\n');
+                return result;
+            }
+            case 'byte[]':
+                return value
+                    ? `${Array.from(value.slice(0, 256))
+                        .map((byte) => byte.toString(16).padStart(2, '0').toUpperCase())
+                        .join(' ')}${value.length > 256 ? ' ...' : ''}`
+                    : '(null)';
             default:
                 break;
         }
