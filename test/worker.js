@@ -1,14 +1,14 @@
 
+import * as base from '../source/base.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as process from 'process';
-import * as url from 'url';
-import * as worker_threads from 'worker_threads';
-import * as base from '../source/base.js';
-import * as zip from '../source/zip.js';
-import * as tar from '../source/tar.js';
 import * as python from '../source/python.js';
+import * as tar from '../source/tar.js';
+import * as url from 'url';
 import * as view from '../source/view.js';
+import * as worker_threads from 'worker_threads';
+import * as zip from '../source/zip.js';
 
 const access = async (path) => {
     try {
@@ -587,9 +587,8 @@ export class Target {
         if (this.runtime && this.model.runtime !== this.runtime) {
             throw new Error(`Invalid runtime '${this.model.runtime}'.`);
         }
-        if (this.model.metadata && !Array.isArray(this.model.metadata) &&
-            this.model.metadata.every((argument) => argument.name && argument.value)) {
-            throw new Error("Invalid metadata.'");
+        if (this.model.metadata && !Array.isArray(this.model.metadata) && this.model.metadata.every((argument) => argument.name && argument.value)) {
+            throw new Error("Invalid model metadata.'");
         }
         if (this.assert) {
             for (const assert of this.assert) {
@@ -709,6 +708,9 @@ export class Target {
                     }
                 }
             }
+            if (graph.metadata && !Array.isArray(graph.metadata) && graph.metadata.every((argument) => argument.name && argument.value)) {
+                throw new Error("Invalid graph metadata.'");
+            }
             for (const node of graph.nodes) {
                 const type = node.type;
                 if (!type || typeof type.name !== 'string') {
@@ -720,6 +722,9 @@ export class Target {
                 view.Documentation.open(type);
                 node.name.toString();
                 node.description;
+                if (node.metadata && !Array.isArray(node.metadata) && node.metadata.every((argument) => argument.name && argument.value)) {
+                    throw new Error("Invalid graph metadata.'");
+                }
                 const attributes = node.attributes;
                 if (attributes) {
                     for (const attribute of attributes) {
@@ -738,27 +743,33 @@ export class Target {
                         }
                     }
                 }
-                for (const input of node.inputs) {
-                    input.name.toString();
-                    input.name.length;
-                    if (!input.type || input.type.endsWith('*')) {
-                        for (const value of input.value) {
-                            validateValue(value);
-                        }
-                        if (this.tags.has('validation')) {
-                            if (input.value.length === 1 && input.value[0].initializer) {
-                                const sidebar = new view.TensorSidebar(this.view, input);
-                                sidebar.render();
+                const inputs = node.inputs;
+                if (Array.isArray(inputs)) {
+                    for (const input of inputs) {
+                        input.name.toString();
+                        input.name.length;
+                        if (!input.type || input.type.endsWith('*')) {
+                            for (const value of input.value) {
+                                validateValue(value);
+                            }
+                            if (this.tags.has('validation')) {
+                                if (input.value.length === 1 && input.value[0].initializer) {
+                                    const sidebar = new view.TensorSidebar(this.view, input);
+                                    sidebar.render();
+                                }
                             }
                         }
                     }
                 }
-                for (const output of node.outputs) {
-                    output.name.toString();
-                    output.name.length;
-                    if (!output.type || output.type.endsWith('*')) {
-                        for (const value of output.value) {
-                            validateValue(value);
+                const outputs = node.outputs;
+                if (Array.isArray(outputs)) {
+                    for (const output of node.outputs) {
+                        output.name.toString();
+                        output.name.length;
+                        if (!output.type || output.type.endsWith('*')) {
+                            for (const value of output.value) {
+                                validateValue(value);
+                            }
                         }
                     }
                 }

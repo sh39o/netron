@@ -1889,6 +1889,7 @@ python.Execution = class {
             }
         });
         this.registerType('hmmlearn.hmm.GaussianHMM', class {});
+        this.registerType('hmmlearn.hmm.GMMHMM', class {});
         this.registerType('hmmlearn.hmm.MultinomialHMM', class {});
         this.registerType('hmmlearn.base.ConvergenceMonitor', class {});
         this.registerType('io.BytesIO', class {
@@ -2116,6 +2117,7 @@ python.Execution = class {
             }
         });
         this.registerType('joblib._store_backends.FileSystemStoreBackend', class {});
+        this.registerType('joblib.memory.NotMemorizedFunc', class {});
         this.registerType('joblib.numpy_pickle.NumpyArrayWrapper', class {
 
             __read__(unpickler) {
@@ -2617,12 +2619,13 @@ python.Execution = class {
         });
         this.registerType('numpy.core.memmap.memmap', class extends numpy.ndarray {
         });
+        this.registerType('pandas.core.arrays.categorical.Categorical', class {});
+        this.registerType('pandas.core.arrays.datetimes.DatetimeArray', class {});
+        this.registerType('pandas.core.arrays.integer.IntegerArray', class {});
         this.registerType('pandas.core.frame.DataFrame', class {});
         this.registerFunction('pandas.core.indexes.base._new_Index', (cls, d) => {
             return new cls(d);
         });
-        this.registerType('pandas.core.arrays.datetimes.DatetimeArray', class {});
-        this.registerType('pandas.core.arrays.integer.IntegerArray', class {});
         this.registerType('pandas.core.indexes.datetimes._new_DatetimeIndex', class {});
         this.registerType('pandas.core.indexes.datetimes.DatetimeIndex', class {});
         this.registerType('pandas.core.indexes.base.Index', class {});
@@ -3635,9 +3638,11 @@ python.Execution = class {
         this.registerFunction('cloudpickle.cloudpickle._builtin_type', (name) => {
             return name;
         });
+        this.registerFunction('cloudpickle.cloudpickle._fill_function');
         this.registerFunction('cloudpickle.cloudpickle._make_cell');
         this.registerFunction('cloudpickle.cloudpickle._make_empty_cell');
         this.registerFunction('cloudpickle.cloudpickle._make_function');
+        this.registerFunction('cloudpickle.cloudpickle._make_skel_func');
         this.registerFunction('cloudpickle.cloudpickle._make_skeleton_class');
         this.registerFunction('cloudpickle.cloudpickle.subimport');
         this.registerFunction('cloudpickle.cloudpickle_fast._class_setstate');
@@ -3958,6 +3963,7 @@ python.Execution = class {
                     throw new python.Error(`Unsupported scalar type '${dtype.__name__}'.`);
             }
         });
+        this.registerFunction('numpy.core._multiarray_umath.sqrt');
         this.registerFunction('numpy.load', (file) => {
             // https://github.com/numpy/numpy/blob/main/numpy/lib/format.py
             const signature = [0x93, 0x4E, 0x55, 0x4D, 0x50, 0x59];
@@ -4132,7 +4138,9 @@ python.Execution = class {
             encode(context, a, 0);
             return self.invoke('numpy.ndarray', [shape, dtype, context.data]);
         });
+        this.registerFunction('numpy.max');
         this.registerFunction('numpy.mean');
+        this.registerFunction('numpy.min');
         this.registerFunction('numpy.ma.core._mareconstruct', (subtype, baseclass, baseshape, basetype) => {
             const data = self.invoke(baseclass, [baseshape, basetype]);
             // = ndarray.__new__(ndarray, baseshape, make_mask_descr(basetype))
@@ -4589,6 +4597,7 @@ python.Execution = class {
         this.registerType('torch.quantization.stubs.QuantStub', class {});
         this.registerType('torch.utils._pytree.LeafSpec', class {});
         this.registerType('torch.utils._pytree.TreeSpec', class {});
+        this.registerFunction('torch.utils._pytree.tree_map');
         this.registerFunction('torch.utils.checkpoint.checkpoint');
         this.registerType('torch.utils.data.dataloader._MultiProcessingDataLoaderIter', class {});
         this.registerType('torch.utils.data.dataloader.DataLoader', class {});
@@ -4922,6 +4931,7 @@ python.Execution = class {
         this.registerType('torchvision.models.swin_transformer.ShiftedWindowAttention', class {});
         this.registerType('torchvision.models.swin_transformer.ShiftedWindowAttentionV2', class {});
         this.registerType('torchvision.models.swin_transformer.SwinTransformer', class {});
+        this.registerType('torchvision.models.swin_transformer.SwinTransformerBlock', class {});
         this.registerType('torchvision.models.swin_transformer.SwinTransformerBlockV2', class {});
         this.registerType('torchvision.models.resnet.ResNet', class {});
         this.registerType('torchvision.models.vgg.VGG', class {});
@@ -4971,6 +4981,7 @@ python.Execution = class {
         this.registerType('torchvision.transforms.v2._misc.ToDtype', class {});
         this.registerType('torchvision.transforms.v2._geometry.CenterCrop', class {});
         this.registerType('torchvision.transforms.v2._geometry.Resize', class {});
+        this.registerType('torchvision.transforms.v2._geometry.Pad', class {});
         this.registerType('torchvision.transforms.v2._geometry.RandomCrop', class {});
         this.registerType('torchvision.transforms.v2._transform.Transform', class extends torch.nn.modules.module.Module {});
         this.registerType('torchvision.transforms.v2._type_conversion.ToImage', class extends torchvision.transforms.v2._transform.Transform {});
@@ -7872,7 +7883,7 @@ python.StreamReader = class {
         let position = this._fill(0);
         let index = this._buffer.indexOf(0x0A, position);
         if (index === -1) {
-            const size = Math.min(0x1000000, this._stream.length - this._position);
+            const size = Math.min(0x20000000, this._stream.length - this._position);
             this._fill(size);
             this.skip(-size);
             position = this._fill(0);
@@ -7894,7 +7905,8 @@ python.StreamReader = class {
         if (!this._buffer || this._position < this._offset || this._position + length > this._offset + this._buffer.length) {
             this._offset = this._position;
             this._stream.seek(this._offset);
-            this._buffer = this._stream.read(Math.min(0x10000000, this._length - this._offset));
+            const size = Math.max(length, Math.min(0x10000000, this._length - this._offset));
+            this._buffer = this._stream.read(size);
             this._view = new DataView(this._buffer.buffer, this._buffer.byteOffset, this._buffer.byteLength);
         }
         const position = this._position;

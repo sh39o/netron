@@ -1303,7 +1303,9 @@ coreml.Context.Graph = class {
                                     break;
                                 }
                                 case 'float16':
+                                case 'int4':
                                 case 'int8':
+                                case 'uint4':
                                 case 'uint8': {
                                     data = stream.read(size);
                                     break;
@@ -1329,7 +1331,10 @@ coreml.Context.Graph = class {
                 operation.attributes[key] = convertValue(value);
             }
             operation.inputs = Object.entries(op.inputs).map(([name, input]) => {
-                const args = input.arguments.map((argument) => {
+                const value = input.arguments.map((argument) => {
+                    if (argument.value && argument.value.value && argument.value.blobFileValue) {
+                        return { name: '', value: convertValue(argument.value) };
+                    }
                     if (argument.name) {
                         const value = this.input(argument.name);
                         value.to.push(operation);
@@ -1337,7 +1342,7 @@ coreml.Context.Graph = class {
                     }
                     return { value: argument.value };
                 });
-                return { name, value: args };
+                return { name, value };
             });
             operation.outputs = op.outputs.map((output) => {
                 const value = this.input(output.name);
@@ -1397,6 +1402,10 @@ coreml.Context.Graph = class {
             if (value.value instanceof coreml.Tensor) {
                 value.initializer = value.value;
                 delete value.value;
+                if (name === '') {
+                    this.values.set(value, value);
+                    return value;
+                }
             }
             if (!this.values.has(name)) {
                 this.values.set(name, value);

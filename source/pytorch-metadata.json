@@ -8466,6 +8466,23 @@
     ]
   },
   {
+    "name": "aten::manual_seed",
+    "inputs": [
+      { "name": "seed", "type": "int64" }
+    ],
+    "outputs": []
+  },
+  {
+    "name": "aten::manual_seed.generator",
+    "inputs": [
+      { "name": "self", "type": "Generator" },
+      { "name": "seed", "type": "int64" }
+    ],
+    "outputs": [
+      { "type": "Generator" }
+    ]
+  },
+  {
     "name": "aten::masked_fill.Scalar",
     "inputs": [
       { "name": "self", "type": "Tensor" },
