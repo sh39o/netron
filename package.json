@@ -10,7 +10,7 @@
     "date": "2024-08-09 18:21:17",
     "description": "Visualizer for neural network, deep learning, and machine learning models",
     "license": "MIT",
-    "repository": "sun/netron",
+    "repository": "lutzroeder/netron",
     "type": "module",
     "main": "source/app.js",
     "scripts": {
