@@ -480,6 +480,11 @@ app.Application = class {
                         click: async () => await this.execute('toggle', 'weights'),
                     },
                     {
+                        id: 'view.toggle-consts',
+                        accelerator: 'CmdOrCtrl+Q',
+                        click: async () => await this.execute('toggle', 'consts'),
+                    },
+                    {
                         id: 'view.toggle-names',
                         accelerator: 'CmdOrCtrl+U',
                         click: async () => await this.execute('toggle', 'names'),
@@ -594,9 +599,9 @@ app.Application = class {
                 enabled: (view) => view && view.path ? true : false,
                 label: (view) => !view || view.get('weights') ? 'Hide &Weights' : 'Show &Weights'
             });
-            commandTable.set('view.toogle-const', {
+            commandTable.set('view.toggle-consts', {
                 enabled: (view) => view && view.path ? true : false,
-                label: (view) => !view || view.get('const') ? 'Hide &Const' : 'Show &Const'
+                label: (view) => !view || view.get('consts') ? 'Hide &Consts' : 'Show &Consts'
             });
             commandTable.set('view.toggle-names', {
                 enabled: (view) => view && view.path ? true : false,

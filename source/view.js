@@ -147,7 +147,7 @@ view.View = class {
                 });
                 view.add({
                     label: () => this.options.consts ? 'Show &Consts' : 'Hide &Consts',
-                    accelerator: 'CmdOrCtrl+1',
+                    accelerator: 'CmdOrCtrl+Q',
                     execute: () => this.toggle('consts'),
                     enabled: () => this.activeGraph
                 }); 
@@ -335,8 +335,9 @@ view.View = class {
                 if (this._model.format === 'xmodel') {
                     this._options[name] = !this._options[name];
                     this._context.const_initializer = this._options[name];
-                    this.open(this._context);
-                    this._reload();
+                    (async () => {
+                        await this.open(this._context);
+                    })();
                 } else {
                     console.log('Showing constants is only enabled for xmodel. Nothing happens here.');
                 }
