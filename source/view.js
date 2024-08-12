@@ -23,7 +23,8 @@ view.View = class {
             attributes: false,
             names: false,
             direction: 'vertical',
-            mousewheel: 'scroll'
+            mousewheel: 'scroll',
+            consts: true
         };
         this._options = { ...this._defaultOptions };
         this._model = null;
@@ -144,6 +145,12 @@ view.View = class {
                     execute: () => this.toggle('weights'),
                     enabled: () => this.activeGraph
                 });
+                view.add({
+                    label: () => this.options.consts ? 'Show &Consts' : 'Hide &Consts',
+                    accelerator: 'CmdOrCtrl+1',
+                    execute: () => this.toggle('consts'),
+                    enabled: () => this.activeGraph
+                }); 
                 view.add({
                     label: () => this.options.names ? 'Hide &Names' : 'Show &Names',
                     accelerator: 'CmdOrCtrl+U',
@@ -323,6 +330,16 @@ view.View = class {
                 break;
             case 'mousewheel':
                 this._options.mousewheel = this._options.mousewheel === 'scroll' ? 'zoom' : 'scroll';
+                break;
+            case 'consts':
+                if (this._model.format === 'xmodel') {
+                    this._options[name] = !this._options[name];
+                    this._context.const_initializer = this._options[name];
+                    this.open(this._context);
+                    this._reload();
+                } else {
+                    console.log('Showing constants is only enabled for xmodel. Nothing happens here.');
+                }
                 break;
             default:
                 throw new view.Error(`Unsupported toggle '${name}'.`);
@@ -638,6 +655,7 @@ view.View = class {
     }
 
     async open(context) {
+        this._context = context;
         this._sidebar.close();
         await this._timeout(2);
         try {
@@ -5325,6 +5343,7 @@ view.Context = class {
         const index = Math.max(identifier.lastIndexOf('/'), identifier.lastIndexOf('\\'));
         this._base = index === -1 ? undefined : identifier.substring(0, index);
         this._identifier = index === -1 ? identifier : identifier.substring(index + 1);
+        this._const_initializer = context.const_initializer;
     }
 
     get identifier() {

@@ -594,6 +594,10 @@ app.Application = class {
                 enabled: (view) => view && view.path ? true : false,
                 label: (view) => !view || view.get('weights') ? 'Hide &Weights' : 'Show &Weights'
             });
+            commandTable.set('view.toogle-const', {
+                enabled: (view) => view && view.path ? true : false,
+                label: (view) => !view || view.get('const') ? 'Hide &Const' : 'Show &Const'
+            });
             commandTable.set('view.toggle-names', {
                 enabled: (view) => view && view.path ? true : false,
                 label: (view) => !view || view.get('names') ? 'Hide &Names' : 'Show &Names'

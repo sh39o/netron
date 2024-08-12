@@ -19,6 +19,7 @@ xmodel.ModelFactory = class {
             const message = error && error.message ? error.message : error.toString();
             throw new xmodel.Error(`File format is not serial_v2.Graph (${message.replace(/\.$/, '')}).`);
         }
+        graph.const_initializer = context._const_initializer;
         return new xmodel.Model(graph);
     }
 };
@@ -69,13 +70,15 @@ xmodel.Graph = class {
                     continue;
                 }
             }
-            if (node.args.length === 0) {
-                if (node.op_type === 'const-fix' || node.op_type === 'const') {
-                    values.map(node.op_name, node, true);
-                    const_nodes.push(node);
-                    continue;
+            if (graph.const_initializer === true || graph.const_initializer === undefined) {
+                if (node.args.length === 0) {
+                    if (node.op_type === 'const-fix' || node.op_type === 'const') {
+                        values.map(node.op_name, node, true);
+                        const_nodes.push(node);
+                        continue;
+                    }
                 }
-            }
+            }   
             values.map(node.op_name, node);
             nodes.push(node);
         }
