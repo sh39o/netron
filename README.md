@@ -3,6 +3,17 @@
 <img width="400px" height="100px" src="./publish/logo-dark.svg#gh-dark-mode-only">
 </div>
 
+7.8.3 更新：支持选择是否显示 const/const-fix，快捷键 ctrl+q。
+默认不显示
+
+-------------
+
+7.8.0 更新：支持 bfloat16 的 tensor 保存，另存为 np.float32 数据类型。
+使用 numpy 格式显示 tensor 数据
+使用 16进制显示 bytes 数据
+优化 map 的显示方式
+
+-------------
 7.6.0 更新：支持 tensor name 搜索，支持 tensor 属性的搜索，支持tensor shape 的搜索，支持 tensor 多属性的高级搜索
 搜索shape用法：[n,h,w,c]（中间不带空格）
 搜索 reg_id为 1：reg_id: 1 （中间有一个空格）
