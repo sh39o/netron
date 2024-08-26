@@ -1060,7 +1060,7 @@ view.View = class {
                     this._menu.close();
                 }
                 const sidebar = new view.NodeSidebar(this, node);
-                sidebar.on('show-documentation', async (/* sender, e */) => {
+                sidebar.on('show-definition', async (/* sender, e */) => {
                     await this.showDefinition(node.type);
                 });
                 sidebar.on('focus', (sender, value) => {
@@ -1142,12 +1142,14 @@ view.View = class {
             if (type.nodes && type.nodes.length > 0) {
                 await this.pushGraph(type);
             }
-            const sidebar = new view.DocumentationSidebar(this, type);
-            sidebar.on('navigate', (sender, e) => {
-                this._host.openURL(e.link);
-            });
-            const title = type.type === 'function' ? 'Function' : 'Documentation';
-            this._sidebar.push(sidebar, title);
+            if (type.type !== 'weights') {
+                const sidebar = new view.DocumentationSidebar(this, type);
+                sidebar.on('navigate', (sender, e) => {
+                    this._host.openURL(e.link);
+                });
+                const title = type.type === 'function' ? 'Function' : 'Documentation';
+                this._sidebar.push(sidebar, title);
+            }
         }
     }
 
@@ -2033,8 +2035,8 @@ view.Node = class extends grapher.Node {
         }
         let content = options.names && (node.name || node.identifier) ? (node.name || node.identifier) : type.name.split('.').pop();
         const tooltip = options.names && (node.name || node.identifier) ? type.name : (node.name || node.identifier);
-        if (content.length > 24) {
-            content = `${content.substring(0, 12)}\u2026${content.substring(content.length - 12, content.length)}`;
+        if (content.length > 18) {
+            content = `${content.substring(0, 9)}\u2026${content.substring(content.length - 9, content.length)}`;
         }
         const styles = category ? ['node-item-type', `node-item-type-${category.toLowerCase()}`] : ['node-item-type'];
         const title = header.add(null, styles, content, tooltip);
@@ -2042,13 +2044,14 @@ view.Node = class extends grapher.Node {
             this.context.activate(node);
         });
         if (Array.isArray(node.type.nodes) && node.type.nodes.length > 0) {
+            let icon = '\u0192';
+            let tooltip = 'Show Function Definition';
             if (node.type.type === 'weights') {
-                const definition = header.add(null, styles, '\u25CF', 'Show Weights');
-                definition.on('click', async () => await this.context.view.pushGraph(node.type));
-            } else {
-                const definition = header.add(null, styles, '\u0192', 'Show Function Definition');
-                definition.on('click', async () => await this.context.view.pushGraph(node.type));
+                icon = '\u25CF';
+                tooltip = 'Show Weights';
             }
+            const definition = header.add(null, styles, icon, tooltip);
+            definition.on('click', async () => await this.context.view.pushGraph(node.type));
         }
         if (Array.isArray(node.nodes)) {
             // this._expand = header.add(null, styles, '+', null);
@@ -2111,7 +2114,10 @@ view.Node = class extends grapher.Node {
             attributes.sort((a, b) => a.name.toUpperCase().localeCompare(b.name.toUpperCase()));
             for (const argument of attributes) {
                 const type = argument.type;
-                if (type === 'graph' || type === 'object' || type === 'object[]' || type === 'function' || type === 'function[]') {
+                if (argument.visible !== false &&
+                    ((type === 'graph') ||
+                    (type === 'object') ||
+                    type === 'object[]' || type === 'function' || type === 'function[]')) {
                     objects.push(argument);
                 } else if (options.attributes && argument.visible !== false) {
                     const item = attribute(argument);
@@ -2630,8 +2636,16 @@ view.NodeSidebar = class extends view.ObjectSidebar {
             const type = node.type;
             const item = this.addProperty('type', node.type.identifier || node.type.name);
             if (type && (type.description || type.inputs || type.outputs || type.attributes)) {
-                item.action(type.nodes ? '\u0192' : '?', 'Show Definition', () => {
-                    this.emit('show-documentation', null);
+                let icon = '?';
+                let tooltip = 'Show Definition';
+                if (type.type === 'weights') {
+                    icon = '\u25CF';
+                    tooltip = 'Show Weights';
+                } else if (Array.isArray(type.nodes)) {
+                    icon = '\u0192';
+                }
+                item.action(icon, tooltip, () => {
+                    this.emit('show-definition', null);
                 });
             }
             const module = node.type.module;
@@ -3077,7 +3091,12 @@ view.ValueView = class extends view.Expander {
                 if (typeof name !== 'string') {
                     throw new Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
                 }
-                element.innerHTML = `<span class='sidebar-item-value-line-content'>name: <b>${name || ' '}</b></span>`;
+                const text = this.createElement('b');
+                text.innerText = name || ' ';
+                const line = this.createElement('span', 'sidebar-item-value-line-content');
+                line.innerText = 'name: ';
+                line.appendChild(text);
+                element.appendChild(line);
                 element.addEventListener('pointerenter', () => this.emit('focus', this._value));
                 element.addEventListener('pointerleave', () => this.emit('blur', this._value));
                 element.style.cursor = 'pointer';
@@ -5789,14 +5808,14 @@ view.ModelFactoryService = class {
         this.register('./server', ['.netron']);
         this.register('./pytorch', ['.pt', '.pth', '.ptl', '.pt1', '.pyt', '.pyth', '.pkl', '.pickle', '.h5', '.t7', '.model', '.dms', '.tar', '.ckpt', '.chkpt', '.tckpt', '.bin', '.pb', '.zip', '.nn', '.torchmodel', '.torchscript', '.pytorch', '.ot', '.params', '.trt', '.ff', '.ptmf', '.jit', '.pte', '.bin.index.json', 'serialized_exported_program.json', 'model.json'], ['.model', '.pt2']);
         this.register('./onnx', ['.onnx', '.onnx.data', '.onn', '.pb', '.onnxtxt', '.pbtxt', '.prototxt', '.txt', '.model', '.pt', '.pth', '.pkl', '.ort', '.ort.onnx', '.ngf', '.json', '.bin', 'onnxmodel']);
-        this.register('./tflite', ['.tflite', '.lite', '.tfl', '.bin', '.pb', '.tmfile', '.h5', '.model', '.json', '.txt', '.dat', '.nb', '.ckpt']);
+        this.register('./tflite', ['.tflite', '.lite', '.tfl', '.bin', '.pb', '.tmfile', '.h5', '.model', '.json', '.txt', '.dat', '.nb', '.ckpt', '.onnx']);
         this.register('./mxnet', ['.json', '.params'], ['.mar']);
         this.register('./coreml', ['.mlmodel', '.bin', 'manifest.json', 'metadata.json', 'featuredescriptions.json', '.pb', '.pbtxt', '.mil'], ['.mlpackage', '.mlmodelc']);
         this.register('./caffe', ['.caffemodel', '.pbtxt', '.prototxt', '.pt', '.txt']);
         this.register('./caffe2', ['.pb', '.pbtxt', '.prototxt']);
         this.register('./torch', ['.t7', '.net']);
         this.register('./tf', ['.pb', '.meta', '.pbtxt', '.prototxt', '.txt', '.pt', '.json', '.index', '.ckpt', '.graphdef', '.pbmm', /.data-[0-9][0-9][0-9][0-9][0-9]-of-[0-9][0-9][0-9][0-9][0-9]$/, /^events.out.tfevents./], ['.zip']);
-        this.register('./tensorrt', ['.trt', '.trtmodel', '.engine', '.model', '.txt', '.uff', '.pb', '.tmfile', '.onnx', '.pth', '.dnn', '.plan', '.pt', '.dat']);
+        this.register('./tensorrt', ['.trt', '.trtmodel', '.engine', '.model', '.txt', '.uff', '.pb', '.tmfile', '.onnx', '.pth', '.dnn', '.plan', '.pt', '.dat', '.bin']);
         this.register('./keras', ['.h5', '.hd5', '.hdf5', '.keras', '.json', '.cfg', '.model', '.pb', '.pth', '.weights', '.pkl', '.lite', '.tflite', '.ckpt', '.pb', 'model.weights.npz'], ['.zip']);
         this.register('./numpy', ['.npz', '.npy', '.pkl', '.pickle', '.model', '.model2', '.mge', '.joblib']);
         this.register('./lasagne', ['.pkl', '.pickle', '.joblib', '.model', '.pkl.z', '.joblib.z']);
@@ -5840,7 +5859,7 @@ view.ModelFactoryService = class {
         this.register('./mlir', ['.mlir', '.mlir.txt']);
         this.register('./sentencepiece', ['.model']);
         this.register('./hailo', ['.hn', '.har', '.metadata.json']);
-        this.register('./nnc', ['.nnc']);
+        this.register('./nnc', ['.nnc','.tflite']);
         this.register('./safetensors', ['.safetensors', '.safetensors.index.json']);
         this.register('./modular', ['.maxviz']);
         this.register('./catboost', ['.cbm']);
@@ -6090,6 +6109,7 @@ view.ModelFactoryService = class {
                     const formats = [
                         { name: 'ONNX Runtime model data', identifier: 'ORTM' },
                         { name: 'TensorFlow Lite model data', identifier: 'TFL3' },
+                        { name: 'NNC model data', identifier: 'ENNC' },
                         { name: 'KaNN model data', identifier: 'KaNN' }
                     ];
                     for (const format of formats) {

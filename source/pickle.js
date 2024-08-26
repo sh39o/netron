@@ -39,7 +39,8 @@ pickle.ModelFactory = class {
                 ['cuml.ensemble.randomforestclassifier.RandomForestClassifier', 'cuML'],
                 ['shap.explainers._linear.LinearExplainer', 'SHAP'],
                 ['gensim.models.word2vec.Word2Vec', 'Gensim'],
-                ['builtins.bytearray', 'Pickle']
+                ['builtins.bytearray', 'Pickle'],
+                ['builtins.dict', 'Pickle'],
             ]);
             const type = `${obj.__class__.__module__}.${obj.__class__.__name__}`;
             if (formats.has(type)) {
@@ -70,11 +71,6 @@ pickle.Graph = class {
             for (const item of obj) {
                 this.nodes.push(new pickle.Node(item));
             }
-        } else if (obj && obj instanceof Map && !Array.from(obj.values()).some((value) => typeof value === 'string' || typeof value === 'number')) {
-            for (const [name, value] of obj) {
-                const node = new pickle.Node(value, name);
-                this.nodes.push(node);
-            }
         } else if (obj && obj.__class__) {
             this.nodes.push(new pickle.Node(obj));
         } else if (obj && Object(obj) === obj) {
@@ -93,7 +89,8 @@ pickle.Node = class {
         const isArray = (obj) => {
             return obj && obj.__class__ &&
                 ((obj.__class__.__module__ === 'numpy' && obj.__class__.__name__ === 'ndarray') ||
-                 (obj.__class__.__module__ === 'numpy' && obj.__class__.__name__ === 'matrix'));
+                 (obj.__class__.__module__ === 'numpy' && obj.__class__.__name__ === 'matrix') ||
+                 (obj.__class__.__module__ === 'jax' && obj.__class__.__name__ === 'Array'));
         };
         const isByteArray = (obj) => {
             return obj && obj.__class__ && obj.__class__.__module__ === 'builtins' && obj.__class__.__name__ === 'bytearray';
@@ -152,7 +149,8 @@ pickle.Node = class {
                     } else if (value && (value.__class__ || isObject(value)) && !stack.has(value)) {
                         stack.add(value);
                         const node = new pickle.Node(value, '', stack);
-                        const argument = new pickle.Argument(name, node, 'object');
+                        const visible = name !== '_metadata' || !pickle.Utility.isMetadataObject(value);
+                        const argument = new pickle.Argument(name, node, 'object', visible);
                         this.attributes.push(argument);
                         stack.delete(value);
                     } else {
@@ -170,12 +168,8 @@ pickle.Argument = class {
     constructor(name, value, type, visible) {
         this.name = name.toString();
         this.value = value;
-        if (type) {
-            this.type = type;
-        }
-        if (visible === false) {
-            this.visible = visible;
-        }
+        this.type = type || null;
+        this.visible = visible !== false;
     }
 };
 
@@ -183,7 +177,7 @@ pickle.Tensor = class {
 
     constructor(array) {
         this.type = new pickle.TensorType(array.dtype.__name__, new pickle.TensorShape(array.shape));
-        this.stride = array.strides.map((stride) => stride / array.itemsize);
+        this.stride = Array.isArray(array.strides) ? array.strides.map((stride) => stride / array.itemsize) : null;
         this.encoding = this.type.dataType === 'string' || this.type.dataType === 'object' ? '|' : array.dtype.byteorder;
         this.values = this.type.dataType === 'string' || this.type.dataType === 'object' || this.type.dataType === 'void' ? array.flatten().tolist() : array.tobytes();
     }
@@ -209,6 +203,37 @@ pickle.TensorShape = class {
 
     toString() {
         return this.dimensions ? (`[${this.dimensions.map((dimension) => dimension.toString()).join(',')}]`) : '';
+    }
+};
+
+pickle.Utility = class {
+
+    static isSubclass(value, name) {
+        if (value && value.__module__ && value.__name__) {
+            return name === `${value.__module__}.${value.__name__}`;
+        } else if (value && value.__bases__) {
+            return value.__bases__.some((obj) => pickle.Utility.isSubclass(obj, name));
+        }
+        return false;
+    }
+
+    static isInstance(value, name) {
+        return value && value.__class__ ? pickle.Utility.isSubclass(value.__class__, name) : false;
+    }
+
+    static isMetadataObject(obj) {
+        if (pickle.Utility.isInstance(obj, 'collections.OrderedDict')) {
+            for (const value of obj.values()) {
+                if (pickle.Utility.isInstance(value, 'builtins.dict')) {
+                    const entries = Array.from(value);
+                    if (entries.length !== 1 && entries[0] !== 'version' && entries[1] !== 1) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
     }
 };
 

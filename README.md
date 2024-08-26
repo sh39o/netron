@@ -67,9 +67,9 @@
 
 Netron is a viewer for neural network, deep learning and machine learning models. 
 
-Netron supports ONNX, TensorFlow Lite, Core ML, Keras, Caffe, Darknet, MXNet, PaddlePaddle, ncnn, MNN and TensorFlow.js.
+Netron supports ONNX, TensorFlow Lite, Core ML, Keras, Caffe, Darknet, MXNet, PaddlePaddle, ncnn, MNN, TensorFlow.js, Safetensors and NumPy.
 
-Netron has experimental support for PyTorch, TorchScript, TensorFlow, OpenVINO, RKNN, MediaPipe, ML.NET and scikit-learn.
+Netron has experimental support for PyTorch, TorchScript, TensorFlow, OpenVINO, RKNN, ML.NET, GGUF and scikit-learn.
 
 <p align='center'><img src='./publish/illustration.png' width='800'></a></p>
 
@@ -79,7 +79,12 @@ Netron has experimental support for PyTorch, TorchScript, TensorFlow, OpenVINO, 
 
 **Linux**: [**Download**](https://gitenterprise.xilinx.com/huisu/netron/releases/latest) the `.AppImage` file or run `snap install netron`
 
-**Windows**: [**Download**](https://gitenterprise.xilinx.com/huisu/netron/releases/latest) the `.exe` installer or run `winget install -s winget netron`
+**Windows**: [**Download**](https://github.com/lutzroeder/netron/releases/latest) the `.exe` installer or run `winget install -s winget netron`
+
+**Browser**: [**Start**](https://netron.app) the browser version.
+
+**Python**: Run `pip install netron` and `netron [FILE]` or `netron.start('[FILE]')`.
+>>>>>>> upstream/main
 
 ## Models
 

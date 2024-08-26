@@ -110,9 +110,9 @@ python.Parser = class {
         }
         node = this._eat('id', 'assert');
         if (node) {
-            node.condition = this._expression(-1, [',']);
+            node.test = this._expression(-1, [',']);
             if (this._tokenizer.eat(',')) {
-                node.message = this._expression();
+                node.msg = this._expression();
             }
             return node;
         }
@@ -223,7 +223,7 @@ python.Parser = class {
                 decorator_list = null;
             }
             this._tokenizer.expect('(');
-            node.parameters = this._parameters(')');
+            node.args = this._parameters(')');
             if (this._tokenizer.eat('->')) {
                 node.returnType = this._type();
             }
@@ -248,33 +248,33 @@ python.Parser = class {
         // }
         node = this._eat('id', 'if');
         if (node) {
-            node.condition = this._expression();
+            node.test = this._expression();
             this._tokenizer.expect(':');
-            node.then = this._suite();
+            node.body = this._suite();
             let current = node;
             this._tokenizer.eat('\n');
             while (this._tokenizer.eat('id', 'elif')) {
-                current.else = this._node('if');
-                current = current.else;
-                current.condition = this._expression();
+                current.orelse = this._node('if');
+                current = current.orelse;
+                current.test = this._expression();
                 this._tokenizer.expect(':');
-                current.then = this._suite();
+                current.body = this._suite();
                 this._tokenizer.eat('\n');
             }
             if (this._tokenizer.eat('id', 'else')) {
                 this._tokenizer.expect(':');
-                current.else = this._suite();
+                current.orelse = this._suite();
             }
             return node;
         }
         node = this._eat('id', 'while');
         if (node) {
-            node.condition = this._expression();
+            node.test = this._expression();
             this._tokenizer.expect(':');
             node.body = this._suite();
             if (this._tokenizer.eat('id', 'else')) {
                 this._tokenizer.expect(':');
-                node.else = this._suite();
+                node.orelse = this._suite();
             }
             return node;
         }
@@ -284,30 +284,30 @@ python.Parser = class {
         }
         node = this._eat('id', 'for');
         if (node) {
-            node.variable = [];
-            node.variable.push(this._expression(-1, ['in']));
+            node.target = [];
+            node.target.push(this._expression(-1, ['in']));
             while (this._tokenizer.eat(',')) {
                 if (this._tokenizer.match('id', 'in')) {
-                    node.variable.push({});
-                    break;
-                }
-                node.variable.push(this._expression(-1, ['in']));
-            }
-            this._tokenizer.expect('id', 'in');
-            node.target = [];
-            node.target.push(this._expression());
-            while (this._tokenizer.eat(',')) {
-                if (this._tokenizer.match(':')) {
                     node.target.push({});
                     break;
                 }
                 node.target.push(this._expression(-1, ['in']));
             }
+            this._tokenizer.expect('id', 'in');
+            node.iter = [];
+            node.iter.push(this._expression());
+            while (this._tokenizer.eat(',')) {
+                if (this._tokenizer.match(':')) {
+                    node.iter.push({});
+                    break;
+                }
+                node.iter.push(this._expression(-1, ['in']));
+            }
             this._tokenizer.expect(':');
             node.body = this._suite();
             if (this._tokenizer.eat('id', 'else')) {
                 this._tokenizer.expect(':');
-                node.else = this._suite();
+                node.orelse = this._suite();
             }
             return node;
         }
@@ -356,10 +356,10 @@ python.Parser = class {
                 node.except.push(except);
             }
             if (this._tokenizer.match('id', 'else')) {
-                node.else = this._node('else');
+                node.orelse = this._node('else');
                 this._tokenizer.expect('id', 'else');
                 this._tokenizer.expect(':');
-                node.else.body = this._suite();
+                node.orelse.body = this._suite();
             }
             if (this._tokenizer.match('id', 'finally')) {
                 node.finally = this._node('finally');
@@ -537,10 +537,10 @@ python.Parser = class {
             }
             node = this._eat('id', 'if');
             if (node) {
-                node.then = stack.pop();
-                node.condition = this._expression();
+                node.body = stack.pop();
+                node.test = this._expression();
                 this._tokenizer.expect('id', 'else');
-                node.else = this._expression();
+                node.orelse = this._expression();
                 stack.push(node);
                 continue;
             }
@@ -559,15 +559,15 @@ python.Parser = class {
                     this._tokenizer.expect('id', 'in');
                     node.target = this._expression(-1, ['for', 'if'], true);
                     while (this._tokenizer.eat('id', 'if')) {
-                        node.condition = node.condition || [];
-                        node.condition.push(this._expression(-1, ['for', 'if']));
+                        node.test = node.test || [];
+                        node.test.push(this._expression(-1, ['for', 'if']));
                     }
                     stack.push(node);
                 }
             }
             node = this._eat('id', 'lambda');
             if (node) {
-                node.parameters = this._parameters(':');
+                node.args = this._parameters(':');
                 node.body = this._expression(-1, terminal, false);
                 stack.push(node);
                 continue;
@@ -1622,6 +1622,9 @@ python.Execution = class {
             __getitem__(key) {
                 return this.get(key);
             }
+            get(key, defaultValue) {
+                return super.get(key) || defaultValue;
+            }
         };
         this._modules = new dict();
         this._registry = new Map();
@@ -1653,6 +1656,10 @@ python.Execution = class {
         this.register('gensim');
         this.register('io');
         const joblib = this.register('joblib');
+        const jax = this.register('jax');
+        this.register('jax.numpy');
+        this.register('jax._src.array');
+        this.register('jax._src.device_array');
         const functools = this.register('functools');
         this.registerType('functools.partial', class {});
         const keras = this.register('keras');
@@ -1824,7 +1831,7 @@ python.Execution = class {
                 this._object = new catboost._catboost._CatBoost();
             }
             __setstate__(state) {
-                for (const [key, value] of Object.entries(state)) {
+                for (const [key, value] of state) {
                     if (key === '__model') {
                         this._load_from_string(value);
                         continue;
@@ -2139,9 +2146,9 @@ python.Execution = class {
         this.registerType('joblib.numpy_pickle.NDArrayWrapper', class {
 
             __setstate__(state) {
-                this.subclass = state.subclass;
-                this.filename = state.state;
-                this.allow_mmap = state.allow_mmap;
+                this.subclass = state.get('subclass');
+                this.filename = state.get('state');
+                this.allow_mmap = state.get('allow_mmap');
             }
             __read__(/* unpickler */) {
                 return this; // return execution.invoke(this.subclass, [ this.shape, this.dtype, this.data ]);
@@ -2164,11 +2171,14 @@ python.Execution = class {
                 this.loaded_parameter = '';
             }
             __setstate__(state) {
-                if (typeof state.handle === 'string') {
-                    this.LoadModelFromString(state.handle);
+                const model_str = state.get('_handle', state.get('handle', null));
+                if (model_str) {
+                    this.LoadModelFromString(model_str);
                     return;
                 }
-                Object.assign(this, state);
+                for (const [key, value] of state) {
+                    this[key] = value;
+                }
             }
             LoadModelFromString(model_str) {
                 const lines = model_str.split('\n');
@@ -2817,6 +2827,7 @@ python.Execution = class {
         this.registerType('sklearn.metrics._dist_metrics.EuclideanDistance32', class extends sklearn.metrics._dist_metrics.DistanceMetric32 {});
         this.registerType('sklearn.metrics._dist_metrics.EuclideanDistance64', class extends sklearn.metrics._dist_metrics.DistanceMetric64 {});
         this.registerType('sklearn.metrics._dist_metrics.ManhattanDistance', class extends sklearn.metrics._dist_metrics.DistanceMetric {});
+        this.registerType('sklearn.metrics._dist_metrics.ManhattanDistance64', class extends sklearn.metrics._dist_metrics.DistanceMetric64 {});
         this.registerType('sklearn.metrics._scorer._PassthroughScorer', class {});
         this.registerType('sklearn.metrics._scorer._PredictScorer', class {});
         this.registerType('sklearn.metrics.scorer._PredictScorer', class {});
@@ -2925,10 +2936,10 @@ python.Execution = class {
                 this.n_outputs = n_outputs;
             }
             __setstate__(state) {
-                this.max_depth = state.max_depth;
-                this.node_count = state.node_count;
-                this.nodes = state.nodes;
-                this.values = state.values;
+                this.max_depth = state.get('max_depth');
+                this.node_count = state.get('node_count');
+                this.nodes = state.get('nodes');
+                this.values = state.get('values');
             }
         });
         this.registerType('sklearn.tree.tree.DecisionTreeClassifier', class {});
@@ -2951,7 +2962,7 @@ python.Execution = class {
                 let size = 0;
                 while (reader.position < reader.length) {
                     const opcode = reader.byte();
-                    // console.log((reader.position - 1).toString() + ' ' + Object.entries(OpCode).find(([, value]) => value === opcode)[0]);
+                    // console.log(`${(reader.position - 1).toString()} ${opcode}`);
                     // https://svn.python.org/projects/python/trunk/Lib/pickletools.py
                     // https://github.com/python/cpython/blob/master/Lib/pickle.py
                     switch (opcode) {
@@ -3096,7 +3107,7 @@ python.Execution = class {
                             break;
                         }
                         case 93: // EMPTY_LIST ']'
-                            stack.push(execution.invoke('builtins.list', []));
+                            stack.push(new builtins.list());
                             break;
                         case 41: // EMPTY_TUPLE ')'
                             stack.push([]);
@@ -3122,9 +3133,9 @@ python.Execution = class {
                         case 100: { // DICT 'd'
                             const items = stack;
                             stack = marker.pop();
-                            const dict = {};
+                            const dict = new builtins.dict();
                             for (let i = 0; i < items.length; i += 2) {
-                                dict[items[i]] = items[i + 1];
+                                dict.__setitem__(items[i], items[i + 1]);
                             }
                             stack.push(dict);
                             break;
@@ -3173,17 +3184,19 @@ python.Execution = class {
                             const items = stack;
                             stack = marker.pop();
                             const obj = stack[stack.length - 1];
-                            for (let i = 0; i < items.length; i += 2) {
-                                if (obj.__setitem__) {
+                            if (obj.__setitem__) {
+                                for (let i = 0; i < items.length; i += 2) {
                                     obj.__setitem__(items[i], items[i + 1]);
-                                } else {
+                                }
+                            } else {
+                                for (let i = 0; i < items.length; i += 2) {
                                     obj[items[i]] = items[i + 1];
                                 }
                             }
                             break;
                         }
                         case 125: // EMPTY_DICT '}'
-                            stack.push({});
+                            stack.push(new builtins.dict());
                             break;
                         case 97: { // APPEND 'a'
                             const append = stack.pop();
@@ -3228,9 +3241,17 @@ python.Execution = class {
                                 }
                             } else if (ArrayBuffer.isView(state) || Object(state) !== state) {
                                 obj.__state__ = state;
+                            } else if (obj instanceof Map && state instanceof Map) {
+                                for (const [key, value] of state) {
+                                    obj.set(key, value);
+                                }
                             } else if (obj instanceof Map) {
                                 for (const key in state) {
                                     obj.set(key, state[key]);
+                                }
+                            } else if (state instanceof Map) {
+                                for (const [key, value] of state) {
+                                    obj[key] = value;
                                 }
                             } else {
                                 Object.assign(obj, state);
@@ -3615,16 +3636,26 @@ python.Execution = class {
             return obj.__class__ ? builtins.issubclass(obj.__class__, type) : false;
         });
         this.registerFunction('builtins.hasattr', (obj, name) => {
+            if (obj instanceof Map && obj.__contains__) {
+                return obj.__contains__(name);
+            }
             return Object.prototype.hasOwnProperty.call(obj, name);
         });
         this.registerFunction('builtins.getattr', (obj, name, defaultValue) => {
+            if (obj instanceof Map && obj.__contains__ && obj.__getitem__) {
+                return obj.__contains__(name) ? obj.__getitem__(name) : defaultValue;
+            }
             if (Object.prototype.hasOwnProperty.call(obj, name)) {
                 return obj[name];
             }
             return defaultValue;
         });
         this.registerFunction('builtins.setattr', (obj, name, value) => {
-            obj[name] = value;
+            if (obj instanceof Map && obj.__setitem__) {
+                obj.__setitem__(name, value);
+            } else {
+                obj[name] = value;
+            }
         });
         this.registerType('builtins.set', class extends Set {});
         this.registerType('builtins.slice', class {
@@ -3698,7 +3729,7 @@ python.Execution = class {
         this.registerFunction('dill._dill._create_type', (typeobj, ...args) => {
             const [name, bases, dict] = args;
             const type = class extends bases[0] {};
-            const identifier = dict.__module__ ? `${dict.__module__}.${name}` : name;
+            const identifier = builtins.hasattr(dict, '__module__') ? `${builtins.getattr(dict, '__module__')}.${name}` : name;
             return self.registerType(identifier, Object.assign(type, dict));
         });
         this.registerFunction('dill._dill._eval_repr');
@@ -3744,6 +3775,50 @@ python.Execution = class {
             return _dill._reverse_typemap.get(name);
         });
         this.registerFunction('dill._dill.loads');
+        this.registerFunction('jax._src.array._reconstruct_array', (fun, args, arr_state, aval_state) => {
+            const np_value = fun(...args);
+            np_value.__setstate__(arr_state);
+            const jnp_value = jax.device_put(np_value);
+            jnp_value.aval = jnp_value.aval.update(aval_state);
+            return jnp_value;
+        });
+        jax._src.device_array.reconstruct_device_array = jax._src.array._reconstruct_array;
+        this.registerFunction('jax.device_put', (x) => {
+            const aval = new jax._src.core.ShapedArray(x.shape, x.dtype);
+            return new jax.Array(aval, x.data);
+        });
+        this.registerType('jax._src.core.AbstractValue', class {});
+        this.registerType('jax._src.core.UnshapedArray',  class extends jax._src.core.AbstractValue {});
+        this.registerType('jax._src.core.ShapedArray', class extends jax._src.core.UnshapedArray {
+            constructor(shape, dtype, weak_type) {
+                super();
+                this.shape = shape;
+                this.dtype = dtype;
+                this.weak_type = weak_type || false;
+            }
+            update(dict) {
+                const shape = dict.get('shape') || this.shape;
+                const dtype = dict.get('dtype') || this.dtype;
+                const weak_type = dict.get('weak_type') || this.weak_type;
+                return new jax._src.core.ShapedArray(shape, dtype, weak_type);
+            }
+        });
+        this.registerType('jax.Array', class {
+            constructor(aval, data) {
+                this.aval = aval;
+                this.data = data;
+            }
+            get dtype() {
+                return this.aval.dtype;
+            }
+            get shape() {
+                return this.aval.shape;
+            }
+            tobytes() {
+                return this.data;
+            }
+        });
+        jax.numpy.ndarray = jax.Array;
         this.registerFunction('keras.saving.pickle_utils.deserialize_model_from_bytecode', (/* serialized_model */) => {
             return null; // throw new python.Error("'keras.saving.pickle_utils.deserialize_model_from_bytecode' not implemented.");
         });
@@ -4192,14 +4267,17 @@ python.Execution = class {
         this.registerFunction('sklearn.metrics._classification.accuracy_score');
         this.registerFunction('sklearn.metrics._classification.balanced_accuracy_score');
         this.registerFunction('sklearn.metrics._classification.f1_score');
+        this.registerFunction('sklearn.metrics._classification.log_loss');
         this.registerFunction('sklearn.metrics._classification.precision_score');
         this.registerFunction('sklearn.metrics._classification.recall_score');
         this.registerFunction('sklearn.metrics._dist_metrics.newObj', (obj) => {
             return obj.__new__(obj);
         });
+        this.registerFunction('sklearn.metrics._ranking.roc_auc_score');
         this.registerFunction('sklearn.metrics._regression.mean_absolute_error');
         this.registerFunction('sklearn.metrics._regression.mean_squared_error');
         this.registerFunction('sklearn.metrics._regression.root_mean_squared_error');
+        this.registerFunction('sklearn.metrics._scorer._passthrough_scorer');
         this.registerFunction('re._compile', (pattern, flags) => {
             return self.invoke('re.Pattern', [pattern, flags]);
         });
@@ -5280,7 +5358,7 @@ python.Execution = class {
             return left && right;
         });
         this.registerFunction('torch.__contains__', (dict, key) => {
-            return dict[key] !== undefined;
+            return builtins.hasattr(dict, key);
         });
         this.registerFunction('torch.__derive_index', (index, start, step) => {
             return start + index * step;
@@ -5633,10 +5711,10 @@ python.Execution = class {
                     throw new python.Error(`Unsupported protocol version '${protocol_version}'.`);
                 }
                 const sys_info = unpickler.load();
-                if (sys_info.protocol_version !== 1001) {
+                if (sys_info.get('protocol_version') !== 1001) {
                     throw new python.Error(`Unsupported protocol version '${sys_info.protocol_version}'.`);
                 }
-                if (sys_info.little_endian === false) {
+                if (sys_info.get('little_endian') === false) {
                     throw new python.Error("Unsupported big-endian storage data.");
                 }
                 const module_source_map = new Map();
@@ -5863,6 +5941,7 @@ python.Execution = class {
         this.registerFunction('torch.nn.init.constant_');
         this.registerFunction('torch.nn.init.xavier_uniform_');
         this.registerFunction('torch.nn.functional.adaptive_avg_pool2d');
+        this.registerFunction('torch.nn.functional.binary_cross_entropy');
         this.registerFunction('torch.nn.functional.binary_cross_entropy_with_logits');
         this.registerFunction('torch.nn.functional.cross_entropy');
         this.registerFunction('torch.nn.functional.elu');
@@ -7182,12 +7261,12 @@ python.Execution = class {
     apply(method, args, context) {
         const locals = Array.prototype.slice.call(args);
         context = new python.Execution.Context(context.globals, {});
-        for (const parameter of method.parameters) {
+        for (const argument of method.args) {
             let value = locals.shift();
-            if (value === undefined && parameter.initializer) {
-                value = this.expression(parameter.initializer, context);
+            if (value === undefined && argument.initializer) {
+                value = this.expression(argument.initializer, context);
             }
-            context.set(parameter.name, value);
+            context.set(argument.name, value);
         }
         return this.block(method.body.statements, context);
     }
@@ -7252,16 +7331,16 @@ python.Execution = class {
                 break;
             }
             case 'if': {
-                const condition = this.expression(statement.condition, context);
-                if (condition === true || condition) {
-                    const value = this.block(statement.then.statements, context);
+                const test = this.expression(statement.test, context);
+                if (test === true || test) {
+                    const value = this.block(statement.body.statements, context);
                     if (value !== undefined) {
                         return value;
                     }
                     break;
-                } else if (condition === false) {
-                    if (statement.else) {
-                        const value = this.block(statement.else.statements, context);
+                } else if (test === false) {
+                    if (statement.orelse) {
+                        const value = this.block(statement.orelse.statements, context);
                         if (value !== undefined) {
                             return value;
                         }
@@ -7271,10 +7350,10 @@ python.Execution = class {
                 throw new python.Error("Unsupported condition.");
             }
             case 'for': {
-                if (statement.target.length === 1 &&
-                    statement.variable.length === 1 && statement.variable[0].type === 'id') {
-                    const range = this.expression(statement.target[0], context);
-                    const [variable] = statement.variable;
+                if (statement.iter.length === 1 &&
+                    statement.target.length === 1 && statement.target[0].type === 'id') {
+                    const range = this.expression(statement.iter[0], context);
+                    const [variable] = statement.target;
                     for (const current of range) {
                         this.statement({ type: '=', target: variable, expression: { type: 'number', value: current } }, context);
                         const value = this.block(statement.body.statements, context);
@@ -7287,8 +7366,8 @@ python.Execution = class {
                 throw new python.Error("Unsupported 'for' statement.");
             }
             case 'while': {
-                const condition = this.expression(statement.condition, context);
-                if (condition) {
+                const test = this.expression(statement.test, context);
+                if (test) {
                     const value = this.block(statement.body.statements, context);
                     if (value !== undefined) {
                         return value;

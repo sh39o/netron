@@ -32,11 +32,12 @@ sklearn.ModelFactory = class {
                 context.target = obj;
                 return;
             }
-            if (Object(obj) === obj) {
-                const entries = Object.entries(obj);
+            if (Object(obj) === obj || obj instanceof Map) {
+                const entries = obj instanceof Map ? Array.from(obj) : Object.entries(obj);
                 if (entries.length > 0 && entries.every(([, value]) => validate(value, format.name))) {
                     context.type = `${format.format}.map`;
                     context.target = obj;
+                    return;
                 }
             }
         }
@@ -83,7 +84,8 @@ sklearn.Model = class {
             }
             case 'sklearn.map':
             case 'scipy.map': {
-                for (const [name, value] of Object.entries(obj)) {
+                const entries = obj instanceof Map ? Array.from(obj) : Object.entries(obj);
+                for (const [name, value] of entries) {
                     this.graphs.push(new sklearn.Graph(metadata, name, value));
                     if (value._sklearn_version) {
                         version.push(` v${value._sklearn_version}`);
@@ -302,7 +304,7 @@ sklearn.Tensor = class {
 
     constructor(array) {
         this.type = new sklearn.TensorType(array.dtype.__name__, new sklearn.TensorShape(array.shape));
-        this.stride = array.strides.map((stride) => stride / array.itemsize);
+        this.stride = Array.isArray(array.strides) ? array.strides.map((stride) => stride / array.itemsize) : null;
         this.encoding = this.type.dataType === 'string' || this.type.dataType === 'object' ? '|' : array.dtype.byteorder;
         this.values = this.type.dataType === 'string' || this.type.dataType === 'object' || this.type.dataType === 'void' ? array.flatten().tolist() : array.tobytes();
     }
