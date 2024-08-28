@@ -3924,15 +3924,15 @@ view.FindSidebar = class extends view.Control {
                             continue;
                         }
                     }
-                    if (value.type.denotation) {
-                        if (value.type.denotation.toLowerCase().includes(term)) {
-                            continue;
-                        }
-                    }
-                    return false;
                 }
-                return true;
+                if (value.type.denotation) {
+                    if (value.type.denotation.toLowerCase().includes(term)) {
+                        continue;
+                    }
+                }
+                return false;
             }
+            return true;
         }
         return false;
     }
