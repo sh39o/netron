@@ -21902,6 +21902,13 @@
         "type": "float32",
         "required": false,
         "description": "Custom scale will be used if specified. Default value is 1/sqrt(head_size)"
+      },
+      {
+        "name": "smooth_softmax",
+        "type": "int64",
+        "required": false,
+        "default": -1,
+        "description": "Use a smooth factor in softmax."
       }
     ],
     "inputs": [
